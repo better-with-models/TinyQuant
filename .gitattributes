@@ -1,0 +1,42 @@
+# --------------------------------------------------------------------------
+# Line endings — normalise to LF in the repo, native on checkout
+# --------------------------------------------------------------------------
+* text=auto
+
+# Force LF for files that must be consistent across platforms
+*.py text eol=lf
+*.pyi text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.cfg text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+*.rst text eol=lf
+*.sh text eol=lf
+*.bat text eol=crlf
+
+# --------------------------------------------------------------------------
+# Binary files — do not diff or merge
+# --------------------------------------------------------------------------
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.whl binary
+*.tar.gz binary
+*.zip binary
+
+# --------------------------------------------------------------------------
+# Git diff drivers — improve diffs for common formats
+# --------------------------------------------------------------------------
+*.py diff=python
+
+# --------------------------------------------------------------------------
+# Linguist overrides — keep GitHub language stats accurate
+# --------------------------------------------------------------------------
+docs/** linguist-documentation
+tests/** linguist-detectable=false
