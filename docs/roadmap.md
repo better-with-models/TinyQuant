@@ -34,7 +34,7 @@ gantt
         Phase 5 - Backend Layer             :done, p5, after p4, 1
     section Integration
         Phase 6 - Serialization             :done, p6, after p5, 1
-        Phase 7 - Architecture & E2E Tests  :p7, after p6, 1
+        Phase 7 - Architecture & E2E Tests  :done, p7, after p6, 1
     section Delivery
         Phase 8 - CI/CD Workflows           :p8, after p7, 1
         Phase 9 - Pgvector Adapter          :p9, after p8, 1
@@ -51,14 +51,14 @@ gantt
 | 4 | Corpus Layer | **complete** | 59 | Phase 3 | [[plans/phase-04-corpus-layer\|Plan]] |
 | 5 | Backend Layer | **complete** | 16 | Phase 4 | [[plans/phase-05-backend-layer\|Plan]] |
 | 6 | Serialization | **complete** | 11 | Phase 5 | [[plans/phase-06-serialization\|Plan]] |
-| 7 | Architecture & E2E Tests | pending | — | Phase 6 | [[plans/phase-07-architecture-e2e-tests\|Plan]] |
+| 7 | Architecture & E2E Tests | **complete** | 23 | Phase 6 | [[plans/phase-07-architecture-e2e-tests\|Plan]] |
 | 8 | CI/CD Workflows | pending | — | Phase 7 | [[plans/phase-08-ci-cd-workflows\|Plan]] |
 | 9 | Pgvector Adapter | pending | — | Phase 8 | [[plans/phase-09-pgvector-adapter\|Plan]] |
 | 10 | Calibration & Release | pending | — | Phase 9 | [[plans/phase-10-calibration-release\|Plan]] |
 
 > [!success] Current progress
-> **6 of 10 phases complete** — 170 tests passing, ruff + mypy --strict clean.
-> Next up: [[plans/phase-07-architecture-e2e-tests|Phase 7: Architecture & E2E Tests]].
+> **7 of 10 phases complete** — 193 tests passing, ruff + mypy --strict clean.
+> Next up: [[plans/phase-08-ci-cd-workflows|Phase 8: CI/CD Workflows]].
 
 ## Design constraints per phase
 
