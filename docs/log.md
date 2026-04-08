@@ -355,3 +355,36 @@ Implemented the backend protocol bounded context on top of the corpus layer:
 - Public re-exports from `tinyquant.backend.__init__`
 - 16 tests (3 SearchResult, 3 ingest, 7 search, 2 remove, 1 clear), 96%
   backend coverage, 161 total tests passing
+
+## [2026-04-08] implement | Phase 6: Serialization
+
+Implemented CompressedVector binary serialization with format versioning:
+
+- `to_bytes()` and `from_bytes()` with version-tagged binary format
+- 11 tests covering round-trip, format validation, and error cases
+- 172 total tests passing
+
+## [2026-04-08] implement | Phase 7: Architecture & E2E Tests
+
+Implemented architecture conformance and end-to-end test suites:
+
+- Architecture tests: dependency direction, module boundary enforcement
+- Integration tests: codec→corpus handoff, corpus→backend handoff
+- E2E tests: 8 full-pipeline scenarios (compress→store→decompress→search)
+- 23 new tests, 193 total tests passing
+
+## [2026-04-08] implement | Phase 8: CI/CD Workflows
+
+Created GitHub Actions workflow files matching the specifications in
+[[CI-plan/workflow-definition|Workflow Definition]] and
+[[CD-plan/release-workflow|Release Workflow]]:
+
+- `.github/workflows/ci.yml` — 5-job CI pipeline: lint, markdown-lint,
+  typecheck, test (matrix 3.12/3.13), build-artifact with concurrency
+  cancellation, pip/mypy caching, and coverage upload
+- `.github/workflows/release.yml` — 5-job release pipeline: verify-tag,
+  calibration-tests, publish-testpypi (OIDC), publish-pypi (manual approval),
+  github-release with auto-generated notes
+- `.github/release-drafter.yml` — auto-labeling and categorized release notes
+- `.pre-commit-config.yaml` already matched spec; no changes needed
+- Updated [[roadmap]] to mark Phase 8 complete

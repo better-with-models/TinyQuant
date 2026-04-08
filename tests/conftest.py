@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
+from tinyquant.backend.brute_force import BruteForceBackend
 from tinyquant.codec.codebook import Codebook
 from tinyquant.codec.codec_config import CodecConfig
 from tinyquant.codec.rotation_matrix import RotationMatrix
@@ -100,3 +101,34 @@ def corpus_fp16(
         trained_codebook,
         CompressionPolicy.FP16,
     )
+
+
+@pytest.fixture()
+def sample_corpus(
+    config_4bit: CodecConfig,
+    trained_codebook: Codebook,
+    sample_vectors: NDArray[np.float32],
+) -> Corpus:
+    """Corpus pre-populated with 100 vectors under COMPRESS policy."""
+    corpus = Corpus(
+        "sample-corpus",
+        config_4bit,
+        trained_codebook,
+        CompressionPolicy.COMPRESS,
+    )
+    for i, vec in enumerate(sample_vectors):
+        corpus.insert(f"vec-{i:04d}", vec)
+    return corpus
+
+
+@pytest.fixture()
+def brute_force_backend() -> BruteForceBackend:
+    """Empty BruteForceBackend instance."""
+    return BruteForceBackend()
+
+
+@pytest.fixture()
+def gold_corpus_vectors() -> NDArray[np.float32]:
+    """200 synthetic vectors at dimension 128 for gold-standard E2E tests."""
+    rng = np.random.default_rng(7777)
+    return rng.standard_normal((200, 128)).astype(np.float32)
