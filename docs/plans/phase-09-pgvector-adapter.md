@@ -7,7 +7,7 @@ tags:
   - pgvector
   - adapter
 date-created: 2026-04-08
-status: pending
+status: done
 category: planning
 ---
 
