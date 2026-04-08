@@ -150,3 +150,45 @@ class TestSearch:
         query = np.ones(4, dtype=np.float32)
         results = backend.search(query, top_k=5)
         assert results == []
+
+
+# ===========================================================================
+# Remove tests
+# ===========================================================================
+
+
+class TestRemove:
+    """Tests for BruteForceBackend.remove."""
+
+    def test_remove_decreases_count(self) -> None:
+        """Count drops after removing vectors."""
+        backend = BruteForceBackend()
+        backend.ingest(_make_vectors(5))
+        backend.remove(["vec-000", "vec-001"])
+        assert backend.count == 3
+
+    def test_removed_vector_not_in_search_results(self) -> None:
+        """Removed ID does not appear in subsequent searches."""
+        backend = BruteForceBackend()
+        backend.ingest(_make_vectors(5))
+        backend.remove(["vec-002"])
+        query = np.ones(8, dtype=np.float32)
+        results = backend.search(query, top_k=10)
+        result_ids = {r.vector_id for r in results}
+        assert "vec-002" not in result_ids
+
+
+# ===========================================================================
+# Clear tests
+# ===========================================================================
+
+
+class TestClear:
+    """Tests for BruteForceBackend.clear."""
+
+    def test_clear_empties_backend(self) -> None:
+        """Count is zero after clear."""
+        backend = BruteForceBackend()
+        backend.ingest(_make_vectors(5))
+        backend.clear()
+        assert backend.count == 0

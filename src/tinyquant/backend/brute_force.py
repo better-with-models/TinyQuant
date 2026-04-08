@@ -80,8 +80,9 @@ class BruteForceBackend:
         Args:
             vector_ids: IDs to remove.
         """
-        raise NotImplementedError  # implemented in Task 5
+        for vid in vector_ids:
+            self._vectors.pop(vid, None)
 
     def clear(self) -> None:
         """Remove all stored vectors."""
-        raise NotImplementedError  # implemented in Task 5
+        self._vectors.clear()
