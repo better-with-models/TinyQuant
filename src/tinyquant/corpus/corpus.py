@@ -308,6 +308,7 @@ class Corpus:
                 residual=None,
                 config_hash=self._codec_config.config_hash,
                 dimension=len(indices),
+                bit_width=8,
             )
 
         # PASSTHROUGH: store FP32 as raw bytes wrapped in uint8.
@@ -317,6 +318,7 @@ class Corpus:
             residual=None,
             config_hash=self._codec_config.config_hash,
             dimension=len(indices),
+            bit_width=8,
         )
 
     def _decompress_entry(self, entry: VectorEntry) -> NDArray[np.float32]:

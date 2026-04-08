@@ -54,7 +54,7 @@ def compress(
 2. Apply rotation: `rotated = rotation.apply(vector)`
 3. Quantize: `indices = codebook.quantize(rotated)`
 4. If `config.residual_enabled`: compute and encode residual
-5. Return `CompressedVector(indices, residual, config.config_hash, config.dimension)`
+5. Return `CompressedVector(indices, residual, config.config_hash, config.dimension, config.bit_width)`
 
 **Preconditions:**
 - `vector` has `config.dimension` elements

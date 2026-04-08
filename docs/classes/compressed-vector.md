@@ -34,6 +34,7 @@ src/tinyquant/codec/compressed_vector.py
 | `residual` | `bytes \| None` | Non-empty when `residual_enabled` was true; `None` otherwise |
 | `config_hash` | `ConfigHash` | Fingerprint of the `CodecConfig` that produced this vector |
 | `dimension` | `int` | `len(indices)` — stored explicitly for fast validation |
+| `bit_width` | `int` | Quantization bit width; must be one of {2, 4, 8} |
 
 ## Properties
 
@@ -90,6 +91,7 @@ cv = CompressedVector(
     residual=None,
     config_hash="abc123",
     dimension=4,
+    bit_width=4,
 )
 assert not cv.has_residual
 raw = cv.to_bytes()

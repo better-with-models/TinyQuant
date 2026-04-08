@@ -25,6 +25,7 @@ class TestConstruction:
             residual=None,
             config_hash="abc123",
             dimension=4,
+            bit_width=4,
         )
         assert cv.dimension == 4
         assert cv.config_hash == "abc123"
@@ -38,6 +39,7 @@ class TestConstruction:
                 residual=None,
                 config_hash="abc123",
                 dimension=4,
+                bit_width=4,
             )
 
     def test_residual_none_when_disabled(self) -> None:
@@ -47,6 +49,7 @@ class TestConstruction:
             residual=None,
             config_hash="abc123",
             dimension=2,
+            bit_width=4,
         )
         assert cv.residual is None
 
@@ -58,8 +61,20 @@ class TestConstruction:
             residual=residual_data,
             config_hash="abc123",
             dimension=2,
+            bit_width=4,
         )
         assert cv.residual == residual_data
+
+    def test_invalid_bit_width_raises(self) -> None:
+        """bit_width outside {2, 4, 8} raises ValueError."""
+        with pytest.raises(ValueError, match="bit_width"):
+            CompressedVector(
+                indices=np.array([0], dtype=np.uint8),
+                residual=None,
+                config_hash="abc",
+                dimension=1,
+                bit_width=3,
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -77,6 +92,7 @@ class TestProperties:
             residual=b"\x01",
             config_hash="abc",
             dimension=1,
+            bit_width=4,
         )
         assert cv.has_residual is True
 
@@ -87,6 +103,7 @@ class TestProperties:
             residual=None,
             config_hash="abc",
             dimension=1,
+            bit_width=4,
         )
         assert cv.has_residual is False
 
@@ -97,6 +114,7 @@ class TestProperties:
             residual=None,
             config_hash="abc123",
             dimension=4,
+            bit_width=4,
         )
         assert cv.size_bytes > 0
 
@@ -108,50 +126,73 @@ class TestProperties:
             residual=None,
             config_hash="abc123",
             dimension=4,
+            bit_width=4,
         )
         cv_with_res = CompressedVector(
             indices=indices,
             residual=b"\x00" * 100,
             config_hash="abc123",
             dimension=4,
+            bit_width=4,
         )
         assert cv_with_res.size_bytes > cv_no_res.size_bytes
 
 
 # ---------------------------------------------------------------------------
-# Serialization stubs
+# Serialization
 # ---------------------------------------------------------------------------
 
 
-class TestSerializationStubs:
-    """Tests for Phase 6 serialization stubs."""
+class TestSerialization:
+    """Tests for to_bytes / from_bytes serialization."""
 
-    def test_to_bytes_raises_not_implemented(self) -> None:
-        """to_bytes raises NotImplementedError."""
+    def test_to_bytes_produces_bytes(self) -> None:
+        """to_bytes returns a non-empty bytes object."""
         cv = CompressedVector(
-            indices=np.array([0], dtype=np.uint8),
+            indices=np.array([3, 7, 1, 15], dtype=np.uint8),
             residual=None,
-            config_hash="abc",
-            dimension=1,
+            config_hash="abc123",
+            dimension=4,
+            bit_width=4,
         )
-        with pytest.raises(NotImplementedError):
-            cv.to_bytes()
+        result = cv.to_bytes()
+        assert isinstance(result, bytes)
+        assert len(result) > 0
 
-    def test_from_bytes_raises_not_implemented(self) -> None:
-        """from_bytes raises NotImplementedError."""
-        with pytest.raises(NotImplementedError):
-            CompressedVector.from_bytes(b"\x00")
-
-    def test_serialization_stubs_have_informative_message(self) -> None:
-        """Stub error messages mention Phase 6."""
+    def test_serialization_includes_config_hash(self) -> None:
+        """Config hash is present in serialized bytes."""
         cv = CompressedVector(
-            indices=np.array([0], dtype=np.uint8),
+            indices=np.array([0, 1], dtype=np.uint8),
             residual=None,
-            config_hash="abc",
-            dimension=1,
+            config_hash="myhash",
+            dimension=2,
+            bit_width=4,
         )
-        with pytest.raises(NotImplementedError, match="Phase 6"):
-            cv.to_bytes()
+        raw = cv.to_bytes()
+        # Config hash occupies bytes 1..65 (after version byte)
+        hash_region = raw[1:65]
+        assert b"myhash" in hash_region
+
+    def test_from_bytes_round_trip(self) -> None:
+        """from_bytes(to_bytes(cv)) reproduces all fields."""
+        cv = CompressedVector(
+            indices=np.array([3, 7, 1, 15], dtype=np.uint8),
+            residual=None,
+            config_hash="abc123",
+            dimension=4,
+            bit_width=4,
+        )
+        restored = CompressedVector.from_bytes(cv.to_bytes())
+        assert restored.dimension == cv.dimension
+        assert restored.bit_width == cv.bit_width
+        assert restored.config_hash == cv.config_hash
+        assert np.array_equal(restored.indices, cv.indices)
+        assert restored.residual == cv.residual
+
+    def test_from_bytes_corrupted_data_raises(self) -> None:
+        """Truncated data raises ValueError."""
+        with pytest.raises(ValueError):
+            CompressedVector.from_bytes(b"\x00\x01\x02\x03\x04")
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +210,7 @@ class TestImmutability:
             residual=None,
             config_hash="abc",
             dimension=2,
+            bit_width=4,
         )
         with pytest.raises(dataclasses.FrozenInstanceError):
             cv.dimension = 99  # type: ignore[misc]

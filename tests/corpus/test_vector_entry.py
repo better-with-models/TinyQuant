@@ -17,6 +17,7 @@ def _make_compressed(config_hash: str = "abc123", dim: int = 4) -> CompressedVec
         residual=b"\x00\x01",
         config_hash=config_hash,
         dimension=dim,
+        bit_width=4,
     )
 
 

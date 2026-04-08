@@ -70,6 +70,7 @@ class Codec:
             residual=residual,
             config_hash=config.config_hash,
             dimension=config.dimension,
+            bit_width=config.bit_width,
         )
 
     def decompress(
