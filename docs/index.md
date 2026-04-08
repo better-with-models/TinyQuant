@@ -90,6 +90,27 @@ status: active
 | [[classes/pgvector-adapter|PgvectorAdapter]] | Anti-corruption layer adapter for PostgreSQL + pgvector | 2026-04-08 |
 | [[classes/shared-types|Shared Types]] | Type aliases: VectorId, ConfigHash, CorpusId, Vector, VectorBatch | 2026-04-08 |
 
+## Quality Assurance
+
+| Page | Summary | Date |
+|------|---------|------|
+| [[qa/README|Quality Assurance]] | QA hub: test pyramid, tooling, relationship to design docs | 2026-04-08 |
+| [[qa/unit-tests/README|Unit Tests]] | Test specs for all planned classes; 10 per-class test spec pages (~150 tests total) | 2026-04-08 |
+| [[qa/unit-tests/test-codec-config|CodecConfig tests]] | 15 tests: construction, immutability, properties, equality, property-based | 2026-04-08 |
+| [[qa/unit-tests/test-rotation-matrix|RotationMatrix tests]] | 12 tests: factory, orthogonality, apply/inverse, property-based | 2026-04-08 |
+| [[qa/unit-tests/test-codebook|Codebook tests]] | 14 tests: training, quantization, dequantization, immutability | 2026-04-08 |
+| [[qa/unit-tests/test-compressed-vector|CompressedVector tests]] | 12 tests: construction, properties, serialization round-trip | 2026-04-08 |
+| [[qa/unit-tests/test-codec|Codec tests]] | 25 tests: compress, decompress, round-trip, batch, build, property-based | 2026-04-08 |
+| [[qa/unit-tests/test-corpus|Corpus tests]] | 30 tests: construction, insert, batch, policy, get/contains, decompress, remove | 2026-04-08 |
+| [[qa/unit-tests/test-vector-entry|VectorEntry tests]] | 8 tests: construction, delegation, equality, metadata | 2026-04-08 |
+| [[qa/unit-tests/test-compression-policy|CompressionPolicy tests]] | 6 tests: requires_codec, storage_dtype for each variant | 2026-04-08 |
+| [[qa/unit-tests/test-events|Corpus Events tests]] | 10 tests: field correctness and immutability for all 4 event types | 2026-04-08 |
+| [[qa/unit-tests/test-brute-force|BruteForceBackend tests]] | 12 tests: ingest, search ranking, remove, clear | 2026-04-08 |
+| [[qa/e2e-tests/README|End-to-End Tests]] | 10 full-pipeline scenarios: compress→store→decompress→search, fidelity, determinism | 2026-04-08 |
+| [[qa/integration-plan/README|Integration Plan]] | Cross-boundary test strategy: 2 internal + 3 external boundary test suites | 2026-04-08 |
+| [[qa/verification-plan/README|Verification Plan]] | "Built it right": 8 verification dimensions covering architecture, types, lint, coverage, invariants | 2026-04-08 |
+| [[qa/validation-plan/README|Validation Plan]] | "Built the right thing": 7 validation dimensions covering fidelity, compression ratio, research alignment | 2026-04-08 |
+
 ## Behavior Specifications
 
 | Page | Summary | Date |

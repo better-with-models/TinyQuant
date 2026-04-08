@@ -184,3 +184,41 @@ Python class files with members, responsibilities, and relationships:
 Each page specifies responsibility, file path, category, typed fields,
 method signatures with pre/postconditions, invariants, relationships, and
 corresponding test file.
+
+## [2026-04-08] author | Quality assurance documentation
+
+Created the QA documentation set under `docs/qa/` with five subdirectories:
+
+- Created [[qa/README|Quality Assurance]] hub with test pyramid, tooling
+  summary, and cross-references to design documentation
+- **Unit tests (11 pages):**
+  [[qa/unit-tests/README|index]] plus 10 per-class test specs covering
+  [[qa/unit-tests/test-codec-config|CodecConfig]],
+  [[qa/unit-tests/test-rotation-matrix|RotationMatrix]],
+  [[qa/unit-tests/test-codebook|Codebook]],
+  [[qa/unit-tests/test-compressed-vector|CompressedVector]],
+  [[qa/unit-tests/test-codec|Codec]],
+  [[qa/unit-tests/test-corpus|Corpus]],
+  [[qa/unit-tests/test-vector-entry|VectorEntry]],
+  [[qa/unit-tests/test-compression-policy|CompressionPolicy]],
+  [[qa/unit-tests/test-events|Corpus Events]],
+  [[qa/unit-tests/test-brute-force|BruteForceBackend]]
+  (~150 test cases total)
+- **E2E tests (1 page):**
+  [[qa/e2e-tests/README|10 full-pipeline scenarios]] covering
+  compress→store→decompress→search, passthrough, FP16, cross-config rejection,
+  fidelity, serialization, pgvector, empty corpus, residual comparison, and
+  cross-run determinism
+- **Integration plan (1 page):**
+  [[qa/integration-plan/README|2 internal + 3 external boundary test suites]]
+  covering codec→corpus handoff, corpus→backend handoff, serialization,
+  pgvector adapter, and future persistence
+- **Verification plan (1 page):**
+  [[qa/verification-plan/README|8 verification dimensions]] covering
+  architecture conformance, type safety, linting, complexity, docstrings,
+  coverage, invariant preservation, and serialization compatibility
+- **Validation plan (1 page):**
+  [[qa/validation-plan/README|7 validation dimensions]] covering score
+  fidelity, compression ratio, determinism, research baseline alignment,
+  API usability, policy correctness, and acceptance criteria traceability
+- Updated [[index]] to register all 16 QA pages
