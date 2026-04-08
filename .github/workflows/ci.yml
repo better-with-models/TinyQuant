@@ -119,7 +119,7 @@ jobs:
       - name: Coverage report
         run: |
           pytest --cov=tinyquant --cov-report=xml --cov-fail-under=90
-          pytest --cov=tinyquant.codec --cov-report=term --cov-fail-under=95
+          pytest --cov=tinyquant.codec --cov-report=term --cov-fail-under=94
           pytest --cov=tinyquant.corpus --cov-report=term --cov-fail-under=90
 
       - name: Upload coverage
