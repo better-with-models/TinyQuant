@@ -2,9 +2,30 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
+from numpy.typing import NDArray
 
+from tinyquant.backend.brute_force import BruteForceBackend
 from tinyquant.backend.protocol import SearchResult
+
+
+# ===========================================================================
+# Helpers
+# ===========================================================================
+
+
+def _make_vectors(
+    n: int,
+    dim: int = 8,
+    seed: int = 42,
+) -> dict[str, NDArray[np.float32]]:
+    """Generate n random FP32 vectors keyed by 'vec-000' .. 'vec-{n-1}'."""
+    rng = np.random.default_rng(seed)
+    return {
+        f"vec-{i:03d}": rng.standard_normal(dim).astype(np.float32)
+        for i in range(n)
+    }
 
 
 # ===========================================================================
@@ -34,3 +55,31 @@ class TestSearchResult:
         result = SearchResult(vector_id="vec-001", score=0.5)
         with pytest.raises(AttributeError):
             result.score = 0.99  # type: ignore[misc]
+
+
+# ===========================================================================
+# Ingest tests
+# ===========================================================================
+
+
+class TestIngest:
+    """Tests for BruteForceBackend.ingest."""
+
+    def test_ingest_stores_vectors(self) -> None:
+        """Count increases after ingestion."""
+        backend = BruteForceBackend()
+        backend.ingest(_make_vectors(5))
+        assert backend.count == 5
+
+    def test_ingest_duplicate_id_overwrites(self) -> None:
+        """Second ingest with same ID replaces the vector, count unchanged."""
+        backend = BruteForceBackend()
+        backend.ingest(_make_vectors(3))
+        backend.ingest({"vec-000": np.ones(8, dtype=np.float32)})
+        assert backend.count == 3
+
+    def test_ingest_empty_dict_is_noop(self) -> None:
+        """Ingesting empty dict causes no error and no count change."""
+        backend = BruteForceBackend()
+        backend.ingest({})
+        assert backend.count == 0
