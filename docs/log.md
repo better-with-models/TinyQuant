@@ -67,3 +67,54 @@ Ingested the broader TurboQuant-related research set from `docs/research/`:
 The wiki now captures both the local TinyQuant adaptation story and the broader
 research lineage that motivates its architecture, provenance discipline, and
 deployment boundaries.
+
+## [2026-04-08] author | Domain layer design (DDD)
+
+Created the domain-layer design document set under `docs/design/domain-layer/`
+using domain-driven design analysis:
+
+- Updated [[design/domain-layer/README|Domain Layer README]] from placeholder
+  to active reading-order hub
+- Created [[design/domain-layer/ubiquitous-language|Ubiquitous Language]] with
+  canonical term definitions and overloaded-term disambiguation
+- Created [[design/domain-layer/context-map|Context Map]] identifying three
+  bounded contexts (Codec, Corpus, Backend Protocol) with subdomain
+  classification and integration styles
+- Created [[design/domain-layer/aggregates-and-entities|Aggregates and
+  Entities]] with Corpus as aggregate root, CodecConfig and CompressedVector as
+  value objects, Codec as domain service, and invariant documentation
+- Created [[design/domain-layer/domain-events|Domain Events]] defining
+  business-meaningful events (CodebookTrained, CorpusCreated, VectorsInserted,
+  CorpusDecompressed, CompressionPolicyViolationDetected)
+- Updated [[index]] to register all new domain-layer pages
+
+Design is deliberately lightweight: module boundaries inside a single Python
+library, not microservice decomposition.
+
+## [2026-04-08] author | Behavior layer specifications (BDD)
+
+Created the behavior-layer specification set under
+`docs/design/behavior-layer/` using behavior-driven development:
+
+- Created [[design/behavior-layer/README|Behavior Layer README]] as a hub with
+  reading order and automation-level guidance
+- Created [[design/behavior-layer/codec-compression|Codec Compression
+  Behavior]] with scenarios for determinism, index range, residual presence,
+  dimension enforcement, and batch operations
+- Created [[design/behavior-layer/codec-decompression|Codec Decompression
+  Behavior]] with scenarios for FP32 output, config safety, round-trip
+  fidelity, and residual correction benefit
+- Created [[design/behavior-layer/corpus-management|Corpus Management
+  Behavior]] with scenarios for config freezing, policy enforcement, policy
+  immutability, and cross-config rejection
+- Created [[design/behavior-layer/score-fidelity|Score Fidelity Behavior]]
+  with quality contract scenarios for Pearson rho, rank preservation, bit-width
+  ordering, and corpus-size independence
+- Created [[design/behavior-layer/backend-protocol|Backend Protocol Behavior]]
+  with integration boundary scenarios for FP32-only handoff, adapter
+  translation, error isolation, and query passthrough
+- Updated [[index]] to register all new behavior-layer pages
+
+All scenarios are downstream-agnostic and target Python API-level automation.
+Scrubbed better-router/TurboSwede/OpenViking references from both document
+sets to keep TinyQuant's spec portable.

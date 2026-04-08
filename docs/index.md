@@ -46,7 +46,17 @@ status: active
 
 | Page | Summary | Date |
 |------|---------|------|
-| [[design/domain-layer/README|Domain Layer README]] | Placeholder for future domain-level design analysis and reading order | 2026-04-08 |
+| [[design/domain-layer/README|Domain Layer]] | Domain-driven design analysis: bounded contexts, aggregates, ubiquitous language, invariants, and domain events | 2026-04-08 |
+| [[design/domain-layer/ubiquitous-language|Ubiquitous Language]] | Canonical vocabulary for TinyQuant's public API, tests, and documentation | 2026-04-08 |
+| [[design/domain-layer/context-map|Context Map]] | Bounded contexts (Codec, Corpus, Backend Protocol), subdomain classification, and integration styles | 2026-04-08 |
+| [[design/domain-layer/aggregates-and-entities|Aggregates and Entities]] | Tactical model: Corpus aggregate root, CodecConfig/CompressedVector value objects, Codec domain service | 2026-04-08 |
+| [[design/domain-layer/domain-events|Domain Events]] | Business-meaningful events: CodebookTrained, CorpusCreated, VectorsInserted, CorpusDecompressed | 2026-04-08 |
+| [[design/behavior-layer/README|Behavior Layer]] | BDD behavior specifications: Given/When/Then scenarios for TinyQuant's observable contracts | 2026-04-08 |
+| [[design/behavior-layer/codec-compression|Codec Compression Behavior]] | Scenarios for the write path: determinism, index range, residual presence, dimension enforcement | 2026-04-08 |
+| [[design/behavior-layer/codec-decompression|Codec Decompression Behavior]] | Scenarios for the read path: FP32 output, config safety, round-trip fidelity, residual benefit | 2026-04-08 |
+| [[design/behavior-layer/corpus-management|Corpus Management Behavior]] | Scenarios for corpus lifecycle: config freezing, policy enforcement, cross-config rejection | 2026-04-08 |
+| [[design/behavior-layer/score-fidelity|Score Fidelity Behavior]] | Quality contract scenarios: Pearson rho baseline, rank preservation, bit-width ordering | 2026-04-08 |
+| [[design/behavior-layer/backend-protocol|Backend Protocol Behavior]] | Integration boundary scenarios: FP32-only handoff, adapter translation, error isolation | 2026-04-08 |
 | [[storage-codec-architecture]] | Three-layer TinyQuant architecture: codec core, corpus container, and pluggable search backend boundary | 2026-04-08 |
 
 ## Behavior Specifications
