@@ -1,0 +1,28 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="102 144 529 494"
+  role="img"
+  aria-labelledby="title desc"
+>
+  <title id="title">TinyQuant icon mark for light mode</title>
+  <desc id="desc">TinyQuant icon mark with a database, downward arrow, theta-r annotation, and orbit-like arcs on a light background.</desc>
+  <rect x="102" y="144" width="529" height="494" fill="#f5f4f5" />
+  <g fill="#22325f" stroke="#22325f" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M113 429A230 230 0 0 1 323 188" fill="none" stroke-width="12" stroke-dasharray="22 18" />
+    <path d="M541 321C604 377 620 462 620 572" fill="none" stroke-width="9" />
+    <path d="M520 405L500 428" fill="none" stroke-width="9" />
+    <path d="M548 572H620" fill="none" stroke-width="9" stroke-dasharray="22 18" />
+    <circle cx="538" cy="321" r="21" />
+    <circle cx="620" cy="572" r="14" />
+    <rect x="330" y="150" width="78" height="110" rx="4" />
+    <path d="M275 262H463L369 375Z" />
+    <ellipse cx="370" cy="404" rx="176" ry="52" />
+    <rect x="194" y="404" width="352" height="176" />
+    <ellipse cx="370" cy="580" rx="176" ry="52" />
+  </g>
+  <g fill="none" stroke="#f5f4f5" stroke-linecap="round">
+    <path d="M194 456C274 474 466 474 546 456" stroke-width="20" />
+    <path d="M194 528C274 546 466 546 546 528" stroke-width="20" />
+  </g>
+  <text x="458" y="212" fill="#22325f" font-size="72" font-weight="700" font-family="Aptos, Segoe UI, Helvetica, Arial, sans-serif">θr</text>
+</svg>

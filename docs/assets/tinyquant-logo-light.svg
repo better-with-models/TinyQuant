@@ -1,0 +1,31 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="166 116 437 495"
+  role="img"
+  aria-labelledby="title desc"
+>
+  <title id="title">TinyQuant logo for light mode</title>
+  <desc id="desc">TinyQuant wordmark with a database, downward arrow, theta-r annotation, and orbit-like arcs on a light background.</desc>
+  <rect x="166" y="116" width="437" height="495" fill="#f5f4f5" />
+  <g fill="#22325f" stroke="#22325f" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M168 334A182 182 0 0 1 334 143" fill="none" stroke-width="10" stroke-dasharray="18 16" />
+    <path d="M507 248C559 293 572 364 572 450" fill="none" stroke-width="8" />
+    <path d="M490 318L472 337" fill="none" stroke-width="8" />
+    <path d="M518 452H571" fill="none" stroke-width="8" stroke-dasharray="18 16" />
+    <circle cx="505" cy="248" r="18" />
+    <circle cx="572" cy="450" r="12" />
+    <rect x="338" y="120" width="64" height="92" rx="3" />
+    <path d="M292 214H448L370 307Z" />
+    <ellipse cx="370" cy="250" rx="116" ry="38" />
+    <rect x="254" y="250" width="232" height="144" />
+    <ellipse cx="370" cy="394" rx="116" ry="38" />
+  </g>
+  <g fill="none" stroke="#f5f4f5" stroke-linecap="round">
+    <path d="M254 292C308 306 431 306 486 292" stroke-width="16" />
+    <path d="M254 350C308 364 431 364 486 350" stroke-width="16" />
+  </g>
+  <g fill="#22325f">
+    <text x="485" y="166" font-size="58" font-weight="700" font-family="Aptos, Segoe UI, Helvetica, Arial, sans-serif">θr</text>
+    <text x="384" y="592" text-anchor="middle" font-size="92" font-weight="700" font-family="Aptos, Segoe UI, Helvetica, Arial, sans-serif">TinyQuant</text>
+  </g>
+</svg>
