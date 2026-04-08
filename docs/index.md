@@ -117,6 +117,19 @@ status: active
 |------|---------|------|
 | [[behavior/README|Behavior README]] | Placeholder for future behavior specs and acceptance-criteria organization | 2026-04-08 |
 
+## CI/CD Plans
+
+| Page | Summary | Date |
+|------|---------|------|
+| [[CI-plan/README|CI Plan]] | Continuous integration strategy: fail-fast pipeline, GitHub Actions, quality gates | 2026-04-08 |
+| [[CI-plan/pipeline-stages|Pipeline Stages]] | 6-stage fail-fast ordering: lint, typecheck, build, tests, coverage, artifact | 2026-04-08 |
+| [[CI-plan/workflow-definition|Workflow Definition]] | Full `.github/workflows/ci.yml` specification with job graph and matrix strategy | 2026-04-08 |
+| [[CI-plan/quality-gates|Quality Gates]] | Hard gates (block merge), soft gates (advisory), release gates (pre-publish) | 2026-04-08 |
+| [[CD-plan/README|CD Plan]] | Continuous delivery strategy: tag-triggered release, PyPI trusted publishing | 2026-04-08 |
+| [[CD-plan/release-workflow|Release Workflow]] | Full `.github/workflows/release.yml` specification with OIDC and calibration gates | 2026-04-08 |
+| [[CD-plan/artifact-management|Artifact Management]] | Build once/promote, immutability rules, tagging convention, verification steps | 2026-04-08 |
+| [[CD-plan/versioning-and-changelog|Versioning and Changelog]] | Semantic versioning rules, breaking change definitions, changelog format | 2026-04-08 |
+
 ## Specs
 
 | Page | Summary | Date |

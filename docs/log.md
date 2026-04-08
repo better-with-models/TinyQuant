@@ -222,3 +222,28 @@ Created the QA documentation set under `docs/qa/` with five subdirectories:
   fidelity, compression ratio, determinism, research baseline alignment,
   API usability, policy correctness, and acceptance criteria traceability
 - Updated [[index]] to register all 16 QA pages
+
+## [2026-04-08] author | CI/CD plans
+
+Created CI and CD plan documentation under `docs/CI-plan/` and `docs/CD-plan/`:
+
+- **CI Plan (4 pages):**
+  [[CI-plan/README|hub]] with principles and reading order,
+  [[CI-plan/pipeline-stages|Pipeline Stages]] with 6-stage fail-fast ordering
+  (lint→typecheck→build→tests→coverage→artifact) and Mermaid job graph,
+  [[CI-plan/workflow-definition|Workflow Definition]] specifying the full
+  `.github/workflows/ci.yml` with triggers, concurrency, caching, matrix
+  strategy (Python 3.12/3.13), and all job YAML,
+  [[CI-plan/quality-gates|Quality Gates]] classifying 14 hard gates, 4 soft
+  gates, and 5 release gates with escalation policy
+- **CD Plan (4 pages):**
+  [[CD-plan/README|hub]] with delivery model diagram and environment
+  definitions,
+  [[CD-plan/release-workflow|Release Workflow]] specifying the full
+  `.github/workflows/release.yml` with tag verification, calibration tests,
+  TestPyPI→PyPI promotion via OIDC trusted publishing and manual approval gate,
+  [[CD-plan/artifact-management|Artifact Management]] with build-once/promote
+  rules, immutability policy, and retention schedule,
+  [[CD-plan/versioning-and-changelog|Versioning and Changelog]] with semantic
+  versioning rules, breaking change classification, and changelog format
+- Updated [[index]] to register all 8 CI/CD pages
