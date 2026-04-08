@@ -4,6 +4,7 @@ from tinyquant.codec._errors import (
     CodebookIncompatibleError,
     ConfigMismatchError,
     DimensionMismatchError,
+    DuplicateVectorError,
 )
 from tinyquant.codec.codebook import Codebook
 from tinyquant.codec.codec import Codec, compress, decompress
@@ -19,6 +20,7 @@ __all__ = [
     "CompressedVector",
     "ConfigMismatchError",
     "DimensionMismatchError",
+    "DuplicateVectorError",
     "RotationMatrix",
     "compress",
     "decompress",

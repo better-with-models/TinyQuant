@@ -9,6 +9,8 @@ from numpy.typing import NDArray
 from tinyquant.codec.codebook import Codebook
 from tinyquant.codec.codec_config import CodecConfig
 from tinyquant.codec.rotation_matrix import RotationMatrix
+from tinyquant.corpus.compression_policy import CompressionPolicy
+from tinyquant.corpus.corpus import Corpus
 
 
 @pytest.fixture()
@@ -56,3 +58,45 @@ def trained_codebook(
 def rotation_matrix(config_4bit: CodecConfig) -> RotationMatrix:
     """Rotation matrix generated from 4-bit config."""
     return RotationMatrix.from_config(config_4bit)
+
+
+@pytest.fixture()
+def corpus_compress(
+    config_4bit: CodecConfig,
+    trained_codebook: Codebook,
+) -> Corpus:
+    """Corpus with COMPRESS policy."""
+    return Corpus(
+        "test-corpus",
+        config_4bit,
+        trained_codebook,
+        CompressionPolicy.COMPRESS,
+    )
+
+
+@pytest.fixture()
+def corpus_passthrough(
+    config_4bit: CodecConfig,
+    trained_codebook: Codebook,
+) -> Corpus:
+    """Corpus with PASSTHROUGH policy."""
+    return Corpus(
+        "test-corpus-pt",
+        config_4bit,
+        trained_codebook,
+        CompressionPolicy.PASSTHROUGH,
+    )
+
+
+@pytest.fixture()
+def corpus_fp16(
+    config_4bit: CodecConfig,
+    trained_codebook: Codebook,
+) -> Corpus:
+    """Corpus with FP16 policy."""
+    return Corpus(
+        "test-corpus-fp16",
+        config_4bit,
+        trained_codebook,
+        CompressionPolicy.FP16,
+    )

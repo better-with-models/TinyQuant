@@ -11,3 +11,7 @@ class ConfigMismatchError(ValueError):
 
 class CodebookIncompatibleError(ValueError):
     """Raised when a codebook's bit width does not match the codec config."""
+
+
+class DuplicateVectorError(ValueError):
+    """Raised when a vector ID already exists in the corpus."""
