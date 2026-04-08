@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
+from tinyquant.backend.protocol import SearchResult
+
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    import numpy as np
     from numpy.typing import NDArray
-
-    from tinyquant.backend.protocol import SearchResult
 
 
 class BruteForceBackend:
@@ -54,7 +55,21 @@ class BruteForceBackend:
         Returns:
             Up to top_k results ranked by descending cosine similarity.
         """
-        raise NotImplementedError  # implemented in Task 4
+        if not self._vectors:
+            return []
+
+        query_norm = float(np.linalg.norm(query))
+        scored: list[SearchResult] = []
+        for vid, vec in self._vectors.items():
+            vec_norm = float(np.linalg.norm(vec))
+            if query_norm == 0.0 or vec_norm == 0.0:
+                score = 0.0
+            else:
+                score = float(np.dot(query, vec) / (query_norm * vec_norm))
+            scored.append(SearchResult(vector_id=vid, score=score))
+
+        scored.sort()
+        return scored[:top_k]
 
     def remove(
         self,

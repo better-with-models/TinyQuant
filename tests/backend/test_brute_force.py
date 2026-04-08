@@ -83,3 +83,70 @@ class TestIngest:
         backend = BruteForceBackend()
         backend.ingest({})
         assert backend.count == 0
+
+
+# ===========================================================================
+# Search tests
+# ===========================================================================
+
+
+class TestSearch:
+    """Tests for BruteForceBackend.search."""
+
+    def test_search_returns_top_k_results(self) -> None:
+        """Exactly top_k results when enough vectors exist."""
+        backend = BruteForceBackend()
+        backend.ingest(_make_vectors(10))
+        query = np.ones(8, dtype=np.float32)
+        results = backend.search(query, top_k=3)
+        assert len(results) == 3
+
+    def test_search_results_ranked_by_similarity(self) -> None:
+        """Results are in descending score order."""
+        backend = BruteForceBackend()
+        backend.ingest(_make_vectors(10))
+        query = np.ones(8, dtype=np.float32)
+        results = backend.search(query, top_k=5)
+        scores = [r.score for r in results]
+        assert scores == sorted(scores, reverse=True)
+
+    def test_search_with_fewer_vectors_than_top_k(self) -> None:
+        """Returns all available vectors when fewer than top_k exist."""
+        backend = BruteForceBackend()
+        backend.ingest(_make_vectors(2))
+        query = np.ones(8, dtype=np.float32)
+        results = backend.search(query, top_k=10)
+        assert len(results) == 2
+
+    def test_search_returns_search_result_objects(self) -> None:
+        """Each element in results is a SearchResult."""
+        backend = BruteForceBackend()
+        backend.ingest(_make_vectors(3))
+        query = np.ones(8, dtype=np.float32)
+        results = backend.search(query, top_k=2)
+        for r in results:
+            assert isinstance(r, SearchResult)
+
+    def test_search_identical_vector_has_score_near_one(self) -> None:
+        """Cosine similarity of a vector with itself is approximately 1.0."""
+        vec = np.array([1.0, 2.0, 3.0, 4.0], dtype=np.float32)
+        backend = BruteForceBackend()
+        backend.ingest({"same": vec})
+        results = backend.search(vec, top_k=1)
+        assert results[0].score == pytest.approx(1.0, abs=1e-6)
+
+    def test_search_orthogonal_vector_has_score_near_zero(self) -> None:
+        """Cosine similarity of orthogonal vectors is approximately 0.0."""
+        v1 = np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float32)
+        v2 = np.array([0.0, 1.0, 0.0, 0.0], dtype=np.float32)
+        backend = BruteForceBackend()
+        backend.ingest({"ortho": v2})
+        results = backend.search(v1, top_k=1)
+        assert results[0].score == pytest.approx(0.0, abs=1e-6)
+
+    def test_search_empty_backend_returns_empty(self) -> None:
+        """No vectors ingested yields an empty result list."""
+        backend = BruteForceBackend()
+        query = np.ones(4, dtype=np.float32)
+        results = backend.search(query, top_k=5)
+        assert results == []
