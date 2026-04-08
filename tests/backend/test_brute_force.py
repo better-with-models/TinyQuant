@@ -9,7 +9,6 @@ from numpy.typing import NDArray
 from tinyquant.backend.brute_force import BruteForceBackend
 from tinyquant.backend.protocol import SearchResult
 
-
 # ===========================================================================
 # Helpers
 # ===========================================================================
@@ -23,8 +22,7 @@ def _make_vectors(
     """Generate n random FP32 vectors keyed by 'vec-000' .. 'vec-{n-1}'."""
     rng = np.random.default_rng(seed)
     return {
-        f"vec-{i:03d}": rng.standard_normal(dim).astype(np.float32)
-        for i in range(n)
+        f"vec-{i:03d}": rng.standard_normal(dim).astype(np.float32) for i in range(n)
     }
 
 
