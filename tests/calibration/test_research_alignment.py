@@ -11,9 +11,7 @@ def test_residual_correction_improves_fidelity() -> None:
     config_no_res = CodecConfig(
         bit_width=4, dimension=dim, seed=7, residual_enabled=False
     )
-    config_res = CodecConfig(
-        bit_width=4, dimension=dim, seed=7, residual_enabled=True
-    )
+    config_res = CodecConfig(bit_width=4, dimension=dim, seed=7, residual_enabled=True)
     codec = Codec()
     rng = np.random.default_rng(7)
     data = rng.standard_normal((30, dim)).astype(np.float32)

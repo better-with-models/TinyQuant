@@ -15,8 +15,8 @@ def test_compressed_cosine_similarity_correlates_with_original() -> None:
     codebook = codec.build_codebook(data, config)
 
     query = rng.standard_normal(dim).astype(np.float32)
-    original_sims = data @ query / (
-        np.linalg.norm(data, axis=1) * np.linalg.norm(query)
+    original_sims = (
+        data @ query / (np.linalg.norm(data, axis=1) * np.linalg.norm(query))
     )
 
     decompressed = np.array(
@@ -25,8 +25,10 @@ def test_compressed_cosine_similarity_correlates_with_original() -> None:
             for v in data
         ]
     )
-    approx_sims = decompressed @ query / (
-        np.linalg.norm(decompressed, axis=1) * np.linalg.norm(query)
+    approx_sims = (
+        decompressed
+        @ query
+        / (np.linalg.norm(decompressed, axis=1) * np.linalg.norm(query))
     )
 
     correlation = np.corrcoef(original_sims, approx_sims)[0, 1]
