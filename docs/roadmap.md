@@ -31,9 +31,9 @@ gantt
     section Corpus
         Phase 4 - Corpus Layer              :done, p4, after p3, 1
     section Backend
-        Phase 5 - Backend Layer             :active, p5, after p4, 1
+        Phase 5 - Backend Layer             :done, p5, after p4, 1
     section Integration
-        Phase 6 - Serialization             :p6, after p5, 1
+        Phase 6 - Serialization             :active, p6, after p5, 1
         Phase 7 - Architecture & E2E Tests  :p7, after p6, 1
     section Delivery
         Phase 8 - CI/CD Workflows           :p8, after p7, 1
@@ -49,7 +49,7 @@ gantt
 | 2 | Codec Value Objects | **complete** | 54 | Phase 1 | [[plans/phase-02-codec-value-objects\|Plan]] |
 | 3 | Codec Service | **complete** | 31 | Phase 2 | [[plans/phase-03-codec-service\|Plan]] |
 | 4 | Corpus Layer | **complete** | 59 | Phase 3 | [[plans/phase-04-corpus-layer\|Plan]] |
-| 5 | Backend Layer | pending | — | Phase 4 | [[plans/phase-05-backend-layer\|Plan]] |
+| 5 | Backend Layer | **complete** | 16 | Phase 4 | [[plans/phase-05-backend-layer\|Plan]] |
 | 6 | Serialization | pending | — | Phase 5 | [[plans/phase-06-serialization\|Plan]] |
 | 7 | Architecture & E2E Tests | pending | — | Phase 6 | [[plans/phase-07-architecture-e2e-tests\|Plan]] |
 | 8 | CI/CD Workflows | pending | — | Phase 7 | [[plans/phase-08-ci-cd-workflows\|Plan]] |
@@ -57,8 +57,8 @@ gantt
 | 10 | Calibration & Release | pending | — | Phase 9 | [[plans/phase-10-calibration-release\|Plan]] |
 
 > [!success] Current progress
-> **4 of 10 phases complete** — 145 tests passing, ruff + mypy --strict clean.
-> Next up: [[plans/phase-05-backend-layer|Phase 5: Backend Layer]].
+> **5 of 10 phases complete** — 161 tests passing, ruff + mypy --strict clean.
+> Next up: [[plans/phase-06-serialization|Phase 6: Serialization]].
 
 ## Design constraints per phase
 

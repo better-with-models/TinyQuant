@@ -339,3 +339,19 @@ Implemented the corpus bounded context on top of the codec service:
 - PASSTHROUGH/FP16 policies wrap raw data in CompressedVector for type
   uniformity
 - 59 tests, 97% corpus coverage, 145 total tests passing
+
+## [2026-04-08] implement | Phase 5: Backend Layer
+
+Implemented the backend protocol bounded context on top of the corpus layer:
+
+- `SearchResult` frozen dataclass — immutable value object with descending
+  `__lt__` ordering for ranked results
+- `SearchBackend` protocol — structural typing contract (search, ingest, remove)
+  enforcing FP32-only vector boundary
+- `BruteForceBackend` reference implementation — exhaustive cosine similarity
+  search with in-memory dict storage, ingest, remove, clear, and count property
+- All imports under `TYPE_CHECKING` where not needed at runtime (numpy, NDArray,
+  Sequence) matching project conventions
+- Public re-exports from `tinyquant.backend.__init__`
+- 16 tests (3 SearchResult, 3 ingest, 7 search, 2 remove, 1 clear), 96%
+  backend coverage, 161 total tests passing
