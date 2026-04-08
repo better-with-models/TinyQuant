@@ -1,0 +1,11 @@
+# Obsidian workspace (user-specific, not shared)
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/graph.json
+.obsidian/hotkeys.json
+.obsidian/core-plugins.json
+.obsidian/community-plugins.json
+.obsidian/core-plugins-migration.json
+
+# Keep app.json (shared vault settings like attachment folder path)
+!.obsidian/app.json
