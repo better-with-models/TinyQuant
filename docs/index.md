@@ -57,6 +57,16 @@ status: active
 | [[design/behavior-layer/corpus-management|Corpus Management Behavior]] | Scenarios for corpus lifecycle: config freezing, policy enforcement, cross-config rejection | 2026-04-08 |
 | [[design/behavior-layer/score-fidelity|Score Fidelity Behavior]] | Quality contract scenarios: Pearson rho baseline, rank preservation, bit-width ordering | 2026-04-08 |
 | [[design/behavior-layer/backend-protocol|Backend Protocol Behavior]] | Integration boundary scenarios: FP32-only handoff, adapter translation, error isolation | 2026-04-08 |
+| [[design/architecture/README|Architecture Design Considerations]] | Binding design policies for TinyQuant implementation: TDD, SOLID, complexity, coherence, coupling, linting, typing, docstrings, namespaces | 2026-04-08 |
+| [[design/architecture/test-driven-development|Test-Driven Development]] | Red-green-refactor policy: all code enters through failing tests, test levels, design signals | 2026-04-08 |
+| [[design/architecture/solid-principles|SOLID Principles]] | Change-driven application of SRP, OCP, LSP, ISP, DIP to TinyQuant's codec/corpus/backend structure | 2026-04-08 |
+| [[design/architecture/file-and-complexity-policy|File and Complexity Policy]] | One public class per file, CC max 7 per function, file length monitoring | 2026-04-08 |
+| [[design/architecture/high-coherence|High Coherence]] | Conceptual, module, architectural, and runtime coherence enforced by package structure | 2026-04-08 |
+| [[design/architecture/low-coupling|Low Coupling]] | Acyclic dependencies, value objects at boundaries, protocol-based contracts, no shared mutable state | 2026-04-08 |
+| [[design/architecture/linting-and-tooling|Linting and Tooling]] | Strict ruff + mypy + pytest in CI, warnings as errors, no bare suppressions | 2026-04-08 |
+| [[design/architecture/docstring-policy|Docstring Policy]] | PEP 257 Google-style docstrings on all public symbols, enforced by ruff rule D | 2026-04-08 |
+| [[design/architecture/type-safety|Type Safety]] | mypy strict mode, full annotations, Protocol-based contracts, suppression justification policy | 2026-04-08 |
+| [[design/architecture/namespace-and-module-structure|Namespace and Module Structure]] | Package layout mapping bounded contexts to Python packages with explicit public APIs | 2026-04-08 |
 | [[storage-codec-architecture]] | Three-layer TinyQuant architecture: codec core, corpus container, and pluggable search backend boundary | 2026-04-08 |
 
 ## Behavior Specifications

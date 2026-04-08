@@ -118,3 +118,37 @@ Created the behavior-layer specification set under
 All scenarios are downstream-agnostic and target Python API-level automation.
 Scrubbed better-router/TurboSwede/OpenViking references from both document
 sets to keep TinyQuant's spec portable.
+
+## [2026-04-08] author | Architecture design considerations
+
+Created the architecture design consideration set under
+`docs/design/architecture/` as binding implementation policies:
+
+- Created [[design/architecture/README|Architecture Design Considerations]]
+  hub with reading order and relationship diagram
+- Created [[design/architecture/test-driven-development|Test-Driven
+  Development]] establishing red-green-refactor as mandatory workflow with
+  test levels, design signals, and pytest/hypothesis tooling
+- Created [[design/architecture/solid-principles|SOLID Principles]] mapping
+  each principle to TinyQuant's codec, corpus, and backend structure with
+  concrete violation examples
+- Created [[design/architecture/file-and-complexity-policy|File and Complexity
+  Policy]] enforcing one public class per file and CC max 7 per function
+- Created [[design/architecture/high-coherence|High Coherence]] defining four
+  coherence levels and their enforcement through package structure
+- Created [[design/architecture/low-coupling|Low Coupling]] specifying acyclic
+  dependency direction, value objects at boundaries, and measurement signals
+- Created [[design/architecture/linting-and-tooling|Linting and Tooling]]
+  establishing ruff + mypy + pytest as CI gates with warnings-as-errors and
+  justified-suppression-only policy
+- Created [[design/architecture/docstring-policy|Docstring Policy]] requiring
+  PEP 257 Google-style docstrings on all public symbols with ruff rule D
+  enforcement
+- Created [[design/architecture/type-safety|Type Safety]] requiring mypy
+  strict mode with full annotations and Protocol-based contracts
+- Created [[design/architecture/namespace-and-module-structure|Namespace and
+  Module Structure]] mapping bounded contexts to Python packages with explicit
+  public APIs, acyclic imports, and architecture tests
+- Updated [[index]] to register all new architecture pages
+
+All policies are framed as enforceable CI gates, not aspirational guidelines.
