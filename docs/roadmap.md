@@ -24,14 +24,14 @@ gantt
     dateFormat X
     axisFormat %s
     section Foundation
-        Phase 1 - Project Scaffolding       :p1, 0, 1
+        Phase 1 - Project Scaffolding       :done, p1, 0, 1
     section Codec
-        Phase 2 - Codec Value Objects       :p2, after p1, 1
-        Phase 3 - Codec Service             :p3, after p2, 1
+        Phase 2 - Codec Value Objects       :done, p2, after p1, 1
+        Phase 3 - Codec Service             :done, p3, after p2, 1
     section Corpus
-        Phase 4 - Corpus Layer              :p4, after p3, 1
+        Phase 4 - Corpus Layer              :done, p4, after p3, 1
     section Backend
-        Phase 5 - Backend Layer             :p5, after p4, 1
+        Phase 5 - Backend Layer             :active, p5, after p4, 1
     section Integration
         Phase 6 - Serialization             :p6, after p5, 1
         Phase 7 - Architecture & E2E Tests  :p7, after p6, 1
@@ -43,18 +43,22 @@ gantt
 
 ## Phase summary
 
-| Phase | Name | Deliverables | Depends on | Details |
-|-------|------|-------------|-----------|---------|
-| 1 | Project Scaffolding | `pyproject.toml`, package dirs, tooling config | — | [[plans/phase-01-scaffolding\|Plan]] |
-| 2 | Codec Value Objects | `CodecConfig`, `RotationMatrix`, `Codebook`, `CompressedVector`, `_types` + tests | Phase 1 | [[plans/phase-02-codec-value-objects\|Plan]] |
-| 3 | Codec Service | `_quantize`, `Codec` class, module functions + tests | Phase 2 | [[plans/phase-03-codec-service\|Plan]] |
-| 4 | Corpus Layer | `CompressionPolicy`, `VectorEntry`, events, `Corpus` aggregate + tests | Phase 3 | [[plans/phase-04-corpus-layer\|Plan]] |
-| 5 | Backend Layer | `SearchBackend`, `SearchResult`, `BruteForceBackend` + tests | Phase 4 | [[plans/phase-05-backend-layer\|Plan]] |
-| 6 | Serialization | `CompressedVector.to_bytes`/`from_bytes`, format versioning + integration tests | Phase 5 | [[plans/phase-06-serialization\|Plan]] |
-| 7 | Architecture & E2E Tests | Dependency direction tests, cross-boundary integration tests, full pipeline E2E | Phase 6 | [[plans/phase-07-architecture-e2e-tests\|Plan]] |
-| 8 | CI/CD Workflows | `.github/workflows/ci.yml`, `release.yml`, branch protection | Phase 7 | [[plans/phase-08-ci-cd-workflows\|Plan]] |
-| 9 | Pgvector Adapter | `PgvectorAdapter` + integration tests | Phase 8 | [[plans/phase-09-pgvector-adapter\|Plan]] |
-| 10 | Calibration & Release | Calibration tests, `CHANGELOG.md`, README polish, `v0.1.0` tag | Phase 9 | [[plans/phase-10-calibration-release\|Plan]] |
+| Phase | Name | Status | Tests | Depends on | Details |
+|-------|------|--------|-------|-----------|---------|
+| 1 | Project Scaffolding | **complete** | 1 | — | [[plans/phase-01-scaffolding\|Plan]] |
+| 2 | Codec Value Objects | **complete** | 54 | Phase 1 | [[plans/phase-02-codec-value-objects\|Plan]] |
+| 3 | Codec Service | **complete** | 31 | Phase 2 | [[plans/phase-03-codec-service\|Plan]] |
+| 4 | Corpus Layer | **complete** | 59 | Phase 3 | [[plans/phase-04-corpus-layer\|Plan]] |
+| 5 | Backend Layer | pending | — | Phase 4 | [[plans/phase-05-backend-layer\|Plan]] |
+| 6 | Serialization | pending | — | Phase 5 | [[plans/phase-06-serialization\|Plan]] |
+| 7 | Architecture & E2E Tests | pending | — | Phase 6 | [[plans/phase-07-architecture-e2e-tests\|Plan]] |
+| 8 | CI/CD Workflows | pending | — | Phase 7 | [[plans/phase-08-ci-cd-workflows\|Plan]] |
+| 9 | Pgvector Adapter | pending | — | Phase 8 | [[plans/phase-09-pgvector-adapter\|Plan]] |
+| 10 | Calibration & Release | pending | — | Phase 9 | [[plans/phase-10-calibration-release\|Plan]] |
+
+> [!success] Current progress
+> **4 of 10 phases complete** — 145 tests passing, ruff + mypy --strict clean.
+> Next up: [[plans/phase-05-backend-layer|Phase 5: Backend Layer]].
 
 ## Design constraints per phase
 

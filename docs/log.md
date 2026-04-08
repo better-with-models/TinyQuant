@@ -282,3 +282,60 @@ Created the implementation roadmap and 10 detailed phase plans:
 
 Each phase is scoped for one AI agent working turn, follows TDD
 red-green-refactor, and leaves the repo in a working state if interrupted.
+
+## [2026-04-08] implement | Phase 1: Project Scaffolding
+
+Implemented the Python project structure and tooling configuration:
+
+- Created `pyproject.toml` with hatchling build, ruff, mypy, and pytest config
+- Created package skeleton: `src/tinyquant/`, `src/tinyquant/codec/`,
+  `src/tinyquant/corpus/`, `src/tinyquant/backend/`
+- Created test skeleton: `tests/`, `tests/codec/`, `tests/corpus/`,
+  `tests/backend/`, `tests/integration/`, `tests/e2e/`, `tests/architecture/`,
+  `tests/calibration/`
+- Added `_types.py` with shared type aliases
+- Added 1 smoke test (`test_import_tinyquant`)
+- All tooling passes: ruff, mypy --strict, pytest
+
+## [2026-04-08] implement | Phase 2: Codec Value Objects
+
+Implemented the four codec value objects with full TDD:
+
+- `CodecConfig` — frozen dataclass with validation, config_hash, bit_width
+  support for {2, 4, 8}
+- `RotationMatrix` — QR-decomposed orthogonal matrix with Haar measure sign
+  correction, apply/apply_inverse
+- `Codebook` — quantile-trained lookup table with quantize/dequantize
+  (searchsorted + nearest neighbor)
+- `CompressedVector` — frozen output container with indices, residual,
+  config_hash; serialization stubs for Phase 6
+- 54 tests (including hypothesis property-based), 97% codec coverage
+
+## [2026-04-08] implement | Phase 3: Codec Service
+
+Implemented the stateless Codec domain service wiring Phase 2 value objects:
+
+- `_errors.py` — DimensionMismatchError, ConfigMismatchError,
+  CodebookIncompatibleError
+- `_quantize.py` — scalar_quantize, scalar_dequantize, compute_residual
+  (FP16 projection), apply_residual
+- `Codec` class — compress, decompress, compress_batch, decompress_batch,
+  build_codebook, build_rotation
+- Module-level `compress()` and `decompress()` convenience functions
+- 31 tests (including 2 hypothesis), 97% codec coverage, 86 total tests
+
+## [2026-04-08] implement | Phase 4: Corpus Layer
+
+Implemented the corpus bounded context on top of the codec service:
+
+- `CompressionPolicy` enum — COMPRESS, PASSTHROUGH, FP16 with requires_codec
+  and storage_dtype
+- `VectorEntry` entity — identity equality by vector_id, delegation properties
+- 4 domain events — CorpusCreated, VectorsInserted, CorpusDecompressed,
+  CompressionPolicyViolationDetected (all frozen dataclasses)
+- `Corpus` aggregate root — insert, insert_batch (atomic), get, contains,
+  decompress, decompress_all, remove, pending_events
+- `DuplicateVectorError` added to codec error types
+- PASSTHROUGH/FP16 policies wrap raw data in CompressedVector for type
+  uniformity
+- 59 tests, 97% corpus coverage, 145 total tests passing
