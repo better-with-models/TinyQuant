@@ -152,3 +152,35 @@ Created the architecture design consideration set under
 - Updated [[index]] to register all new architecture pages
 
 All policies are framed as enforceable CI gates, not aspirational guidelines.
+
+## [2026-04-08] author | Class specifications
+
+Created the class specification set under `docs/classes/` indexing all planned
+Python class files with members, responsibilities, and relationships:
+
+- Created [[classes/README|Class Specifications]] as the master index organized
+  by package (codec, corpus, backend, shared)
+- **Codec package (6 pages):**
+  [[classes/codec-config|CodecConfig]],
+  [[classes/rotation-matrix|RotationMatrix]],
+  [[classes/codebook|Codebook]],
+  [[classes/compressed-vector|CompressedVector]],
+  [[classes/codec|Codec]],
+  [[classes/quantize-internal|_quantize (internal)]]
+- **Corpus package (4 pages):**
+  [[classes/corpus|Corpus]],
+  [[classes/vector-entry|VectorEntry]],
+  [[classes/compression-policy|CompressionPolicy]],
+  [[classes/corpus-events|Corpus Events]]
+- **Backend package (4 pages):**
+  [[classes/search-backend|SearchBackend]],
+  [[classes/search-result|SearchResult]],
+  [[classes/brute-force-backend|BruteForceBackend]],
+  [[classes/pgvector-adapter|PgvectorAdapter]]
+- **Shared (1 page):**
+  [[classes/shared-types|Shared Types]]
+- Updated [[index]] to register all 16 class specification pages
+
+Each page specifies responsibility, file path, category, typed fields,
+method signatures with pre/postconditions, invariants, relationships, and
+corresponding test file.

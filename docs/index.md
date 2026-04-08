@@ -69,6 +69,27 @@ status: active
 | [[design/architecture/namespace-and-module-structure|Namespace and Module Structure]] | Package layout mapping bounded contexts to Python packages with explicit public APIs | 2026-04-08 |
 | [[storage-codec-architecture]] | Three-layer TinyQuant architecture: codec core, corpus container, and pluggable search backend boundary | 2026-04-08 |
 
+## Class Specifications
+
+| Page | Summary | Date |
+|------|---------|------|
+| [[classes/README|Class Specifications]] | Index of all planned Python classes by package with member and responsibility summaries | 2026-04-08 |
+| [[classes/codec-config|CodecConfig]] | Immutable configuration value object: bit_width, seed, dimension, residual_enabled | 2026-04-08 |
+| [[classes/rotation-matrix|RotationMatrix]] | Deterministic orthogonal transform value object with apply/apply_inverse | 2026-04-08 |
+| [[classes/codebook|Codebook]] | Quantization lookup table value object with train/quantize/dequantize | 2026-04-08 |
+| [[classes/compressed-vector|CompressedVector]] | Codec output value object: indices, residual, config_hash, serialization | 2026-04-08 |
+| [[classes/codec|Codec]] | Stateless domain service: compress, decompress, build_codebook, build_rotation | 2026-04-08 |
+| [[classes/quantize-internal|_quantize (internal)]] | Private low-level quantization helpers: scalar_quantize, compute_residual | 2026-04-08 |
+| [[classes/corpus|Corpus]] | Aggregate root: insert, insert_batch, decompress_all, config/policy enforcement | 2026-04-08 |
+| [[classes/vector-entry|VectorEntry]] | Identity-bearing vector entity within a corpus | 2026-04-08 |
+| [[classes/compression-policy|CompressionPolicy]] | Enum (compress/passthrough/fp16) governing corpus write-path behavior | 2026-04-08 |
+| [[classes/corpus-events|Corpus Events]] | Domain event dataclasses: CorpusCreated, VectorsInserted, CorpusDecompressed, violation detection | 2026-04-08 |
+| [[classes/search-backend|SearchBackend]] | Protocol defining the FP32-only search contract for external backends | 2026-04-08 |
+| [[classes/search-result|SearchResult]] | Ranked result value object: vector_id + score | 2026-04-08 |
+| [[classes/brute-force-backend|BruteForceBackend]] | Reference SearchBackend implementation using exhaustive cosine similarity | 2026-04-08 |
+| [[classes/pgvector-adapter|PgvectorAdapter]] | Anti-corruption layer adapter for PostgreSQL + pgvector | 2026-04-08 |
+| [[classes/shared-types|Shared Types]] | Type aliases: VectorId, ConfigHash, CorpusId, Vector, VectorBatch | 2026-04-08 |
+
 ## Behavior Specifications
 
 | Page | Summary | Date |
