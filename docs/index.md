@@ -130,11 +130,23 @@ status: active
 | [[CD-plan/artifact-management|Artifact Management]] | Build once/promote, immutability rules, tagging convention, verification steps | 2026-04-08 |
 | [[CD-plan/versioning-and-changelog|Versioning and Changelog]] | Semantic versioning rules, breaking change definitions, changelog format | 2026-04-08 |
 
-## Specs
+## Roadmap and Plans
 
 | Page | Summary | Date |
 |------|---------|------|
-| *No spec pages yet* | | |
+| [[roadmap|Implementation Roadmap]] | 10-phase implementation plan with dependency graph, each phase scoped for one AI agent turn | 2026-04-08 |
+| [[plans/phase-01-scaffolding|Phase 1: Scaffolding]] | pyproject.toml, package structure, tooling config, smoke test | 2026-04-08 |
+| [[plans/phase-02-codec-value-objects|Phase 2: Codec Value Objects]] | CodecConfig, RotationMatrix, Codebook, CompressedVector + ~53 tests | 2026-04-08 |
+| [[plans/phase-03-codec-service|Phase 3: Codec Service]] | _quantize helpers, Codec class, compress/decompress + ~25 tests | 2026-04-08 |
+| [[plans/phase-04-corpus-layer|Phase 4: Corpus Layer]] | CompressionPolicy, VectorEntry, events, Corpus aggregate + ~54 tests | 2026-04-08 |
+| [[plans/phase-05-backend-layer|Phase 5: Backend Layer]] | SearchBackend protocol, BruteForceBackend + ~12 tests | 2026-04-08 |
+| [[plans/phase-06-serialization|Phase 6: Serialization]] | CompressedVector to_bytes/from_bytes, format versioning + ~11 tests | 2026-04-08 |
+| [[plans/phase-07-architecture-e2e-tests|Phase 7: Architecture & E2E Tests]] | Dependency direction tests, integration tests, 8 E2E scenarios | 2026-04-08 |
+| [[plans/phase-08-ci-cd-workflows|Phase 8: CI/CD Workflows]] | ci.yml and release.yml GitHub Actions workflows | 2026-04-08 |
+| [[plans/phase-09-pgvector-adapter|Phase 9: Pgvector Adapter]] | PgvectorAdapter ACL + ~6 integration tests | 2026-04-08 |
+| [[plans/phase-10-calibration-release|Phase 10: Calibration & Release]] | Calibration tests, CHANGELOG, README, v0.1.0 tag | 2026-04-08 |
+
+## Specs
 
 ## Comparisons
 

@@ -1,0 +1,88 @@
+---
+title: Implementation Roadmap
+tags:
+  - roadmap
+  - planning
+  - meta
+date-created: 2026-04-08
+status: active
+category: planning
+---
+
+# Implementation Roadmap
+
+> [!info] Purpose
+> Phased implementation plan for TinyQuant. Each phase is scoped to be
+> completable by an AI agent in a single working turn, following TDD and the
+> architecture policies defined in [[design/architecture/README|Architecture]].
+
+## Phase overview
+
+```mermaid
+gantt
+    title TinyQuant Implementation Phases
+    dateFormat X
+    axisFormat %s
+    section Foundation
+        Phase 1 - Project Scaffolding       :p1, 0, 1
+    section Codec
+        Phase 2 - Codec Value Objects       :p2, after p1, 1
+        Phase 3 - Codec Service             :p3, after p2, 1
+    section Corpus
+        Phase 4 - Corpus Layer              :p4, after p3, 1
+    section Backend
+        Phase 5 - Backend Layer             :p5, after p4, 1
+    section Integration
+        Phase 6 - Serialization             :p6, after p5, 1
+        Phase 7 - Architecture & E2E Tests  :p7, after p6, 1
+    section Delivery
+        Phase 8 - CI/CD Workflows           :p8, after p7, 1
+        Phase 9 - Pgvector Adapter          :p9, after p8, 1
+        Phase 10 - Calibration & Release    :p10, after p9, 1
+```
+
+## Phase summary
+
+| Phase | Name | Deliverables | Depends on | Details |
+|-------|------|-------------|-----------|---------|
+| 1 | Project Scaffolding | `pyproject.toml`, package dirs, tooling config | — | [[plans/phase-01-scaffolding\|Plan]] |
+| 2 | Codec Value Objects | `CodecConfig`, `RotationMatrix`, `Codebook`, `CompressedVector`, `_types` + tests | Phase 1 | [[plans/phase-02-codec-value-objects\|Plan]] |
+| 3 | Codec Service | `_quantize`, `Codec` class, module functions + tests | Phase 2 | [[plans/phase-03-codec-service\|Plan]] |
+| 4 | Corpus Layer | `CompressionPolicy`, `VectorEntry`, events, `Corpus` aggregate + tests | Phase 3 | [[plans/phase-04-corpus-layer\|Plan]] |
+| 5 | Backend Layer | `SearchBackend`, `SearchResult`, `BruteForceBackend` + tests | Phase 4 | [[plans/phase-05-backend-layer\|Plan]] |
+| 6 | Serialization | `CompressedVector.to_bytes`/`from_bytes`, format versioning + integration tests | Phase 5 | [[plans/phase-06-serialization\|Plan]] |
+| 7 | Architecture & E2E Tests | Dependency direction tests, cross-boundary integration tests, full pipeline E2E | Phase 6 | [[plans/phase-07-architecture-e2e-tests\|Plan]] |
+| 8 | CI/CD Workflows | `.github/workflows/ci.yml`, `release.yml`, branch protection | Phase 7 | [[plans/phase-08-ci-cd-workflows\|Plan]] |
+| 9 | Pgvector Adapter | `PgvectorAdapter` + integration tests | Phase 8 | [[plans/phase-09-pgvector-adapter\|Plan]] |
+| 10 | Calibration & Release | Calibration tests, `CHANGELOG.md`, README polish, `v0.1.0` tag | Phase 9 | [[plans/phase-10-calibration-release\|Plan]] |
+
+## Design constraints per phase
+
+Every phase must:
+
+1. **Start with failing tests** — TDD red-green-refactor
+2. **Pass all existing tests** — no regressions
+3. **Pass ruff + mypy** — lint and type check clean
+4. **Maintain coverage floors** — for touched packages
+5. **Update `__init__.py` exports** — as new public symbols are added
+6. **Be self-contained** — a phase that fails leaves the repo in a working state from the previous phase
+
+## Completion criteria
+
+The roadmap is complete when:
+
+- All 10 phases are implemented and merged
+- CI pipeline is green on every commit
+- `v0.1.0` is published to TestPyPI
+- Calibration tests pass against synthetic data
+- All BDD scenarios from [[design/behavior-layer/README|Behavior Layer]] have automated coverage
+
+## See also
+
+- [[plans/phase-01-scaffolding|Phase 1: Project Scaffolding]]
+- [[design/architecture/README|Architecture Design Considerations]]
+- [[design/behavior-layer/README|Behavior Layer]]
+- [[classes/README|Class Specifications]]
+- [[qa/README|Quality Assurance]]
+- [[CI-plan/README|CI Plan]]
+- [[CD-plan/README|CD Plan]]

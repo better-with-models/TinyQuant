@@ -247,3 +247,38 @@ Created CI and CD plan documentation under `docs/CI-plan/` and `docs/CD-plan/`:
   [[CD-plan/versioning-and-changelog|Versioning and Changelog]] with semantic
   versioning rules, breaking change classification, and changelog format
 - Updated [[index]] to register all 8 CI/CD pages
+
+## [2026-04-08] author | Implementation roadmap and phase plans
+
+Created the implementation roadmap and 10 detailed phase plans:
+
+- Created [[roadmap|Implementation Roadmap]] with 10-phase overview, Gantt-style
+  Mermaid diagram, dependency chain, per-phase design constraints, and
+  completion criteria
+- Created 10 phase plan documents under `docs/plans/`:
+  1. [[plans/phase-01-scaffolding|Project Scaffolding]] — pyproject.toml, package
+     dirs, tooling config, smoke test (~19 files, ~150 LOC config)
+  2. [[plans/phase-02-codec-value-objects|Codec Value Objects]] — CodecConfig,
+     RotationMatrix, Codebook, CompressedVector, _types (~53 tests, ~1100 LOC)
+  3. [[plans/phase-03-codec-service|Codec Service]] — _quantize helpers, Codec
+     class, batch ops, module functions (~25 tests, ~700 LOC)
+  4. [[plans/phase-04-corpus-layer|Corpus Layer]] — CompressionPolicy,
+     VectorEntry, events, Corpus aggregate (~54 tests, ~1200 LOC)
+  5. [[plans/phase-05-backend-layer|Backend Layer]] — SearchBackend protocol,
+     SearchResult, BruteForceBackend (~12 tests, ~350 LOC)
+  6. [[plans/phase-06-serialization|Serialization]] — CompressedVector binary
+     format with versioning (~11 tests, ~350 LOC)
+  7. [[plans/phase-07-architecture-e2e-tests|Architecture & E2E Tests]] —
+     dependency direction, cross-boundary integration, 8 E2E scenarios (~21
+     tests, ~600 LOC)
+  8. [[plans/phase-08-ci-cd-workflows|CI/CD Workflows]] — ci.yml and
+     release.yml GitHub Actions (~300 LOC YAML)
+  9. [[plans/phase-09-pgvector-adapter|Pgvector Adapter]] — PgvectorAdapter ACL
+     with parameterized SQL (~6 tests, ~300 LOC)
+  10. [[plans/phase-10-calibration-release|Calibration & Release]] — fidelity,
+      compression ratio, determinism tests; CHANGELOG; README; v0.1.0 tag (~16
+      tests, ~500 LOC)
+- Updated [[index]] to register all 11 roadmap/plan pages
+
+Each phase is scoped for one AI agent working turn, follows TDD
+red-green-refactor, and leaves the repo in a working state if interrupted.
