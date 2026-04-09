@@ -66,43 +66,90 @@ def get_colors(results: list[dict]) -> list[str]:
     return colors
 
 
-def plot_compression_vs_fidelity(results: list[dict], colors: list[str]) -> None:
-    """Scatter plot: compression ratio vs Pearson rho."""
-    fig, ax = plt.subplots(figsize=(10, 7))
+def _marker_for(name: str) -> str:
+    """Choose a marker shape per method category."""
+    if "TinyQuant" in name:
+        return "o"  # circle
+    if "PQ" in name:
+        return "^"  # triangle
+    if "uint8" in name:
+        return "s"  # square
+    if "FP16" in name:
+        return "D"  # diamond
+    return "P"  # plus (FP32 baseline)
 
+
+def plot_compression_vs_fidelity(results: list[dict], colors: list[str]) -> None:
+    """Scatter plot: compression ratio vs Pearson rho.
+
+    The cluster of methods near (ratio < 5, rho ≈ 1.0) is identified
+    via a legend rather than overlapping inline labels. Well-separated
+    outliers (TinyQuant 4-bit and 2-bit) are annotated directly.
+    """
+    fig, ax = plt.subplots(figsize=(11, 7))
+
+    # Plot each method as its own series so it appears in the legend.
     for i, r in enumerate(results):
         ax.scatter(
             r["compression_ratio"],
             r["pearson_rho"],
-            s=150,
+            s=180,
             c=colors[i],
             edgecolors="black",
-            linewidths=0.5,
+            linewidths=0.7,
+            marker=_marker_for(r["name"]),
+            label=r["name"],
             zorder=5,
         )
-        # Label offset to avoid overlaps
-        offset_x = 0.15
-        offset_y = -0.003
-        if "2-bit + residual" in r["name"]:
-            offset_y = 0.004
-        elif "PQ" in r["name"]:
-            offset_x = -0.3
+
+    # Annotate only the well-separated outliers with leader lines.
+    annotate_names = {"TinyQuant 4-bit", "TinyQuant 2-bit"}
+    for r in results:
+        if r["name"] not in annotate_names:
+            continue
         ax.annotate(
             r["name"],
-            (r["compression_ratio"], r["pearson_rho"]),
+            xy=(r["compression_ratio"], r["pearson_rho"]),
+            xytext=(-60, 30),
             textcoords="offset points",
-            xytext=(8, -4),
-            fontsize=8,
-            ha="left",
+            fontsize=10,
+            fontweight="bold",
+            ha="center",
+            arrowprops={
+                "arrowstyle": "->",
+                "color": "black",
+                "lw": 0.8,
+                "shrinkA": 0,
+                "shrinkB": 8,
+            },
         )
+
+    # Threshold reference lines
+    ax.axhline(y=0.995, color="green", linestyle="--", alpha=0.5, linewidth=1.0,
+               label="rho = 0.995 (target)")
+    ax.axhline(y=0.99, color="orange", linestyle="--", alpha=0.5, linewidth=1.0,
+               label="rho = 0.99")
 
     ax.set_xlabel("Compression Ratio (x)")
     ax.set_ylabel("Pearson Correlation (rho)")
-    ax.set_title("Compression Ratio vs. Similarity Fidelity\n(higher rho = better ranking preservation)")
-    ax.axhline(y=0.995, color="green", linestyle="--", alpha=0.5, label="rho = 0.995 target")
-    ax.axhline(y=0.99, color="orange", linestyle="--", alpha=0.5, label="rho = 0.99")
-    ax.legend(loc="lower left")
-    ax.set_ylim(bottom=min(r["pearson_rho"] for r in results) - 0.01, top=1.002)
+    ax.set_title(
+        "Compression Ratio vs. Similarity Fidelity\n"
+        "(higher rho = better ranking preservation)"
+    )
+
+    rho_min = min(r["pearson_rho"] for r in results)
+    ax.set_ylim(bottom=rho_min - 0.01, top=1.005)
+    ax.set_xlim(left=0, right=max(r["compression_ratio"] for r in results) * 1.1)
+
+    # Legend outside the plot area on the right to avoid covering data points.
+    ax.legend(
+        loc="center left",
+        bbox_to_anchor=(1.02, 0.5),
+        fontsize=9,
+        framealpha=0.95,
+        title="Method",
+        title_fontsize=10,
+    )
 
     fig.tight_layout()
     fig.savefig(PLOTS_DIR / "compression_vs_fidelity.png", bbox_inches="tight")
