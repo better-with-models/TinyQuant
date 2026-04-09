@@ -4,17 +4,21 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import matplotlib
-matplotlib.use("Agg")  # Non-interactive backend
 import matplotlib.pyplot as plt
 import numpy as np
+
+# Non-interactive backend — safe to switch after pyplot import because no
+# figures have been created yet.
+matplotlib.use("Agg")
 
 RESULTS_DIR = Path(__file__).parent / "results"
 PLOTS_DIR = RESULTS_DIR / "plots"
 
 
-def load_results() -> tuple[dict, list[dict]]:
+def load_results() -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Load benchmark results JSON."""
     with open(RESULTS_DIR / "benchmark_results.json", encoding="utf-8") as f:
         data = json.load(f)
@@ -23,47 +27,40 @@ def load_results() -> tuple[dict, list[dict]]:
 
 def setup_style() -> None:
     """Configure matplotlib for publication-quality figures."""
-    plt.rcParams.update({
-        "figure.figsize": (10, 6),
-        "figure.dpi": 150,
-        "font.size": 11,
-        "axes.titlesize": 13,
-        "axes.labelsize": 12,
-        "xtick.labelsize": 10,
-        "ytick.labelsize": 10,
-        "legend.fontsize": 9,
-        "figure.facecolor": "white",
-        "axes.grid": True,
-        "grid.alpha": 0.3,
-    })
+    plt.rcParams.update(
+        {
+            "figure.figsize": (10, 6),
+            "figure.dpi": 150,
+            "font.size": 11,
+            "axes.titlesize": 13,
+            "axes.labelsize": 12,
+            "xtick.labelsize": 10,
+            "ytick.labelsize": 10,
+            "legend.fontsize": 9,
+            "figure.facecolor": "white",
+            "axes.grid": True,
+            "grid.alpha": 0.3,
+        }
+    )
 
 
-def get_colors(results: list[dict]) -> list[str]:
+def get_colors(results: list[dict[str, Any]]) -> list[str]:
     """Assign colors: baselines in grey/blue, TinyQuant in warm colors."""
-    colors = []
-    for r in results:
-        name = r["name"]
-        if "baseline" in name:
-            colors.append("#888888")
-        elif "FP16" in name:
-            colors.append("#4A90D9")
-        elif "uint8" in name:
-            colors.append("#50B848")
-        elif "PQ" in name:
-            colors.append("#9B59B6")
-        elif "8-bit" in name:
-            colors.append("#E67E22")
-        elif "4-bit + residual" in name:
-            colors.append("#E74C3C")
-        elif "4-bit" in name:
-            colors.append("#F39C12")
-        elif "2-bit + residual" in name:
-            colors.append("#C0392B")
-        elif "2-bit" in name:
-            colors.append("#D35400")
-        else:
-            colors.append("#34495E")
-    return colors
+    # Ordered (substring, color) pairs — first match wins, so residual
+    # variants must appear before their non-residual counterparts.
+    color_map: list[tuple[str, str]] = [
+        ("baseline", "#888888"),
+        ("FP16", "#4A90D9"),
+        ("uint8", "#50B848"),
+        ("PQ", "#9B59B6"),
+        ("8-bit", "#E67E22"),
+        ("4-bit + residual", "#E74C3C"),
+        ("4-bit", "#F39C12"),
+        ("2-bit + residual", "#C0392B"),
+        ("2-bit", "#D35400"),
+    ]
+    default = "#34495E"
+    return [next((c for k, c in color_map if k in r["name"]), default) for r in results]
 
 
 def _marker_for(name: str) -> str:
@@ -79,7 +76,9 @@ def _marker_for(name: str) -> str:
     return "P"  # plus (FP32 baseline)
 
 
-def plot_compression_vs_fidelity(results: list[dict], colors: list[str]) -> None:
+def plot_compression_vs_fidelity(
+    results: list[dict[str, Any]], colors: list[str]
+) -> None:
     """Scatter plot: compression ratio vs Pearson rho.
 
     The cluster of methods near (ratio < 5, rho ≈ 1.0) is identified
@@ -125,10 +124,22 @@ def plot_compression_vs_fidelity(results: list[dict], colors: list[str]) -> None
         )
 
     # Threshold reference lines
-    ax.axhline(y=0.995, color="green", linestyle="--", alpha=0.5, linewidth=1.0,
-               label="rho = 0.995 (target)")
-    ax.axhline(y=0.99, color="orange", linestyle="--", alpha=0.5, linewidth=1.0,
-               label="rho = 0.99")
+    ax.axhline(
+        y=0.995,
+        color="green",
+        linestyle="--",
+        alpha=0.5,
+        linewidth=1.0,
+        label="rho = 0.995 (target)",
+    )
+    ax.axhline(
+        y=0.99,
+        color="orange",
+        linestyle="--",
+        alpha=0.5,
+        linewidth=1.0,
+        label="rho = 0.99",
+    )
 
     ax.set_xlabel("Compression Ratio (x)")
     ax.set_ylabel("Pearson Correlation (rho)")
@@ -157,7 +168,7 @@ def plot_compression_vs_fidelity(results: list[dict], colors: list[str]) -> None
     print("  Saved compression_vs_fidelity.png")
 
 
-def plot_storage_comparison(results: list[dict], colors: list[str]) -> None:
+def plot_storage_comparison(results: list[dict[str, Any]], colors: list[str]) -> None:
     """Horizontal bar chart: bytes per vector."""
     fig, ax = plt.subplots(figsize=(10, 6))
 
@@ -174,7 +185,7 @@ def plot_storage_comparison(results: list[dict], colors: list[str]) -> None:
     ax.invert_yaxis()
 
     # Add value labels
-    for bar, bpv, r in zip(bars, bytes_per_vec, results):
+    for bar, bpv, r in zip(bars, bytes_per_vec, results, strict=True):
         ratio = r["compression_ratio"]
         ax.text(
             bar.get_width() + 20,
@@ -191,7 +202,7 @@ def plot_storage_comparison(results: list[dict], colors: list[str]) -> None:
     print("  Saved storage_comparison.png")
 
 
-def plot_fidelity_metrics(results: list[dict], colors: list[str]) -> None:
+def plot_fidelity_metrics(results: list[dict[str, Any]], colors: list[str]) -> None:
     """Grouped bar chart: Pearson rho and top-k recall side by side."""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
@@ -202,7 +213,7 @@ def plot_fidelity_metrics(results: list[dict], colors: list[str]) -> None:
     x = np.arange(len(names))
 
     # Pearson rho
-    bars1 = ax1.bar(x, rhos, color=colors, edgecolor="black", linewidth=0.5)
+    ax1.bar(x, rhos, color=colors, edgecolor="black", linewidth=0.5)
     ax1.set_xticks(x)
     ax1.set_xticklabels(names, rotation=45, ha="right", fontsize=8)
     ax1.set_ylabel("Pearson rho")
@@ -211,7 +222,7 @@ def plot_fidelity_metrics(results: list[dict], colors: list[str]) -> None:
     ax1.axhline(y=0.995, color="green", linestyle="--", alpha=0.5, linewidth=0.8)
 
     # Top-k recall
-    bars2 = ax2.bar(x, recalls, color=colors, edgecolor="black", linewidth=0.5)
+    ax2.bar(x, recalls, color=colors, edgecolor="black", linewidth=0.5)
     ax2.set_xticks(x)
     ax2.set_xticklabels(names, rotation=45, ha="right", fontsize=8)
     ax2.set_ylabel(f"Top-{results[0].get('top_k', 5)} Recall")
@@ -225,7 +236,7 @@ def plot_fidelity_metrics(results: list[dict], colors: list[str]) -> None:
     print("  Saved fidelity_metrics.png")
 
 
-def plot_pareto_frontier(results: list[dict], colors: list[str]) -> None:
+def plot_pareto_frontier(results: list[dict[str, Any]], colors: list[str]) -> None:
     """Pareto chart: bits per dimension vs MSE (log scale)."""
     fig, ax = plt.subplots(figsize=(10, 7))
 
@@ -254,12 +265,16 @@ def plot_pareto_frontier(results: list[dict], colors: list[str]) -> None:
     print("  Saved pareto_rate_distortion.png")
 
 
-def plot_throughput(results: list[dict], colors: list[str]) -> None:
+def plot_throughput(results: list[dict[str, Any]], colors: list[str]) -> None:
     """Bar chart: encode and decode throughput."""
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 6))
 
     # Filter out FP32 baseline (0 time)
-    filtered = [(r, c) for r, c in zip(results, colors) if r["compress_time_ms"] > 0]
+    filtered = [
+        (r, c)
+        for r, c in zip(results, colors, strict=True)
+        if r["compress_time_ms"] > 0
+    ]
     names = [r["name"] for r, _ in filtered]
     enc_times = [r["compress_time_ms"] for r, _ in filtered]
     dec_times = [r["decompress_time_ms"] for r, _ in filtered]
@@ -290,7 +305,7 @@ def main() -> None:
     PLOTS_DIR.mkdir(parents=True, exist_ok=True)
     setup_style()
 
-    config, results = load_results()
+    _config, results = load_results()
     colors = get_colors(results)
 
     print(f"Generating plots for {len(results)} methods...\n")

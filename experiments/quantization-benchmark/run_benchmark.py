@@ -17,15 +17,19 @@ top-k recall), and compress/decompress throughput across:
 from __future__ import annotations
 
 import json
-import math
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
-from numpy.typing import NDArray
 
-from tinyquant.codec import Codec, CodecConfig, Codebook
+from tinyquant.codec import Codebook, Codec, CodecConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from numpy.typing import NDArray
 
 # ---------------------------------------------------------------------------
 # Config
@@ -49,7 +53,7 @@ def cosine_similarities(
     """Cosine similarity of query against every row in corpus."""
     norms = np.linalg.norm(corpus, axis=1) * np.linalg.norm(query)
     norms = np.maximum(norms, 1e-12)
-    return (corpus @ query / norms).astype(np.float32)
+    return cast("NDArray[np.float32]", (corpus @ query / norms).astype(np.float32))
 
 
 def pearson_rho(
@@ -118,7 +122,9 @@ class MethodResult:
 # ---------------------------------------------------------------------------
 
 
-def benchmark_fp32(embeddings: NDArray[np.float32], queries: NDArray[np.float32]) -> MethodResult:
+def benchmark_fp32(
+    embeddings: NDArray[np.float32], queries: NDArray[np.float32]
+) -> MethodResult:
     """FP32 baseline — no compression."""
     dim = embeddings.shape[1]
     bpv = dim * 4
@@ -137,7 +143,9 @@ def benchmark_fp32(embeddings: NDArray[np.float32], queries: NDArray[np.float32]
     )
 
 
-def benchmark_fp16(embeddings: NDArray[np.float32], queries: NDArray[np.float32]) -> MethodResult:
+def benchmark_fp16(
+    embeddings: NDArray[np.float32], queries: NDArray[np.float32]
+) -> MethodResult:
     """FP16 half-precision truncation."""
     dim = embeddings.shape[1]
     t0 = time.perf_counter()
@@ -164,7 +172,9 @@ def benchmark_fp16(embeddings: NDArray[np.float32], queries: NDArray[np.float32]
     )
 
 
-def benchmark_uint8_scalar(embeddings: NDArray[np.float32], queries: NDArray[np.float32]) -> MethodResult:
+def benchmark_uint8_scalar(
+    embeddings: NDArray[np.float32], queries: NDArray[np.float32]
+) -> MethodResult:
     """uint8 min-max scalar quantization (per-vector)."""
     dim = embeddings.shape[1]
     n = embeddings.shape[0]
@@ -177,7 +187,9 @@ def benchmark_uint8_scalar(embeddings: NDArray[np.float32], queries: NDArray[np.
     ct = (time.perf_counter() - t0) * 1000
 
     t0 = time.perf_counter()
-    reconstructed = (quantized.astype(np.float32) / 255.0 * ranges + mins).astype(np.float32)
+    reconstructed = ((quantized.astype(np.float32) / 255.0) * ranges + mins).astype(
+        np.float32
+    )
     dt = (time.perf_counter() - t0) * 1000
 
     # Storage: indices + 2 floats per vector (min, max)
@@ -197,7 +209,9 @@ def benchmark_uint8_scalar(embeddings: NDArray[np.float32], queries: NDArray[np.
     )
 
 
-def benchmark_pq_simulated(embeddings: NDArray[np.float32], queries: NDArray[np.float32]) -> MethodResult:
+def benchmark_pq_simulated(
+    embeddings: NDArray[np.float32], queries: NDArray[np.float32]
+) -> MethodResult:
     """Simulated Product Quantization (M=96 sub-vectors, 256 centroids each).
 
     This is a simplified PQ simulation — real PQ uses k-means on sub-vectors.
@@ -206,7 +220,8 @@ def benchmark_pq_simulated(embeddings: NDArray[np.float32], queries: NDArray[np.
     """
     dim = embeddings.shape[1]
     n = embeddings.shape[0]
-    M = 96  # number of sub-quantizers
+    # N806: `M` matches standard PQ literature notation (Jégou et al. 2011).
+    M = 96  # noqa: N806 — number of sub-quantizers
     sub_dim = dim // M
 
     t0 = time.perf_counter()
@@ -219,12 +234,16 @@ def benchmark_pq_simulated(embeddings: NDArray[np.float32], queries: NDArray[np.
     ct = (time.perf_counter() - t0) * 1000
 
     t0 = time.perf_counter()
-    reconstructed = (codes.astype(np.float32) / 255.0 * sub_ranges + sub_mins).reshape(n, dim).astype(np.float32)
+    reconstructed = (
+        ((codes.astype(np.float32) / 255.0) * sub_ranges + sub_mins)
+        .reshape(n, dim)
+        .astype(np.float32)
+    )
     dt = (time.perf_counter() - t0) * 1000
 
     # Storage: M bytes per vector (codes) + M*8 bytes codebook overhead (shared)
     bpv = M  # 1 byte per sub-quantizer
-    codebook_overhead = M * 256 * sub_dim * 4  # shared codebook (amortized over corpus)
+    codebook_overhead = M * 256 * sub_dim * 4  # shared codebook, amortized
     total = n * bpv + codebook_overhead
     return MethodResult(
         name="PQ (M=96, simulated)",
@@ -257,7 +276,9 @@ def benchmark_tinyquant(
     """Benchmark TinyQuant at a given bit width and residual setting."""
     dim = embeddings.shape[1]
     n = embeddings.shape[0]
-    config = CodecConfig(bit_width=bit_width, seed=SEED, dimension=dim, residual_enabled=residual)
+    config = CodecConfig(
+        bit_width=bit_width, seed=SEED, dimension=dim, residual_enabled=residual
+    )
     # Need a matching codebook
     cb = Codebook.train(embeddings, config)
 
@@ -300,10 +321,9 @@ def main() -> None:
     """Run the full benchmark suite."""
     RESULTS_DIR.mkdir(exist_ok=True)
 
-    # Load data
+    # Load data. passages.json is not needed here — the benchmark operates on
+    # the embedding vectors; the source texts live next to generate_embeddings.py.
     embeddings = np.load(DATA_DIR / "embeddings.npy")
-    with open(DATA_DIR / "passages.json", encoding="utf-8") as f:
-        passages = json.load(f)
     with open(DATA_DIR / "metadata.json", encoding="utf-8") as f:
         metadata = json.load(f)
 
@@ -325,17 +345,21 @@ def main() -> None:
 
     print("\n--- Running benchmarks ---\n")
 
-    for name, func in [
+    def tq(bits: int, *, residual: bool) -> MethodResult:
+        return benchmark_tinyquant(embeddings, queries, bits, residual, dummy_cb, codec)
+
+    suite: list[tuple[str, Callable[[], MethodResult]]] = [
         ("FP32", lambda: benchmark_fp32(embeddings, queries)),
         ("FP16", lambda: benchmark_fp16(embeddings, queries)),
         ("uint8 scalar", lambda: benchmark_uint8_scalar(embeddings, queries)),
         ("PQ simulated", lambda: benchmark_pq_simulated(embeddings, queries)),
-        ("TQ 8-bit", lambda: benchmark_tinyquant(embeddings, queries, 8, False, dummy_cb, codec)),
-        ("TQ 4-bit", lambda: benchmark_tinyquant(embeddings, queries, 4, False, dummy_cb, codec)),
-        ("TQ 4-bit+res", lambda: benchmark_tinyquant(embeddings, queries, 4, True, dummy_cb, codec)),
-        ("TQ 2-bit", lambda: benchmark_tinyquant(embeddings, queries, 2, False, dummy_cb, codec)),
-        ("TQ 2-bit+res", lambda: benchmark_tinyquant(embeddings, queries, 2, True, dummy_cb, codec)),
-    ]:
+        ("TQ 8-bit", lambda: tq(8, residual=False)),
+        ("TQ 4-bit", lambda: tq(4, residual=False)),
+        ("TQ 4-bit+res", lambda: tq(4, residual=True)),
+        ("TQ 2-bit", lambda: tq(2, residual=False)),
+        ("TQ 2-bit+res", lambda: tq(2, residual=True)),
+    ]
+    for name, func in suite:
         print(f"  {name}...", end=" ", flush=True)
         r = func()
         results.append(r)
@@ -344,42 +368,53 @@ def main() -> None:
     # Save results as JSON
     results_data = []
     for r in results:
-        results_data.append({
-            "name": r.name,
-            "bits_per_dim": round(r.bits_per_dim, 3),
-            "bytes_per_vector": round(r.bytes_per_vector, 1),
-            "total_bytes": round(r.total_bytes, 0),
-            "compression_ratio": round(r.compression_ratio, 2),
-            "pearson_rho": round(r.pearson_rho, 6),
-            "mse": round(r.mse, 8),
-            "top_k_recall": round(r.top_k_recall, 4),
-            "compress_time_ms": round(r.compress_time_ms, 2),
-            "decompress_time_ms": round(r.decompress_time_ms, 2),
-            "notes": r.notes,
-        })
+        results_data.append(
+            {
+                "name": r.name,
+                "bits_per_dim": round(r.bits_per_dim, 3),
+                "bytes_per_vector": round(r.bytes_per_vector, 1),
+                "total_bytes": round(r.total_bytes, 0),
+                "compression_ratio": round(r.compression_ratio, 2),
+                "pearson_rho": round(r.pearson_rho, 6),
+                "mse": round(r.mse, 8),
+                "top_k_recall": round(r.top_k_recall, 4),
+                "compress_time_ms": round(r.compress_time_ms, 2),
+                "decompress_time_ms": round(r.decompress_time_ms, 2),
+                "notes": r.notes,
+            }
+        )
 
     with open(RESULTS_DIR / "benchmark_results.json", "w", encoding="utf-8") as f:
-        json.dump({
-            "metadata": metadata,
-            "config": {
-                "seed": SEED,
-                "num_queries": NUM_QUERIES,
-                "top_k": TOP_K,
-                "num_vectors": embeddings.shape[0],
-                "dimension": embeddings.shape[1],
+        json.dump(
+            {
+                "metadata": metadata,
+                "config": {
+                    "seed": SEED,
+                    "num_queries": NUM_QUERIES,
+                    "top_k": TOP_K,
+                    "num_vectors": embeddings.shape[0],
+                    "dimension": embeddings.shape[1],
+                },
+                "results": results_data,
             },
-            "results": results_data,
-        }, f, indent=2)
+            f,
+            indent=2,
+        )
 
     # Print summary table
     print("\n" + "=" * 120)
-    print(f"{'Method':<28} {'Bits/dim':>9} {'B/vec':>8} {'Ratio':>7} {'Rho':>8} {'MSE':>12} {'R@5':>7} {'Enc ms':>8} {'Dec ms':>8}")
+    header = (
+        f"{'Method':<28} {'Bits/dim':>9} {'B/vec':>8} {'Ratio':>7} "
+        f"{'Rho':>8} {'MSE':>12} {'R@5':>7} {'Enc ms':>8} {'Dec ms':>8}"
+    )
+    print(header)
     print("-" * 120)
     for r in results:
         print(
             f"{r.name:<28} {r.bits_per_dim:>9.2f} {r.bytes_per_vector:>8.0f} "
             f"{r.compression_ratio:>7.1f}x {r.pearson_rho:>8.4f} {r.mse:>12.8f} "
-            f"{r.top_k_recall:>7.2%} {r.compress_time_ms:>8.1f} {r.decompress_time_ms:>8.1f}"
+            f"{r.top_k_recall:>7.2%} {r.compress_time_ms:>8.1f} "
+            f"{r.decompress_time_ms:>8.1f}"
         )
     print("=" * 120)
 

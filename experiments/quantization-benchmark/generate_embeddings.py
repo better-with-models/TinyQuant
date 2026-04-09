@@ -383,12 +383,15 @@ def fetch_embeddings(passages: list[str], api_key: str) -> np.ndarray:
     }
 
     # Batch all passages in one request (limit 2048)
-    payload = json.dumps({
-        "input": passages,
-        "model": "text-embedding-3-small",
-    }).encode()
+    payload = json.dumps(
+        {
+            "input": passages,
+            "model": "text-embedding-3-small",
+        }
+    ).encode()
 
-    req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+    # Hardcoded https:// URL to the OpenAI API; S310 is a false positive here.
+    req = urllib.request.Request(url, data=payload, headers=headers, method="POST")  # noqa: S310
 
     print(f"Requesting {len(passages)} embeddings from OpenAI...")
     t0 = time.time()
@@ -399,7 +402,9 @@ def fetch_embeddings(passages: list[str], api_key: str) -> np.ndarray:
     print(f"Model: {result['model']}, Usage: {result['usage']}")
 
     # Extract and stack into (n, dim) array
-    embeddings = [item["embedding"] for item in sorted(result["data"], key=lambda x: x["index"])]
+    embeddings = [
+        item["embedding"] for item in sorted(result["data"], key=lambda x: x["index"])
+    ]
     return np.array(embeddings, dtype=np.float32)
 
 
@@ -438,7 +443,7 @@ def main() -> None:
     print(f"\nSaved to {out_dir}/")
     print(f"  embeddings.npy: {embeddings.nbytes:,} bytes")
     print(f"  passages.json: {len(PASSAGES)} passages")
-    print(f"  metadata.json: experiment metadata")
+    print("  metadata.json: experiment metadata")
 
 
 if __name__ == "__main__":
