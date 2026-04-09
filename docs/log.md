@@ -388,3 +388,26 @@ Created GitHub Actions workflow files matching the specifications in
 - `.github/release-drafter.yml` — auto-labeling and categorized release notes
 - `.pre-commit-config.yaml` already matched spec; no changes needed
 - Updated [[roadmap]] to mark Phase 8 complete
+
+## [2026-04-09] maint | GitHub Actions Node 24 upgrade
+
+Addressed the "Node.js 20 actions are deprecated" warnings surfaced by the
+release workflow runs (GitHub force-upgrades JS actions to Node 24 on
+2026-06-02):
+
+- Bumped `actions/upload-artifact` and `actions/download-artifact` from `@v4`
+  to `@v5` (first Node-24 major) across `.github/workflows/release.yml` and
+  `.github/workflows/ci.yml`
+- Replaced `softprops/action-gh-release@v2` with an inline `gh release create`
+  shell step in the `github-release` job. Upstream has no Node 24 release
+  as of this date (softprops/action-gh-release#742; PRs #670 and #774 still
+  open), so the replacement removes the blocking third-party dependency.
+  The new step consumes the `release-notes.md` file already produced by the
+  preceding `Generate release notes file` step via `--notes-file`, and adds
+  a nullglob guard so an empty `dist/` fails loudly instead of passing a
+  literal `dist/*` argument to `gh`.
+- Reconciled [[CD-plan/release-workflow|Release Workflow]],
+  [[CI-plan/workflow-definition|Workflow Definition]], and
+  [[CD-plan/versioning-and-changelog|Versioning and Changelog]] to reflect
+  the new action versions and the replaced release step
+- Plan recorded at [[specs/plans/2026-04-09-github-actions-node24-upgrade|GitHub Actions Node 24 Upgrade]]
