@@ -1,18 +1,20 @@
 # TinyQuant
 
+*CPU-only vector quantization codec for embedding storage compression.*
+
+[![PyPI](https://img.shields.io/pypi/v/tinyquant-cpu.svg)](https://pypi.org/project/tinyquant-cpu/)
 [![CI](https://github.com/better-with-models/TinyQuant/actions/workflows/ci.yml/badge.svg)](https://github.com/better-with-models/TinyQuant/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![Version](https://img.shields.io/badge/version-0.1.0-green.svg)](CHANGELOG.md)
 
-**TinyQuant** is a CPU-only vector quantization codec that compresses
+TinyQuant is a CPU-only vector quantization codec that compresses
 high-dimensional embedding vectors to low-bit representations while
-preserving cosine similarity rankings. It is designed for embedding
-storage in retrieval systems where memory and disk costs dominate.
+preserving cosine similarity rankings. It combines random orthogonal
+preconditioning with two-stage scalar quantization and optional FP16
+residual correction to hit 8× compression at 4-bit with Pearson ρ ≈ 0.998
+and 95% top-5 recall on real OpenAI embeddings.
 
-TinyQuant combines random orthogonal preconditioning with two-stage
-scalar quantization and optional FP16 residual correction, drawing on
-ideas from [TurboQuant], [PolarQuant], and [QJL].
+Research lineage: [TurboQuant], [PolarQuant], and [QJL].
 
 [TurboQuant]: https://research.google/blog/turboquant-redefining-ai-efficiency-with-extreme-compression/
 [PolarQuant]: https://arxiv.org/abs/2503.20024
