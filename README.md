@@ -52,19 +52,19 @@ publication-quality plots.
 ## Installation
 
 ```bash
-pip install tinyquant
+pip install tinyquant-cpu
 ```
 
 For PostgreSQL + pgvector backend support:
 
 ```bash
-pip install tinyquant[pgvector]
+pip install "tinyquant-cpu[pgvector]"
 ```
 
 For development (tests, type checking, linting):
 
 ```bash
-pip install tinyquant[dev]
+pip install "tinyquant-cpu[dev]"
 ```
 
 **Requirements:** Python 3.12+, NumPy 1.26+
@@ -77,9 +77,9 @@ Compress, store, and search a corpus of embeddings in under 20 lines:
 
 ```python
 import numpy as np
-from tinyquant.codec import Codec, CodecConfig
-from tinyquant.corpus import Corpus, CompressionPolicy
-from tinyquant.backend import BruteForceBackend
+from tinyquant_cpu.codec import Codec, CodecConfig
+from tinyquant_cpu.corpus import Corpus, CompressionPolicy
+from tinyquant_cpu.backend import BruteForceBackend
 
 # 1. Configure the codec: 4-bit quantization for 1536-dim vectors
 config = CodecConfig(bit_width=4, dimension=1536, seed=42)
@@ -110,7 +110,7 @@ for r in results:
 
 ```python
 import numpy as np
-from tinyquant.codec import Codec, CodecConfig
+from tinyquant_cpu.codec import Codec, CodecConfig
 
 config = CodecConfig(bit_width=4, dimension=768, seed=42)
 codec = Codec()
@@ -157,7 +157,7 @@ config_4bit_res = CodecConfig(bit_width=4, dimension=768, seed=42, residual_enab
 A `Corpus` can store vectors in three modes:
 
 ```python
-from tinyquant.corpus import Corpus, CompressionPolicy
+from tinyquant_cpu.corpus import Corpus, CompressionPolicy
 
 # COMPRESS: full TinyQuant compression on insert
 corpus_compressed = Corpus("c", config, codebook, CompressionPolicy.COMPRESS)
@@ -175,7 +175,7 @@ corpus_fp16 = Corpus("h", config, codebook, CompressionPolicy.FP16)
 suitable for disk or network transfer:
 
 ```python
-from tinyquant.codec import CompressedVector
+from tinyquant_cpu.codec import CompressedVector
 
 raw_bytes = compressed.to_bytes()
 # Save raw_bytes to disk, send over network, etc.
@@ -187,7 +187,7 @@ restored = CompressedVector.from_bytes(raw_bytes)
 
 ```python
 import psycopg
-from tinyquant.backend.adapters.pgvector import PgvectorAdapter
+from tinyquant_cpu.backend.adapters.pgvector import PgvectorAdapter
 
 def connection_factory():
     return psycopg.connect("postgresql://user:pass@localhost/mydb")
@@ -244,9 +244,9 @@ implementation:
 
 | Path | Purpose |
 | --- | --- |
-| `src/tinyquant/codec/` | Codec, config, codebook, compressed vector, rotation |
-| `src/tinyquant/corpus/` | Corpus aggregate, compression policies, domain events |
-| `src/tinyquant/backend/` | Search backend protocol and implementations |
+| `src/tinyquant_cpu/codec/` | Codec, config, codebook, compressed vector, rotation |
+| `src/tinyquant_cpu/corpus/` | Corpus aggregate, compression policies, domain events |
+| `src/tinyquant_cpu/backend/` | Search backend protocol and implementations |
 | `tests/` | Unit, integration, E2E, and calibration tests (208 tests, 90.95% coverage) |
 | `experiments/` | Benchmarks and empirical evaluations |
 | `docs/` | Obsidian wiki with design docs, research, and specs |
@@ -265,7 +265,7 @@ ruff check . && ruff format --check .
 mypy --strict .
 
 # Run the full test suite
-pytest --cov=tinyquant
+pytest --cov=tinyquant_cpu
 ```
 
 The test suite includes 208 tests covering unit, integration,

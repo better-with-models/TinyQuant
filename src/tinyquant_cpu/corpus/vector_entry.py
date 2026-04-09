@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from tinyquant._types import ConfigHash
-    from tinyquant.codec.compressed_vector import CompressedVector
+    from tinyquant_cpu._types import ConfigHash
+    from tinyquant_cpu.codec.compressed_vector import CompressedVector
 
 
 class VectorEntry:

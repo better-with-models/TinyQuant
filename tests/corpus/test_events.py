@@ -7,9 +7,9 @@ from datetime import UTC, datetime
 
 import pytest
 
-from tinyquant.codec.codec_config import CodecConfig
-from tinyquant.corpus.compression_policy import CompressionPolicy
-from tinyquant.corpus.events import (
+from tinyquant_cpu.codec.codec_config import CodecConfig
+from tinyquant_cpu.corpus.compression_policy import CompressionPolicy
+from tinyquant_cpu.corpus.events import (
     CompressionPolicyViolationDetected,
     CorpusCreated,
     CorpusDecompressed,

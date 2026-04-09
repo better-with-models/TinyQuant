@@ -14,8 +14,8 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-from tinyquant.backend.adapters.pgvector import PgvectorAdapter
-from tinyquant.backend.protocol import SearchResult
+from tinyquant_cpu.backend.adapters.pgvector import PgvectorAdapter
+from tinyquant_cpu.backend.protocol import SearchResult
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator

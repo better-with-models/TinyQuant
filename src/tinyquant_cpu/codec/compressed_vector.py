@@ -12,7 +12,7 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from tinyquant._types import ConfigHash
+    from tinyquant_cpu._types import ConfigHash
 
 _FORMAT_VERSION: int = 0x01
 _HASH_BYTES: int = 64

@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING, cast
 
 import numpy as np
 
-from tinyquant.codec import Codebook, Codec, CodecConfig
+from tinyquant_cpu.codec import Codebook, Codec, CodecConfig
 
 if TYPE_CHECKING:
     from collections.abc import Callable

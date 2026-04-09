@@ -7,25 +7,25 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
-from tinyquant.codec._errors import (
+from tinyquant_cpu.codec._errors import (
     DimensionMismatchError,
     DuplicateVectorError,
 )
-from tinyquant.codec.codec import Codec
-from tinyquant.codec.compressed_vector import CompressedVector
-from tinyquant.corpus.compression_policy import CompressionPolicy
-from tinyquant.corpus.events import (
+from tinyquant_cpu.codec.codec import Codec
+from tinyquant_cpu.codec.compressed_vector import CompressedVector
+from tinyquant_cpu.corpus.compression_policy import CompressionPolicy
+from tinyquant_cpu.corpus.events import (
     CorpusCreated,
     CorpusDecompressed,
     VectorsInserted,
 )
-from tinyquant.corpus.vector_entry import VectorEntry
+from tinyquant_cpu.corpus.vector_entry import VectorEntry
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from tinyquant.codec.codebook import Codebook
-    from tinyquant.codec.codec_config import CodecConfig
+    from tinyquant_cpu.codec.codebook import Codebook
+    from tinyquant_cpu.codec.codec_config import CodecConfig
 
 
 class Corpus:

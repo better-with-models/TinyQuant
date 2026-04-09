@@ -1,1 +1,1 @@
-"""Tests for the tinyquant.corpus package."""
+"""Tests for the tinyquant_cpu.corpus package."""

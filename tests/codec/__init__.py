@@ -1,1 +1,1 @@
-"""Tests for the tinyquant.codec package."""
+"""Tests for the tinyquant_cpu.codec package."""

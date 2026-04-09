@@ -11,7 +11,7 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from tinyquant.codec.codec_config import CodecConfig
+    from tinyquant_cpu.codec.codec_config import CodecConfig
 
 
 @dataclass(frozen=True)

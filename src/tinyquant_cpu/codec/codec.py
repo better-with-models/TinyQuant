@@ -6,22 +6,22 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from tinyquant.codec._errors import (
+from tinyquant_cpu.codec._errors import (
     CodebookIncompatibleError,
     ConfigMismatchError,
     DimensionMismatchError,
 )
-from tinyquant.codec._quantize import apply_residual, compute_residual
-from tinyquant.codec.codebook import Codebook
-from tinyquant.codec.compressed_vector import CompressedVector
-from tinyquant.codec.rotation_matrix import RotationMatrix
+from tinyquant_cpu.codec._quantize import apply_residual, compute_residual
+from tinyquant_cpu.codec.codebook import Codebook
+from tinyquant_cpu.codec.compressed_vector import CompressedVector
+from tinyquant_cpu.codec.rotation_matrix import RotationMatrix
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from numpy.typing import NDArray
 
-    from tinyquant.codec.codec_config import CodecConfig
+    from tinyquant_cpu.codec.codec_config import CodecConfig
 
 
 class Codec:

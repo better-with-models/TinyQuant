@@ -6,8 +6,8 @@ import numpy as np
 import pytest
 from numpy.typing import NDArray
 
-from tinyquant.codec.codebook import Codebook
-from tinyquant.codec.codec_config import CodecConfig
+from tinyquant_cpu.codec.codebook import Codebook
+from tinyquant_cpu.codec.codec_config import CodecConfig
 
 # ---------------------------------------------------------------------------
 # Training

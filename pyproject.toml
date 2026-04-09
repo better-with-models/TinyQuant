@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tinyquant"
+name = "tinyquant-cpu"
 version = "0.1.0"
 description = "CPU-only vector quantization codec for embedding storage compression"
 readme = "README.md"
