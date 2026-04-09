@@ -17,7 +17,7 @@ category: design
 
 ## Index by package
 
-### `tinyquant.codec` — Codec Context
+### `tinyquant_cpu.codec` — Codec Context
 
 | Class | File | Role | Page |
 |-------|------|------|------|
@@ -28,7 +28,7 @@ category: design
 | `Codec` | `codec.py` | Stateless compression/decompression service | [[classes/codec|Codec]] |
 | *(private)* | `_quantize.py` | Low-level quantization helpers | [[classes/quantize-internal|_quantize (internal)]] |
 
-### `tinyquant.corpus` — Corpus Context
+### `tinyquant_cpu.corpus` — Corpus Context
 
 | Class | File | Role | Page |
 |-------|------|------|------|
@@ -37,7 +37,7 @@ category: design
 | `CompressionPolicy` | `compression_policy.py` | Policy enum governing write path | [[classes/compression-policy|CompressionPolicy]] |
 | *(events)* | `events.py` | Domain event dataclasses | [[classes/corpus-events|Corpus Events]] |
 
-### `tinyquant.backend` — Backend Protocol Context
+### `tinyquant_cpu.backend` — Backend Protocol Context
 
 | Class | File | Role | Page |
 |-------|------|------|------|

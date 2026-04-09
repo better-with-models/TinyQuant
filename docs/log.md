@@ -288,8 +288,8 @@ red-green-refactor, and leaves the repo in a working state if interrupted.
 Implemented the Python project structure and tooling configuration:
 
 - Created `pyproject.toml` with hatchling build, ruff, mypy, and pytest config
-- Created package skeleton: `src/tinyquant/`, `src/tinyquant/codec/`,
-  `src/tinyquant/corpus/`, `src/tinyquant/backend/`
+- Created package skeleton: `src/tinyquant_cpu/`, `src/tinyquant_cpu/codec/`,
+  `src/tinyquant_cpu/corpus/`, `src/tinyquant_cpu/backend/`
 - Created test skeleton: `tests/`, `tests/codec/`, `tests/corpus/`,
   `tests/backend/`, `tests/integration/`, `tests/e2e/`, `tests/architecture/`,
   `tests/calibration/`
@@ -352,7 +352,7 @@ Implemented the backend protocol bounded context on top of the corpus layer:
   search with in-memory dict storage, ingest, remove, clear, and count property
 - All imports under `TYPE_CHECKING` where not needed at runtime (numpy, NDArray,
   Sequence) matching project conventions
-- Public re-exports from `tinyquant.backend.__init__`
+- Public re-exports from `tinyquant_cpu.backend.__init__`
 - 16 tests (3 SearchResult, 3 ingest, 7 search, 2 remove, 1 clear), 96%
   backend coverage, 161 total tests passing
 

@@ -19,7 +19,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/corpus/corpus.py
+src/tinyquant_cpu/corpus/corpus.py
 ```
 
 ## Category

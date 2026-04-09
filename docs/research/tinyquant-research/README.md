@@ -285,7 +285,7 @@ supports 2-4 bit depths but documents 4-bit as the recommended default.
 ### Core API
 
 ```python
-from tinyquant import TinyQuantMSE, TinyQuantProd, CompressedCorpus
+from tinyquant_cpu import TinyQuantMSE, TinyQuantProd, CompressedCorpus
 
 # Initialize compressor for a specific dimension and bit depth
 compressor = TinyQuantProd(dimension=3072, bits=4, seed=42)
@@ -305,7 +305,7 @@ data = corpus.serialize()
 corpus2 = CompressedCorpus.deserialize(data, compressor)
 
 # Search via pluggable backend
-from tinyquant.search import BruteForceFP32
+from tinyquant_cpu.search import BruteForceFP32
 backend = BruteForceFP32(metric="cosine")
 results = backend.search(query_vector, corpus, k=10)
 ```
@@ -313,7 +313,7 @@ results = backend.search(query_vector, corpus, k=10)
 ### Search Backend Protocol
 
 ```python
-from tinyquant.search import SearchBackend
+from tinyquant_cpu.search import SearchBackend
 
 class MyCustomBackend(SearchBackend):
     def search(self, query, corpus, k):

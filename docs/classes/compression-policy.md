@@ -20,7 +20,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/corpus/compression_policy.py
+src/tinyquant_cpu/corpus/compression_policy.py
 ```
 
 ## Category

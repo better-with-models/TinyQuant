@@ -18,7 +18,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/corpus/vector_entry.py
+src/tinyquant_cpu/corpus/vector_entry.py
 ```
 
 ## Category

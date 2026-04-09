@@ -19,7 +19,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/backend/brute_force.py
+src/tinyquant_cpu/backend/brute_force.py
 ```
 
 ## Category

@@ -45,7 +45,7 @@ graph TD
 |-----------|--------|---------|
 | Git tag | `v{MAJOR}.{MINOR}.{PATCH}` | `v1.0.0` |
 | Pre-release tag | `v{MAJOR}.{MINOR}.{PATCH}-{label}.{n}` | `v1.0.0-beta.1` |
-| Wheel filename | `tinyquant-{version}-py3-none-any.whl` | `tinyquant-1.0.0-py3-none-any.whl` |
+| Wheel filename | `tinyquant_cpu-{version}-py3-none-any.whl` | `tinyquant_cpu-1.0.0-py3-none-any.whl` |
 | pyproject.toml version | `{MAJOR}.{MINOR}.{PATCH}` | `1.0.0` |
 
 **Invariant:** the git tag and `pyproject.toml` version must match. The
@@ -66,7 +66,7 @@ release workflow enforces this in the `verify-tag` job.
 |------|------|------|
 | Metadata validation | `twine check dist/*` | Every CI run |
 | Install from TestPyPI | `pip install --index-url test.pypi.org` | Release workflow |
-| Import and version check | `python -c "import tinyquant"` | Release workflow |
+| Import and version check | `python -c "import tinyquant_cpu"` | Release workflow |
 | Signature verification | Future: Sigstore/cosign | Post-1.0 |
 
 ## Retention policy

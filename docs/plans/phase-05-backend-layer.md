@@ -25,9 +25,9 @@ category: planning
 
 | File | Class | Spec |
 |------|-------|------|
-| `src/tinyquant/backend/protocol.py` | `SearchBackend`, `SearchResult` | [[classes/search-backend\|SearchBackend]], [[classes/search-result\|SearchResult]] |
-| `src/tinyquant/backend/brute_force.py` | `BruteForceBackend` | [[classes/brute-force-backend\|BruteForceBackend]] |
-| `src/tinyquant/backend/__init__.py` | Public re-exports | — |
+| `src/tinyquant_cpu/backend/protocol.py` | `SearchBackend`, `SearchResult` | [[classes/search-backend\|SearchBackend]], [[classes/search-result\|SearchResult]] |
+| `src/tinyquant_cpu/backend/brute_force.py` | `BruteForceBackend` | [[classes/brute-force-backend\|BruteForceBackend]] |
+| `src/tinyquant_cpu/backend/__init__.py` | Public re-exports | — |
 | `tests/backend/test_brute_force.py` | ~12 tests | [[qa/unit-tests/test-brute-force\|Test spec]] |
 
 ## Steps (TDD order)
@@ -64,7 +64,7 @@ category: planning
 ### 6. Update `__init__.py`
 
 1. Export `SearchBackend`, `SearchResult`, `BruteForceBackend`
-2. Update `tinyquant/__init__.py` top-level re-exports if desired
+2. Update `tinyquant_cpu/__init__.py` top-level re-exports if desired
 3. Run full tool suite
 
 ## Verification
@@ -72,7 +72,7 @@ category: planning
 ```bash
 ruff check . && ruff format --check .
 mypy --strict .
-pytest tests/backend/ -v --cov=tinyquant/backend --cov-fail-under=80
+pytest tests/backend/ -v --cov=tinyquant_cpu/backend --cov-fail-under=80
 pytest tests/codec/ tests/corpus/ -v  # regression check
 ```
 

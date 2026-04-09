@@ -18,7 +18,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/backend/protocol.py
+src/tinyquant_cpu/backend/protocol.py
 ```
 
 (Co-located with [[classes/search-backend|SearchBackend]] since it is part of

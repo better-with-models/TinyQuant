@@ -24,7 +24,7 @@ category: design
 
 ```text
 src/
-└── tinyquant/
+└── tinyquant_cpu/
     ├── __init__.py              # Public API re-exports (explicit)
     ├── py.typed                 # PEP 561 marker for mypy consumers
     │
@@ -87,9 +87,9 @@ tests/
 
 | Package | Context | Owner of |
 |---------|---------|----------|
-| `tinyquant.codec` | Codec | Compression math, value objects, stateless service |
-| `tinyquant.corpus` | Corpus | Aggregate root, vector lifecycle, events, policies |
-| `tinyquant.backend` | Backend Protocol | Protocol definition, reference implementation, adapters |
+| `tinyquant_cpu.codec` | Codec | Compression math, value objects, stateless service |
+| `tinyquant_cpu.corpus` | Corpus | Aggregate root, vector lifecycle, events, policies |
+| `tinyquant_cpu.backend` | Backend Protocol | Protocol definition, reference implementation, adapters |
 
 ### One public class per module
 
@@ -98,9 +98,9 @@ The file name is the `snake_case` form of the class name. This makes
 navigation trivial:
 
 ```text
-Need CodecConfig? → tinyquant/codec/codec_config.py
-Need Corpus?      → tinyquant/corpus/corpus.py
-Need SearchBackend? → tinyquant/backend/protocol.py
+Need CodecConfig? → tinyquant_cpu/codec/codec_config.py
+Need Corpus?      → tinyquant_cpu/corpus/corpus.py
+Need SearchBackend? → tinyquant_cpu/backend/protocol.py
 ```
 
 ### Explicit public API via `__init__.py`
@@ -109,14 +109,14 @@ Each package's `__init__.py` explicitly re-exports its public symbols using
 `__all__`:
 
 ```python
-# tinyquant/codec/__init__.py
+# tinyquant_cpu/codec/__init__.py
 """TinyQuant codec: compression and decompression primitives."""
 
-from tinyquant.codec.codec import Codec, compress, decompress
-from tinyquant.codec.codec_config import CodecConfig
-from tinyquant.codec.codebook import Codebook
-from tinyquant.codec.compressed_vector import CompressedVector
-from tinyquant.codec.rotation_matrix import RotationMatrix
+from tinyquant_cpu.codec.codec import Codec, compress, decompress
+from tinyquant_cpu.codec.codec_config import CodecConfig
+from tinyquant_cpu.codec.codebook import Codebook
+from tinyquant_cpu.codec.compressed_vector import CompressedVector
+from tinyquant_cpu.codec.rotation_matrix import RotationMatrix
 
 __all__ = [
     "Codec",
@@ -133,10 +133,10 @@ Consumers import from the package, not from internal modules:
 
 ```python
 # Good
-from tinyquant.codec import CodecConfig, compress
+from tinyquant_cpu.codec import CodecConfig, compress
 
 # Bad — couples to internal file structure
-from tinyquant.codec.codec_config import CodecConfig
+from tinyquant_cpu.codec.codec_config import CodecConfig
 ```
 
 The `no_implicit_reexport` mypy flag enforces this: if a symbol is not in
@@ -152,9 +152,9 @@ breaking change.
 
 ```mermaid
 graph TD
-    C["tinyquant.codec"] --> |"no deps"| LEAF["(leaf)"]
-    CP["tinyquant.corpus"] --> C
-    B["tinyquant.backend"] --> CP
+    C["tinyquant_cpu.codec"] --> |"no deps"| LEAF["(leaf)"]
+    CP["tinyquant_cpu.corpus"] --> C
+    B["tinyquant_cpu.backend"] --> CP
 ```
 
 **Enforced by:** an architecture test that imports each package and asserts no
@@ -163,10 +163,10 @@ disallowed reverse imports exist. Example:
 ```python
 def test_codec_does_not_import_corpus() -> None:
     """Codec is a leaf package with no internal dependencies."""
-    import tinyquant.codec
-    imported = {m for m in sys.modules if m.startswith("tinyquant.")}
-    assert not any(m.startswith("tinyquant.corpus") for m in imported)
-    assert not any(m.startswith("tinyquant.backend") for m in imported)
+    import tinyquant_cpu.codec
+    imported = {m for m in sys.modules if m.startswith("tinyquant_cpu.")}
+    assert not any(m.startswith("tinyquant_cpu.corpus") for m in imported)
+    assert not any(m.startswith("tinyquant_cpu.backend") for m in imported)
 ```
 
 ### Test mirror

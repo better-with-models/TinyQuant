@@ -18,7 +18,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/codec/codec_config.py
+src/tinyquant_cpu/codec/codec_config.py
 ```
 
 ## Category

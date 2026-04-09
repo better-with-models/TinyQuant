@@ -36,7 +36,7 @@ category: planning
 
 ### 1. Architecture tests
 
-1. Write `test_codec_does_not_import_corpus` — import `tinyquant.codec`, assert no corpus modules in `sys.modules`
+1. Write `test_codec_does_not_import_corpus` — import `tinyquant_cpu.codec`, assert no corpus modules in `sys.modules`
 2. Write `test_codec_does_not_import_backend` — same pattern
 3. Write `test_corpus_does_not_import_backend` — same pattern
 4. Write `test_no_package_cycles` — verify acyclic import graph
@@ -83,7 +83,7 @@ mypy --strict .
 pytest tests/architecture/ -v
 pytest tests/integration/ -v
 pytest tests/e2e/ -v
-pytest --cov=tinyquant --cov-fail-under=90  # overall
+pytest --cov=tinyquant_cpu --cov-fail-under=90  # overall
 ```
 
 ## Estimated scope

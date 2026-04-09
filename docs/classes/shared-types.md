@@ -19,7 +19,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/_types.py
+src/tinyquant_cpu/_types.py
 ```
 
 ## Category
@@ -67,7 +67,7 @@ imported by internal modules across packages.
 ## Example
 
 ```python
-from tinyquant._types import VectorId, ConfigHash, Vector
+from tinyquant_cpu._types import VectorId, ConfigHash, Vector
 
 def compress(vector: Vector, ...) -> CompressedVector: ...
 def get(self, vector_id: VectorId) -> VectorEntry: ...
