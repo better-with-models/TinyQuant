@@ -37,11 +37,27 @@ def ok(message: str) -> None:
     print(f"PASS: {message}")
 
 
+# Directories whose markdown files are not subject to the strict
+# root-level rules. Each has its own review contract:
+#
+# - .git/       : git internals
+# - docs/       : Obsidian-flavored wiki under its own maturity standard
+# - .github/    : GitHub-specific surfaces (rich README, issue/PR
+#                 templates, etc.) where GitHub-flavored Markdown
+#                 including inline HTML and alert admonitions is
+#                 expected. See .github/README.md for the rich landing
+#                 page version.
+# - .venv/      : throwaway virtualenvs created for worktree sanity
+#                 checks; their vendored LICENSE.md files are upstream
+#                 and not subject to our lint rules.
+_EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv"}
+
+
 def markdown_files_outside_docs() -> list[Path]:
     files: list[Path] = []
     for path in REPO_ROOT.rglob("*.md"):
         relative = path.relative_to(REPO_ROOT)
-        if relative.parts[0] in {".git", "docs"}:
+        if relative.parts[0] in _EXCLUDED_TOP_DIRS:
             continue
         files.append(path)
     return sorted(files)
