@@ -17,28 +17,19 @@ jobs:
     name: Verify Tag
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    outputs:
-      version: ${{ steps.check.outputs.version }}
     steps:
       - uses: actions/checkout@v5
 
       - name: Extract and verify version
-        id: check
         run: |
           set -exo pipefail
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           PKG_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject.toml | head -n1)
           INIT_VERSION=$(sed -n 's/^__version__ = "\([^"]*\)".*/\1/p' src/tinyquant_cpu/__init__.py | head -n1)
-          echo "GITHUB_REF_NAME=$GITHUB_REF_NAME"
-          echo "GITHUB_OUTPUT=$GITHUB_OUTPUT"
           echo "Resolved: tag=[$TAG_VERSION] pkg=[$PKG_VERSION] init=[$INIT_VERSION]"
           test -n "$TAG_VERSION" || { echo "::error::empty TAG_VERSION"; exit 1; }
-          test -n "$PKG_VERSION" || { echo "::error::empty PKG_VERSION"; exit 1; }
-          test -n "$INIT_VERSION" || { echo "::error::empty INIT_VERSION"; exit 1; }
           test "$TAG_VERSION" = "$PKG_VERSION" || { echo "::error::Tag v$TAG_VERSION != pyproject $PKG_VERSION"; exit 1; }
           test "$TAG_VERSION" = "$INIT_VERSION" || { echo "::error::Tag v$TAG_VERSION != __init__ $INIT_VERSION"; exit 1; }
-          printf 'version=%s\n' "$TAG_VERSION" | tee -a "$GITHUB_OUTPUT"
-          echo "STEP_COMPLETE"
 
   calibration-tests:
     name: Calibration Tests
@@ -124,11 +115,13 @@ jobs:
 
       - name: Verify installation from TestPyPI (with retry)
         run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Verifying installation of tinyquant-cpu==$VERSION"
           for i in 1 2 3 4 5; do
             if pip install \
                 --index-url https://test.pypi.org/simple/ \
                 --extra-index-url https://pypi.org/simple/ \
-                "tinyquant-cpu==${{ needs.verify-tag.outputs.version }}"; then
+                "tinyquant-cpu==$VERSION"; then
               break
             fi
             echo "TestPyPI index not ready yet, retry $i/5..."
@@ -165,9 +158,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Generate release notes
-        id: notes
+      - name: Generate release notes file
         run: |
+          set -eo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [[ -n "$PREV_TAG" ]]; then
             NOTES=$(git log --pretty=format:"- %s (%h)" "$PREV_TAG..HEAD")
@@ -175,10 +169,18 @@ jobs:
             NOTES=$(git log --pretty=format:"- %s (%h)")
           fi
           {
-            echo "notes<<EOF"
+            echo "## Changes"
+            echo
             echo "$NOTES"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+            echo
+            echo "## Installation"
+            echo
+            echo '```bash'
+            echo "pip install tinyquant-cpu==$VERSION"
+            echo '```'
+          } > release-notes.md
+          echo "---release-notes.md---"
+          cat release-notes.md
 
       - name: Download dist artifact
         uses: actions/download-artifact@v4
@@ -190,15 +192,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-          body: |
-            ## Changes
-
-            ${{ steps.notes.outputs.notes }}
-
-            ## Installation
-
-            ```bash
-            pip install tinyquant-cpu==${{ needs.verify-tag.outputs.version }}
-            ```
+          body_path: release-notes.md
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}
