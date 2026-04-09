@@ -79,6 +79,40 @@ jobs:
       - name: mypy strict
         run: mypy --strict .
 
+  test-pgvector:
+    name: Integration – pgvector
+    runs-on: ubuntu-latest
+    needs: [typecheck]
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: tinyquant_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U test -d tinyquant_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      PGVECTOR_TEST_DSN: "postgresql://test:test@localhost:5432/tinyquant_test"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: pip install -e ".[dev,pgvector]"
+
+      - name: pgvector integration tests
+        run: pytest tests/integration/test_pgvector.py -v -x --tb=short
+
   test:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest

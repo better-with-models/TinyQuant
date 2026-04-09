@@ -74,9 +74,9 @@ class PgvectorAdapter:
         conn = self._connection_factory()
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT id, 1 - (embedding <=> %s) AS score "  # noqa: S608  -- table_name is developer-controlled, not user input
+                f"SELECT id, 1 - (embedding <=> %s::vector) AS score "  # noqa: S608  -- table_name is developer-controlled, not user input
                 f"FROM {self._table_name} "
-                "ORDER BY embedding <=> %s LIMIT %s",
+                "ORDER BY embedding <=> %s::vector LIMIT %s",
                 (query.tolist(), query.tolist(), top_k),
             )
             rows = cur.fetchall()
