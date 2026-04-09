@@ -48,6 +48,28 @@ def gold_corpus(
     return corpus
 
 
+@pytest.fixture()
+def fidelity_config() -> CodecConfig:
+    """768-dim, 4-bit + residual config for score fidelity E2E."""
+    return CodecConfig(bit_width=4, seed=42, dimension=768, residual_enabled=True)
+
+
+@pytest.fixture()
+def fidelity_vectors() -> NDArray[np.float32]:
+    """1000 synthetic vectors at dim 768 for score fidelity E2E."""
+    rng = np.random.default_rng(42)
+    return rng.standard_normal((1000, 768)).astype(np.float32)
+
+
+@pytest.fixture()
+def fidelity_codebook(
+    fidelity_config: CodecConfig,
+    fidelity_vectors: NDArray[np.float32],
+) -> Codebook:
+    """Codebook trained on first 200 fidelity vectors."""
+    return Codebook.train(fidelity_vectors[:200], fidelity_config)
+
+
 class TestFullPipeline:
     """E2E scenarios for the full compress -> store -> decompress -> search path."""
 
@@ -121,6 +143,41 @@ class TestFullPipeline:
         wrong_dim = np.zeros(128, dtype=np.float32)
         with pytest.raises(DimensionMismatchError):
             corpus_compress.insert("wrong", wrong_dim)
+
+    def test_e2e_05_score_fidelity_meets_baseline(
+        self,
+        fidelity_config: CodecConfig,
+        fidelity_vectors: NDArray[np.float32],
+        fidelity_codebook: Codebook,
+    ) -> None:
+        """E2E-05: Score fidelity meets research baseline (Pearson rho >= 0.995)."""
+        codec = Codec()
+        compressed = codec.compress_batch(
+            fidelity_vectors,
+            fidelity_config,
+            fidelity_codebook,
+        )
+        decompressed = codec.decompress_batch(
+            compressed,
+            fidelity_config,
+            fidelity_codebook,
+        )
+
+        queries = fidelity_vectors[:10]
+        rhos: list[float] = []
+        for q in queries:
+            norms_orig = np.linalg.norm(fidelity_vectors, axis=1) * np.linalg.norm(q)
+            norms_orig = np.maximum(norms_orig, 1e-12)
+            orig_sims = fidelity_vectors @ q / norms_orig
+
+            norms_dec = np.linalg.norm(decompressed, axis=1) * np.linalg.norm(q)
+            norms_dec = np.maximum(norms_dec, 1e-12)
+            approx_sims = decompressed @ q / norms_dec
+
+            rhos.append(float(np.corrcoef(orig_sims, approx_sims)[0, 1]))
+
+        mean_rho = float(np.mean(rhos))
+        assert mean_rho >= 0.995, f"E2E-05: Pearson rho {mean_rho:.6f} below 0.995"
 
     def test_e2e_06_serialization_round_trip(
         self,
