@@ -1,0 +1,445 @@
+"""Generate real embeddings from OpenAI text-embedding-3-small for benchmarking.
+
+Produces a diverse corpus of text passages and their 1536-dim embeddings,
+then saves them for use by the benchmark script.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+import time
+from pathlib import Path
+
+import numpy as np
+
+# ---------------------------------------------------------------------------
+# Corpus: diverse passages spanning multiple domains
+# ---------------------------------------------------------------------------
+
+PASSAGES = [
+    # ── Science & technology (40) ──────────────────────────────────────
+    "Quantum entanglement allows two particles to share correlated states regardless of the distance between them, a phenomenon Einstein called spooky action at a distance.",
+    "The transformer architecture introduced by Vaswani et al. in 2017 replaced recurrent networks with self-attention mechanisms, enabling massive parallelism in sequence modeling.",
+    "CRISPR-Cas9 gene editing technology allows scientists to precisely modify DNA sequences in living organisms, opening new possibilities for treating genetic diseases.",
+    "Superconducting quantum computers operate at temperatures near absolute zero, using qubits that can exist in superposition states to perform certain calculations exponentially faster.",
+    "The James Webb Space Telescope observes infrared light from the earliest galaxies formed after the Big Bang, revealing structures over 13 billion years old.",
+    "Lithium-ion batteries store energy through the movement of lithium ions between anode and cathode, achieving energy densities that power everything from phones to electric vehicles.",
+    "Neural architecture search uses reinforcement learning or evolutionary algorithms to automatically discover optimal deep learning model structures for specific tasks.",
+    "Photosynthesis converts carbon dioxide and water into glucose and oxygen using sunlight, a process that sustains nearly all life on Earth through its oxygen production.",
+    "Dark matter makes up roughly 27 percent of the universe's total mass-energy content, detectable only through its gravitational effects on visible matter and light.",
+    "Topological insulators conduct electricity on their surfaces while acting as insulators in their interiors, a quantum mechanical property with applications in spintronics.",
+    "The double-slit experiment demonstrates wave-particle duality by showing that individual photons create interference patterns when passed through two narrow slits.",
+    "Solid-state batteries replace liquid electrolytes with solid materials, promising higher energy density, faster charging, and improved safety for electric vehicles.",
+    "Protein folding prediction by AlphaFold solved a 50-year grand challenge in biology, accurately determining three-dimensional structures from amino acid sequences.",
+    "Metamaterials are engineered structures with properties not found in nature, enabling applications from invisibility cloaks to superlenses that beat the diffraction limit.",
+    "Gravitational waves, first directly detected by LIGO in 2015, are ripples in spacetime caused by accelerating massive objects like merging black holes.",
+    "Carbon nanotubes are cylindrical molecules of carbon atoms with extraordinary tensile strength, electrical conductivity, and thermal properties useful in materials science.",
+    "The Standard Model of particle physics describes three of the four fundamental forces and classifies all known elementary particles, but cannot explain gravity.",
+    "Perovskite solar cells use a crystal structure similar to calcium titanate to convert sunlight into electricity at rapidly improving efficiencies approaching silicon-based cells.",
+    "Gene drives use CRISPR to ensure a genetic modification is inherited by nearly all offspring, potentially eliminating mosquito-borne diseases like malaria.",
+    "Quantum key distribution uses the no-cloning theorem of quantum mechanics to create theoretically unbreakable encryption keys between two parties.",
+    "Nuclear fusion aims to replicate the energy process of the Sun by forcing hydrogen isotopes together at extreme temperatures to release enormous amounts of energy.",
+    "3D bioprinting deposits living cells layer by layer to create tissues and organs, advancing toward the goal of printing transplantable human organs.",
+    "The Casimir effect is a quantum phenomenon where two uncharged parallel plates attract each other due to vacuum energy fluctuations between them.",
+    "Neuromorphic computing designs chips that mimic the brain's neural architecture, achieving extraordinary energy efficiency for pattern recognition and learning tasks.",
+    "Synthetic biology combines engineering principles with molecular biology to design and construct new biological parts, devices, and systems not found in nature.",
+    "Graphene is a single layer of carbon atoms arranged in a hexagonal lattice, possessing remarkable strength, flexibility, and electrical conductivity.",
+    "Optogenetics uses light-sensitive proteins inserted into neurons to control brain cell activity with millisecond precision, revolutionizing neuroscience research.",
+    "The Higgs boson, discovered at CERN in 2012, confirmed the existence of the Higgs field that gives elementary particles their mass.",
+    "Autonomous vehicles combine LIDAR, cameras, radar, and deep learning to navigate roads without human input, raising questions about safety and liability.",
+    "RNA interference is a biological process where small RNA molecules silence gene expression, offering therapeutic potential for diseases caused by overactive genes.",
+    "Spintronics exploits the intrinsic spin of electrons and its associated magnetic moment to store and process information, complementing traditional charge-based electronics.",
+    "The microchip revolutionized computing by integrating millions of transistors onto a single silicon die, enabling the exponential growth predicted by Moore's Law.",
+    "Additive manufacturing builds objects layer by layer from digital models, enabling complex geometries impossible with traditional subtractive machining methods.",
+    "Exoplanet detection using the transit method measures tiny dips in starlight as planets cross in front of their host stars.",
+    "Cryogenic electron microscopy visualizes biological molecules at near-atomic resolution by flash-freezing samples and imaging them with electron beams.",
+    "Thermoelectric materials convert temperature differences directly into electrical voltage through the Seebeck effect, enabling waste heat recovery systems.",
+    "Phage therapy uses bacteriophages, viruses that infect bacteria, as an alternative to antibiotics for treating drug-resistant bacterial infections.",
+    "Laser interferometry measures distances with sub-nanometer precision by analyzing the interference patterns of split and recombined laser beams.",
+    "DNA data storage encodes digital information in synthetic DNA sequences, achieving storage densities millions of times greater than conventional hard drives.",
+    "Quantum error correction encodes logical qubits across multiple physical qubits to protect quantum information from decoherence and operational errors.",
+    # ── History & culture (35) ─────────────────────────────────────────
+    "The Rosetta Stone, discovered in 1799 by French soldiers in Egypt, provided the key to deciphering Egyptian hieroglyphics through its parallel inscriptions in three scripts.",
+    "The Silk Road connected China to the Mediterranean for over 1,500 years, facilitating not just trade in silk and spices but also the exchange of ideas, religions, and technologies.",
+    "The printing press invented by Johannes Gutenberg around 1440 revolutionized the spread of information in Europe, making books affordable and literacy attainable for the masses.",
+    "The Apollo 11 mission landed the first humans on the Moon on July 20, 1969, when Neil Armstrong and Buzz Aldrin spent about two hours walking on the lunar surface.",
+    "The Renaissance period in Europe from the 14th to 17th century saw a revival of art, architecture, and learning inspired by classical Greek and Roman civilizations.",
+    "The Industrial Revolution began in Britain in the late 18th century, transforming manufacturing from hand production to machine-based processes powered by steam and water.",
+    "Ancient Roman aqueducts transported water over long distances using gravity, some spanning hundreds of kilometers with precise engineering that still inspires modern civil engineers.",
+    "The invention of the compass in ancient China during the Han Dynasty transformed navigation and exploration, eventually enabling the great maritime voyages of the 15th century.",
+    "The Library of Alexandria was the largest repository of knowledge in the ancient world, housing hundreds of thousands of scrolls until its gradual destruction over centuries.",
+    "The Magna Carta of 1215 established the principle that the king was subject to law, laying foundations for constitutional governance and individual rights in England.",
+    "The French Revolution of 1789 overthrew the monarchy and established republican government, inspiring democratic movements worldwide while descending into the Reign of Terror.",
+    "The construction of the Great Wall of China spanned multiple dynasties over two millennia, ultimately stretching over 20,000 kilometers along China's northern border.",
+    "The Viking Age from 793 to 1066 CE saw Norse seafarers explore, trade, and settle across Europe, reaching as far as North America five centuries before Columbus.",
+    "The Ottoman Empire lasted over 600 years and at its height controlled territories across three continents, bridging Eastern and Western civilizations.",
+    "The Meiji Restoration of 1868 transformed Japan from a feudal society into a modern industrial nation within a single generation through rapid westernization.",
+    "The Harappan civilization of the Indus Valley developed urban planning, standardized weights, and sophisticated drainage systems over 4,000 years ago.",
+    "The Code of Hammurabi from ancient Babylon is one of the earliest known written legal codes, establishing the principle of proportional justice.",
+    "The Mongol Empire under Genghis Khan became the largest contiguous land empire in history, facilitating trade and cultural exchange across the Eurasian steppe.",
+    "The Age of Exploration in the 15th and 16th centuries connected previously isolated civilizations through maritime routes, fundamentally reshaping global trade and culture.",
+    "The Columbian Exchange following 1492 transferred plants, animals, diseases, and technologies between the Americas and the Old World, transforming ecosystems on both sides.",
+    "Stonehenge was constructed over roughly 1,500 years beginning around 3000 BCE, with its massive sarsen stones transported from quarries over 20 miles away.",
+    "The Byzantine Empire preserved Roman law, Greek culture, and Christian theology for over a millennium after the fall of Western Rome.",
+    "The Tokugawa shogunate maintained over 250 years of peace in Japan through strict social hierarchy, isolationist foreign policy, and centralized feudal governance.",
+    "The Berlin Wall divided East and West Berlin from 1961 to 1989, symbolizing the ideological divide of the Cold War between communist and capitalist systems.",
+    "Ancient Egyptian papyrus scrolls contained medical texts describing surgical techniques, herbal remedies, and anatomical observations dating back over 3,500 years.",
+    "The Hanseatic League was a medieval commercial confederation of merchant guilds that dominated Baltic and North Sea trade from the 13th to 17th centuries.",
+    "The Inca Empire built a road network spanning 40,000 kilometers through the Andes, using relay runners to transmit messages across their vast territory.",
+    "The Enlightenment emphasized reason, science, and individual rights, producing thinkers like Voltaire, Locke, and Kant who shaped modern democratic philosophy.",
+    "The transatlantic slave trade forcibly transported an estimated 12.5 million Africans to the Americas between the 16th and 19th centuries.",
+    "Samurai warriors followed bushido, a strict code of honor emphasizing loyalty, martial arts mastery, and willingness to die for one's lord.",
+    "The Phoenicians invented one of the earliest alphabets around 1050 BCE, which became the ancestor of Greek, Latin, Arabic, and Hebrew writing systems.",
+    "The Aztec capital Tenochtitlan was built on an island in Lake Texcoco and supported a population of over 200,000 through sophisticated chinampas agriculture.",
+    "The Suez Canal opened in 1869, connecting the Mediterranean and Red Seas and dramatically reducing shipping times between Europe and Asia.",
+    "The Spanish Armada of 1588, sent by Philip II to invade England, was defeated by English naval tactics and severe storms, shifting the balance of European power.",
+    "The Celtic peoples spread across Europe during the Iron Age, leaving a rich legacy of art, mythology, and linguistic traditions still alive in Ireland, Scotland, and Wales.",
+    # ── Business & economics (30) ──────────────────────────────────────
+    "Supply chain optimization uses mathematical models and real-time data to minimize costs while maintaining service levels across global networks of suppliers, warehouses, and retailers.",
+    "Venture capital firms invest in early-stage companies with high growth potential, typically taking equity stakes and providing mentorship in exchange for the risk of potential total loss.",
+    "The Federal Reserve adjusts interest rates to manage inflation and employment, using tools like open market operations and the discount rate to influence the money supply.",
+    "Blockchain technology enables decentralized digital ledgers that record transactions across many computers, making it nearly impossible to alter historical records without consensus.",
+    "Microfinance institutions provide small loans to entrepreneurs in developing countries who lack access to traditional banking services, helping to reduce poverty through economic empowerment.",
+    "The gig economy connects freelance workers with short-term tasks through digital platforms, offering flexibility but raising questions about benefits, stability, and worker classification.",
+    "Index funds track market benchmarks like the S&P 500 by holding proportional shares of all constituent companies, offering diversification at minimal management fees.",
+    "Carbon credit markets allow companies to offset their greenhouse gas emissions by purchasing credits from projects that reduce or capture carbon dioxide from the atmosphere.",
+    "Compound interest causes exponential growth of savings over time, famously described by Einstein as the eighth wonder of the world.",
+    "Behavioral economics studies how psychological biases like loss aversion and anchoring cause people to make irrational financial decisions.",
+    "The dot-com bubble of the late 1990s saw technology stock prices inflate dramatically before crashing in 2000, wiping out trillions in market value.",
+    "Agile methodology organizes software development into short iterative sprints with frequent customer feedback, replacing traditional waterfall planning with adaptive response to change.",
+    "The sharing economy enables individuals to rent underused assets like spare rooms, cars, and tools through platforms like Airbnb and Turo.",
+    "Central bank digital currencies are government-backed digital money that could modernize payments while raising questions about financial privacy and monetary policy.",
+    "Lean manufacturing eliminates waste through continuous improvement, just-in-time production, and respect for workers, originating from Toyota's production system.",
+    "Hedge funds use complex strategies including short selling, leverage, and derivatives to seek returns uncorrelated with traditional stock and bond markets.",
+    "The circular economy redesigns products and systems to eliminate waste, keeping materials in use through repair, reuse, remanufacturing, and recycling.",
+    "Real estate investment trusts allow investors to buy shares in commercial property portfolios, providing dividend income and diversification without direct property ownership.",
+    "Cryptocurrency mining uses computational power to validate transactions and secure blockchain networks, consuming significant electricity in the process.",
+    "The Phillips curve suggests an inverse relationship between unemployment and inflation, though this tradeoff has proven unstable in modern economies.",
+    "Private equity firms acquire companies using leveraged buyouts, restructure operations to increase value, then sell at a profit after several years.",
+    "The World Trade Organization sets rules for international trade, resolving disputes between member nations and promoting reduction of tariffs and trade barriers.",
+    "Fintech companies use technology to disrupt traditional financial services, offering mobile payments, robo-advisors, peer-to-peer lending, and digital banking.",
+    "Net present value calculates the current worth of future cash flows by discounting them at a rate reflecting the time value of money and risk.",
+    "Externalities are costs or benefits that affect parties not directly involved in a transaction, like pollution from a factory affecting nearby residents.",
+    "The tragedy of the commons describes how shared resources are depleted when individuals act in self-interest rather than for the collective good.",
+    "Universal basic income proposes providing all citizens with a regular unconditional cash payment to ensure a minimum standard of living.",
+    "Quantitative easing is a monetary policy where central banks purchase government bonds to inject money into the economy and lower long-term interest rates.",
+    "Platform economics describes how digital marketplaces like Amazon and Uber create value by connecting producers and consumers, benefiting from network effects.",
+    "The Laffer curve illustrates the theoretical relationship between tax rates and government revenue, suggesting that beyond a certain point, higher rates reduce total revenue.",
+    # ── Medicine & health (30) ─────────────────────────────────────────
+    "mRNA vaccines instruct cells to produce a harmless piece of the target virus's spike protein, training the immune system to recognize and fight the actual pathogen.",
+    "Magnetic resonance imaging uses powerful magnetic fields and radio waves to create detailed images of organs and tissues without ionizing radiation exposure.",
+    "The human microbiome contains trillions of bacteria, fungi, and viruses that play crucial roles in digestion, immune function, and even mental health through the gut-brain axis.",
+    "Telemedicine platforms enable remote clinical consultations via video conferencing, expanding healthcare access to rural and underserved communities around the world.",
+    "Stem cell therapy harnesses the regenerative potential of undifferentiated cells to repair damaged tissues and organs, offering hope for conditions from spinal cord injuries to heart disease.",
+    "Antibiotic resistance occurs when bacteria evolve mechanisms to survive drugs designed to kill them, posing one of the greatest threats to global public health in the 21st century.",
+    "Immunotherapy trains the patient's own immune system to recognize and destroy cancer cells, achieving remarkable remissions in previously untreatable cancers.",
+    "The human genome contains approximately 20,000 protein-coding genes spread across 23 pairs of chromosomes, totaling about 3 billion base pairs of DNA.",
+    "Prion diseases like Creutzfeldt-Jakob disease are caused by misfolded proteins that induce normal proteins to adopt the same abnormal shape, leading to progressive neurodegeneration.",
+    "Epigenetics studies how environmental factors can modify gene expression without altering the underlying DNA sequence, with effects that can be inherited across generations.",
+    "Positron emission tomography uses radioactive tracers to create three-dimensional images of metabolic processes in the body, valuable for detecting cancer and brain disorders.",
+    "The blood-brain barrier is a selective membrane that protects the brain from harmful substances in the bloodstream while allowing essential nutrients to pass through.",
+    "Organ-on-a-chip technology creates miniature models of human organs on microchips, enabling drug testing and disease research without animal subjects.",
+    "The placebo effect demonstrates that patients can experience real physiological improvements simply from believing they are receiving an effective treatment.",
+    "Chimeric antigen receptor T-cell therapy genetically modifies a patient's own T cells to target specific cancer proteins, achieving dramatic results in blood cancers.",
+    "Circadian rhythms are internal biological clocks that regulate sleep-wake cycles, hormone release, and metabolism over roughly 24-hour periods.",
+    "Deep brain stimulation uses implanted electrodes to deliver electrical impulses to specific brain regions, treating conditions like Parkinson's disease and severe depression.",
+    "Herd immunity occurs when a sufficient proportion of a population becomes immune to an infectious disease, reducing transmission and protecting vulnerable individuals.",
+    "Nanomedicine uses nanoparticles to deliver drugs precisely to diseased tissues, reducing side effects and increasing therapeutic effectiveness.",
+    "The vagus nerve connects the brain to major organs and plays a central role in the parasympathetic nervous system, regulating heart rate, digestion, and inflammation.",
+    "Autophagy is a cellular housekeeping process where cells break down and recycle damaged components, essential for maintaining cellular health and preventing disease.",
+    "Monoclonal antibodies are laboratory-made proteins that mimic the immune system's ability to target specific antigens, used in treating cancers, autoimmune diseases, and infections.",
+    "The lymphatic system collects excess fluid from tissues and returns it to the bloodstream while filtering pathogens through lymph nodes packed with immune cells.",
+    "Pharmacogenomics studies how genetic variations affect individual responses to medications, enabling personalized drug prescriptions tailored to a patient's DNA.",
+    "Robotic surgery systems provide surgeons with enhanced precision, smaller incisions, and three-dimensional visualization during minimally invasive procedures.",
+    "Senescence is the permanent arrest of cell division that accumulates with age, contributing to tissue deterioration and age-related diseases.",
+    "The microbiota-gut-brain axis describes bidirectional communication between intestinal bacteria and the central nervous system through neural, hormonal, and immune pathways.",
+    "Clustered regularly interspaced short palindromic repeats in bacterial DNA serve as an adaptive immune system against viral infections, inspiring the CRISPR gene editing tool.",
+    "Transcranial magnetic stimulation uses magnetic fields to non-invasively stimulate nerve cells in the brain, treating depression and other neurological conditions.",
+    "Telomeres are protective caps at the ends of chromosomes that shorten with each cell division, serving as a biological clock linked to aging and cancer.",
+    # ── Law & philosophy (20) ──────────────────────────────────────────
+    "The trolley problem is a thought experiment in ethics that explores whether it is morally permissible to divert a runaway trolley to kill one person instead of five.",
+    "Habeas corpus, literally meaning you shall have the body, is a fundamental legal principle that protects individuals from unlawful detention by requiring a court hearing.",
+    "John Rawls proposed the veil of ignorance as a thought experiment where rational agents design a just society without knowing their position within it.",
+    "The categorical imperative formulated by Immanuel Kant states that one should act only according to principles that could be universalized without contradiction.",
+    "Utilitarianism holds that the morally right action is the one that produces the greatest good for the greatest number, as articulated by Jeremy Bentham and John Stuart Mill.",
+    "Stare decisis is the legal doctrine requiring courts to follow precedents set by higher courts, providing stability and predictability in the law.",
+    "The social contract theory proposes that individuals consent to surrender some freedoms to a governing authority in exchange for protection of their remaining rights.",
+    "Intellectual property law protects creations of the mind through patents, copyrights, trademarks, and trade secrets, balancing innovation incentives with public access.",
+    "Existentialism, associated with Sartre and Kierkegaard, holds that existence precedes essence, meaning humans define their own nature through choices and actions.",
+    "The presumption of innocence requires that a defendant in a criminal trial be considered innocent until proven guilty beyond a reasonable doubt.",
+    "Natural law theory asserts that certain rights and moral values are inherent in human nature and discoverable through reason, independent of government legislation.",
+    "Restorative justice focuses on repairing harm through reconciliation between offenders and victims, rather than purely punishing criminal behavior.",
+    "The harm principle, articulated by John Stuart Mill, holds that the only legitimate reason to restrict individual liberty is to prevent harm to others.",
+    "Epistemology is the branch of philosophy concerned with the nature, scope, and limits of human knowledge and justified belief.",
+    "The paradox of tolerance states that if a society is tolerant without limit, its ability to be tolerant will eventually be destroyed by the intolerant.",
+    "Legal positivism holds that law is a social construct defined by official enactment, separate from morality or natural law.",
+    "The Socratic method uses a series of questions to stimulate critical thinking and illuminate ideas, named after the ancient Greek philosopher Socrates.",
+    "Due process requires that legal proceedings follow established rules and principles to protect individual rights, serving as a safeguard against arbitrary government action.",
+    "Virtue ethics, originating with Aristotle, evaluates moral character based on virtues like courage, temperance, and justice rather than on rules or consequences.",
+    "The non-aggression principle holds that initiating force against persons or property is inherently wrong, forming a foundation for libertarian political philosophy.",
+    # ── Food & cooking (20) ────────────────────────────────────────────
+    "Fermentation is a metabolic process where microorganisms convert sugars into acids, gases, or alcohol, producing foods like yogurt, kimchi, sourdough bread, and wine.",
+    "The Maillard reaction between amino acids and reducing sugars creates the complex flavors and brown colors in seared steaks, toasted bread, and roasted coffee beans.",
+    "Sous vide cooking seals food in vacuum bags and heats it in a precisely controlled water bath, achieving uniform doneness impossible with conventional methods.",
+    "Umami, the fifth basic taste, was identified by Japanese chemist Kikunae Ikeda in 1908 and is associated with glutamate found in aged cheeses, soy sauce, and mushrooms.",
+    "Sourdough bread relies on a symbiotic culture of wild yeast and lactic acid bacteria rather than commercial yeast, producing complex flavors and improved digestibility.",
+    "The French culinary technique mise en place, meaning everything in its place, emphasizes preparing and organizing all ingredients before cooking begins.",
+    "Chocolate production involves fermenting, drying, roasting, and grinding cacao beans, then conching the resulting paste for hours to develop smooth texture and flavor.",
+    "Sushi originated in Southeast Asia as a method of preserving fish in fermented rice, evolving in Japan into the fresh preparation known worldwide today.",
+    "Olive oil is produced by crushing olives and separating the oil from the pulp, with extra virgin oil from the first cold pressing considered the highest quality.",
+    "The spice trade drove European exploration from the 15th century onward, with pepper, cinnamon, cloves, and nutmeg worth more than gold by weight.",
+    "Bread baking relies on gluten networks formed from wheat proteins, which trap carbon dioxide produced by yeast to create the airy crumb structure.",
+    "Smoking food preserves it through a combination of low heat, dehydration, and antimicrobial compounds in wood smoke, dating back thousands of years.",
+    "Molecular gastronomy applies scientific techniques like spherification, gelification, and emulsification to create innovative textures and presentations in modern cuisine.",
+    "Coffee beans undergo complex chemical transformations during roasting, developing over 800 volatile compounds that contribute to aroma, flavor, and body.",
+    "Tempering chocolate involves carefully heating and cooling melted chocolate to form stable cocoa butter crystals, producing a glossy finish and satisfying snap.",
+    "The terroir concept in winemaking holds that soil composition, climate, and topography impart unique characteristics to grapes grown in specific regions.",
+    "Brining meat in salt water denatures proteins and increases moisture retention, resulting in juicier poultry and pork after cooking.",
+    "Fermented fish sauces like garum in ancient Rome and modern nam pla in Thailand provide concentrated umami flavor through protein breakdown by salt-tolerant bacteria.",
+    "The Scoville scale measures the pungency of chili peppers based on capsaicin concentration, ranging from zero for bell peppers to over two million for Carolina Reapers.",
+    "Traditional Japanese dashi broth combines kombu seaweed and bonito flakes to create a foundation of umami flavor that underlies most of Japanese cuisine.",
+    # ── Environment & geography (25) ───────────────────────────────────
+    "Coral reefs support approximately 25 percent of all marine species despite covering less than one percent of the ocean floor, making them among the most biodiverse ecosystems on Earth.",
+    "Permafrost in the Arctic contains an estimated 1.5 trillion metric tons of organic carbon, roughly twice the amount currently in the atmosphere as carbon dioxide.",
+    "The Amazon rainforest produces about 20 percent of the world's oxygen and contains roughly 10 percent of all species known to science.",
+    "Ocean acidification caused by dissolved carbon dioxide threatens marine organisms that build shells from calcium carbonate, including corals, oysters, and plankton.",
+    "The Great Barrier Reef stretches over 2,300 kilometers along Australia's northeast coast, visible from space and supporting over 1,500 species of fish.",
+    "Desertification converts fertile land to desert through climate change, deforestation, and unsustainable agriculture, affecting over 2 billion people worldwide.",
+    "Mangrove forests protect coastlines from storm surges and erosion while serving as nursery habitats for commercially important fish and shrimp species.",
+    "The thermohaline circulation is a global ocean conveyor belt driven by differences in water temperature and salinity, redistributing heat across the planet.",
+    "Urban heat islands raise city temperatures several degrees above surrounding rural areas due to concrete, asphalt, reduced vegetation, and waste heat from human activity.",
+    "Wetlands filter pollutants, store floodwater, and sequester carbon while supporting diverse wildlife, yet over 35 percent have been lost since 1970.",
+    "The ozone layer in the stratosphere absorbs over 97 percent of the Sun's harmful ultraviolet radiation, protecting life on Earth from DNA damage.",
+    "Glacial retreat has accelerated worldwide, with major ice sheets in Greenland and Antarctica losing over 400 billion tons of ice annually.",
+    "Biodiversity hotspots are regions with at least 1,500 endemic plant species that have lost over 70 percent of their original habitat.",
+    "The Mariana Trench reaches a depth of nearly 11,000 meters, hosting organisms adapted to extreme pressure, darkness, and cold temperatures.",
+    "El Nino is a climate pattern caused by warming of the eastern Pacific Ocean that disrupts weather patterns worldwide, affecting agriculture, fisheries, and rainfall.",
+    "Phytoplankton produce approximately half of the world's oxygen through photosynthesis and form the base of marine food chains.",
+    "Deforestation in tropical regions releases stored carbon and destroys habitats for millions of species, contributing to both climate change and biodiversity loss.",
+    "The water cycle continuously moves water between oceans, atmosphere, and land through evaporation, condensation, precipitation, and runoff.",
+    "Microplastics smaller than 5 millimeters have been found in every ocean, in drinking water, in the atmosphere, and even in human blood samples.",
+    "The Sahara Desert was a lush savanna just 10,000 years ago, supporting hippos, crocodiles, and early human settlements around now-vanished lakes.",
+    "Keystone species like wolves and sea otters have disproportionate effects on their ecosystems, and their removal triggers cascading changes in community structure.",
+    "The Antarctic ice sheet contains enough frozen water to raise global sea levels by about 58 meters if it were to melt completely.",
+    "Light pollution from artificial sources disrupts wildlife behavior, interferes with astronomical observation, and affects human circadian rhythms and sleep quality.",
+    "Volcanic eruptions can inject sulfur dioxide into the stratosphere, forming aerosols that reflect sunlight and temporarily cool the Earth's surface.",
+    "The Ring of Fire encircling the Pacific Ocean contains 75 percent of the world's active volcanoes and experiences about 90 percent of all earthquakes.",
+    # ── Mathematics (20) ───────────────────────────────────────────────
+    "The Riemann hypothesis, one of the most important unsolved problems in mathematics, concerns the distribution of prime numbers and the zeros of the Riemann zeta function.",
+    "Fourier transforms decompose signals into constituent frequencies, forming the mathematical foundation for applications from audio compression to medical imaging.",
+    "Euler's identity, e to the i pi plus one equals zero, elegantly connects five fundamental mathematical constants in a single equation.",
+    "The central limit theorem states that the sum of many independent random variables tends toward a normal distribution regardless of the original distributions.",
+    "Godel's incompleteness theorems prove that any consistent formal system powerful enough to express arithmetic contains statements that cannot be proven within the system.",
+    "Group theory studies algebraic structures consisting of a set with a binary operation satisfying closure, associativity, identity, and inverse properties.",
+    "The Fibonacci sequence, where each number is the sum of the two preceding ones, appears in natural phenomena from flower petals to spiral galaxies.",
+    "Bayesian statistics updates probability estimates as new evidence becomes available, using Bayes' theorem to combine prior beliefs with observed data.",
+    "Topology studies properties of spaces preserved under continuous deformations, where a coffee cup and a donut are considered equivalent because each has one hole.",
+    "The four color theorem proves that any planar map can be colored using at most four colors such that no two adjacent regions share the same color.",
+    "Chaos theory studies deterministic systems that are highly sensitive to initial conditions, where tiny changes can produce vastly different outcomes.",
+    "The P versus NP problem asks whether every problem whose solution can be quickly verified can also be quickly solved, with implications for cryptography.",
+    "Matrix decompositions like SVD and eigendecomposition are fundamental tools in data science, enabling dimensionality reduction, compression, and recommendation systems.",
+    "Non-Euclidean geometry describes curved spaces where parallel lines can converge or diverge, forming the mathematical basis for Einstein's general theory of relativity.",
+    "The Navier-Stokes equations describe the motion of viscous fluids, and proving their smooth solutions exist in three dimensions remains an unsolved Millennium Prize problem.",
+    "Information theory, founded by Claude Shannon, quantifies the fundamental limits of data compression and reliable communication through noisy channels.",
+    "Fractals are self-similar patterns that repeat at every scale, with the Mandelbrot set being the most famous example of infinite complexity from a simple formula.",
+    "Combinatorics studies counting, arrangement, and combination of discrete structures, with applications from scheduling problems to DNA sequence analysis.",
+    "The prime number theorem describes the asymptotic distribution of primes, showing that the probability of a random integer near N being prime is approximately 1/ln(N).",
+    "Stochastic processes model systems that evolve randomly over time, with Brownian motion and Markov chains being foundational examples in physics and finance.",
+    # ── Sports (15) ────────────────────────────────────────────────────
+    "Moneyball analytics revolutionized baseball by using statistical analysis to identify undervalued players, demonstrating that data-driven decisions could outperform traditional scouting.",
+    "The marathon distance of 26.2 miles was standardized at the 1908 London Olympics when the course was extended so the finish line would be in front of the royal viewing box.",
+    "The offside rule in soccer prevents attackers from positioning themselves behind the last defender before the ball is played, encouraging dynamic attacking play.",
+    "Altitude training exploits the body's adaptation to lower oxygen levels, stimulating red blood cell production and improving endurance performance at sea level.",
+    "The Fosbury Flop revolutionized high jumping in 1968 when Dick Fosbury won Olympic gold by going over the bar backwards, replacing the straddle technique.",
+    "Cricket's Duckworth-Lewis-Stern method uses mathematical models to set revised targets in rain-interrupted matches, accounting for overs lost and wickets fallen.",
+    "Plyometric training uses explosive jumping and bounding exercises to increase power output by exploiting the stretch-shortening cycle of muscles and tendons.",
+    "The Tour de France covers approximately 3,500 kilometers over 21 stages across three weeks, testing cyclists' endurance, climbing ability, and time trial speed.",
+    "Video assistant referee technology uses multiple camera angles and replay to review game-changing decisions in soccer, reducing officiating errors at the cost of flow.",
+    "The ancient Olympic Games were held every four years in Olympia, Greece, from 776 BCE for over a millennium, featuring events from footraces to chariot racing.",
+    "Lactate threshold marks the exercise intensity above which blood lactate accumulates faster than the body can clear it, limiting sustained high-intensity performance.",
+    "Sabermetrics applies statistical methods to baseball, measuring player contributions through metrics like wins above replacement and on-base plus slugging percentage.",
+    "The triple jump combines a hop, step, and jump sequence, requiring athletes to master the biomechanics of three consecutive takeoffs and landings.",
+    "Sports psychology uses mental techniques including visualization, goal setting, and mindfulness to enhance athletic performance and manage competition anxiety.",
+    "The Paralympic Games showcase elite athletic competition among athletes with physical, visual, and intellectual disabilities, challenging perceptions of ability and human potential.",
+    # ── Music & art (20) ───────────────────────────────────────────────
+    "Counterpoint in music combines two or more independent melodic lines into a harmonious texture, reaching its pinnacle in the fugues of Johann Sebastian Bach.",
+    "Impressionist painters like Monet and Renoir captured fleeting effects of light and color using visible brushstrokes and vibrant palettes, breaking from academic tradition.",
+    "Jazz improvisation requires musicians to spontaneously create melodies over harmonic frameworks, combining technical skill with creative expression and deep listening.",
+    "The golden ratio, approximately 1.618, appears in the proportions of artworks from the Parthenon to Leonardo da Vinci's Vitruvian Man.",
+    "Digital audio workstations enable musicians to record, edit, and mix multitrack audio on personal computers, democratizing music production.",
+    "Perspective drawing, formalized during the Renaissance, creates the illusion of three-dimensional depth on a two-dimensional surface using vanishing points.",
+    "The twelve-tone technique developed by Arnold Schoenberg treats all twelve notes of the chromatic scale equally, eliminating tonal hierarchy.",
+    "Abstract expressionism, led by artists like Pollock and Rothko, emphasized spontaneous emotional expression through large-scale non-representational canvases.",
+    "Sonata form structures many classical compositions into exposition, development, and recapitulation sections, providing a framework for thematic development.",
+    "Photography transformed visual documentation when Daguerre and Fox Talbot independently developed practical photographic processes in the late 1830s.",
+    "The blues scale and its characteristic bent notes originated in African American communities, forming the harmonic foundation of jazz, rock, and soul music.",
+    "Gothic architecture employed pointed arches, ribbed vaults, and flying buttresses to create soaring interior spaces filled with light from stained glass windows.",
+    "Electronic music synthesis generates sound using oscillators, filters, and modulators, enabling timbres impossible with acoustic instruments.",
+    "Cubism, pioneered by Picasso and Braque, represented subjects from multiple viewpoints simultaneously, fragmenting three-dimensional forms onto a flat canvas.",
+    "The pentatonic scale, consisting of five notes per octave, appears in musical traditions worldwide from Chinese folk music to Celtic melodies to West African drumming.",
+    "Chiaroscuro technique uses strong contrasts between light and dark to create dramatic three-dimensional effects in paintings, perfected by Caravaggio and Rembrandt.",
+    "Hip hop emerged in the Bronx during the 1970s, combining DJing, MCing, breakdancing, and graffiti art into a cultural movement that became globally dominant.",
+    "Printmaking techniques including woodcut, etching, and lithography enabled artists to produce multiple copies of images, making art accessible to wider audiences.",
+    "Modal jazz, exemplified by Miles Davis's Kind of Blue, uses musical modes rather than chord progressions as the basis for improvisation.",
+    "Art nouveau embraced organic forms inspired by plants and flowers, integrating decorative arts with architecture in the late 19th and early 20th centuries.",
+    # ── Technology & computing (25) ────────────────────────────────────
+    "Relational databases organize data into tables with rows and columns, using SQL to query and manipulate structured information with ACID transaction guarantees.",
+    "Containerization using Docker packages applications with their dependencies into isolated units that run consistently across different computing environments.",
+    "The TCP/IP protocol suite enables reliable data transmission across the internet by breaking messages into packets, routing them independently, and reassembling them.",
+    "MapReduce processes massive datasets by distributing computations across clusters of machines, with a map phase that transforms data and a reduce phase that aggregates results.",
+    "Version control systems like Git track changes to source code over time, enabling collaboration through branching, merging, and distributed repositories.",
+    "Garbage collection automatically reclaims memory no longer in use by a program, preventing memory leaks at the cost of occasional performance pauses.",
+    "The CAP theorem states that a distributed system cannot simultaneously guarantee consistency, availability, and partition tolerance, requiring tradeoffs.",
+    "Functional programming treats computation as evaluation of mathematical functions, avoiding mutable state and side effects to produce more predictable code.",
+    "Load balancers distribute incoming network traffic across multiple servers to ensure no single server bears too much demand, improving availability and responsiveness.",
+    "Public key cryptography uses mathematically related key pairs where data encrypted with one key can only be decrypted with the other, enabling secure communication.",
+    "Microservices architecture decomposes applications into small, independently deployable services that communicate through APIs, improving scalability and development velocity.",
+    "The halting problem, proved undecidable by Alan Turing in 1936, demonstrates that no algorithm can determine whether an arbitrary program will eventually stop.",
+    "Consensus algorithms like Raft and Paxos enable distributed systems to agree on a single value even when some nodes fail or messages are delayed.",
+    "Edge computing processes data near its source rather than in centralized data centers, reducing latency for applications like autonomous vehicles and IoT devices.",
+    "Regular expressions define search patterns using a formal language, enabling powerful text matching, validation, and extraction across programming languages.",
+    "Virtual machines emulate complete computer systems in software, allowing multiple operating systems to run simultaneously on a single physical host.",
+    "The PageRank algorithm ranks web pages by analyzing the link structure of the internet, treating links as votes of confidence from one page to another.",
+    "WebAssembly enables near-native performance in web browsers by compiling languages like C, Rust, and Go into a portable binary instruction format.",
+    "Graph databases store data as nodes and relationships rather than tables, excelling at traversing complex connections like social networks and recommendation engines.",
+    "Content delivery networks cache content at geographically distributed edge servers, reducing latency and bandwidth costs for serving web content to global audiences.",
+    "Zero-knowledge proofs allow one party to prove knowledge of a value without revealing the value itself, enabling privacy-preserving authentication and transactions.",
+    "Continuous integration automatically builds and tests code changes as they are committed, catching integration errors early before they reach production.",
+    "Object-relational mapping translates between object-oriented programming constructs and relational database schemas, simplifying data persistence in application code.",
+    "The observer pattern notifies dependent objects of state changes, decoupling event producers from consumers and enabling reactive programming architectures.",
+    "Turing completeness describes a system capable of simulating any Turing machine, meaning it can compute anything that is theoretically computable.",
+    # ── Psychology & sociology (15) ────────────────────────────────────
+    "The Stanford prison experiment demonstrated how quickly ordinary people adopt authoritarian roles when placed in positions of power within institutional settings.",
+    "Cognitive dissonance describes the mental discomfort experienced when holding contradictory beliefs, often resolved by changing attitudes to align with behavior.",
+    "Maslow's hierarchy of needs organizes human motivations from basic physiological requirements through safety, belonging, and esteem to self-actualization at the top.",
+    "The bystander effect shows that individuals are less likely to offer help in an emergency when other people are present, diffusing personal responsibility.",
+    "Confirmation bias leads people to seek, interpret, and remember information that confirms their existing beliefs while dismissing contradictory evidence.",
+    "Attachment theory describes how the bond between infants and caregivers shapes emotional development and influences relationship patterns throughout life.",
+    "The Dunning-Kruger effect is a cognitive bias where people with limited knowledge overestimate their competence while experts tend to underestimate their abilities.",
+    "Social identity theory explains how membership in groups shapes self-concept and drives in-group favoritism and out-group discrimination.",
+    "Flow state, described by Csikszentmihalyi, is a mental state of complete absorption in an activity where time perception alters and performance peaks.",
+    "The Milgram obedience experiments showed that ordinary people would administer seemingly dangerous electric shocks to strangers when instructed by an authority figure.",
+    "Mirror neurons fire both when performing an action and when observing the same action performed by another, potentially underlying empathy and imitation learning.",
+    "Stereotype threat occurs when awareness of negative stereotypes about one's group impairs cognitive performance in high-stakes testing situations.",
+    "Operant conditioning shapes behavior through reinforcement and punishment, with variable-ratio schedules producing the most persistent behavioral patterns.",
+    "The mere exposure effect demonstrates that people tend to develop preferences for things simply because they are familiar with them.",
+    "Learned helplessness occurs when repeated exposure to uncontrollable events leads individuals to believe they cannot influence outcomes, even when they can.",
+    # ── Linguistics & language (10) ────────────────────────────────────
+    "The Sapir-Whorf hypothesis proposes that the structure of a language influences its speakers' worldview and cognitive processes, though the strong version remains controversial.",
+    "Chomsky's universal grammar theory posits that all human languages share an underlying structural framework hardwired into the brain from birth.",
+    "Pidgin languages arise as simplified communication systems between groups with no common language, sometimes evolving into fully complex creole languages over generations.",
+    "The International Phonetic Alphabet provides a standardized system for transcribing the sounds of spoken language using symbols that represent individual phonemes.",
+    "Code-switching occurs when bilingual speakers alternate between two or more languages within a single conversation, often triggered by social context or topic.",
+    "Etymology traces the historical development of words across languages, revealing connections like the shared Indo-European root of English father, German Vater, and Latin pater.",
+    "Sign languages are complete natural languages with their own grammar and syntax, expressed through hand shapes, facial expressions, and body movements.",
+    "The Great Vowel Shift between the 14th and 17th centuries dramatically changed English pronunciation, explaining why English spelling often seems inconsistent.",
+    "Pragmatics studies how context influences meaning beyond the literal words spoken, including implications, presuppositions, and speech acts.",
+    "Language extinction occurs at a rate of roughly one language every two weeks, with over 40 percent of the world's 7,000 languages now endangered.",
+    # ── Semantic near-duplicates (30 — testing similarity preservation) ─
+    "Quantum computers use qubits in superposition to solve problems that would take classical computers billions of years, operating at temperatures colder than outer space.",
+    "The transformer model replaced sequential processing with parallel self-attention, enabling breakthroughs in machine translation, text generation, and protein structure prediction.",
+    "CRISPR technology allows precise genetic modification of DNA, with applications ranging from disease treatment to agricultural improvement and basic scientific research.",
+    "Neural network architecture search automates the design of deep learning models, using optimization algorithms to find configurations that outperform human-designed architectures.",
+    "The Silk Road was an ancient network of trade routes connecting East Asia to the Mediterranean, enabling cultural exchange alongside commerce in luxury goods.",
+    "Lithium batteries power modern portable electronics and electric vehicles through electrochemical reactions that reversibly shuttle ions between electrodes during charge and discharge cycles.",
+    "Supply chains span global networks of manufacturing, logistics, and distribution, requiring sophisticated optimization to balance cost efficiency with resilience against disruptions.",
+    "mRNA vaccine technology programs cells to produce viral proteins that stimulate an immune response, providing protection without using live or inactivated virus particles.",
+    "Coral reef ecosystems harbor extraordinary biodiversity, with complex food webs supporting thousands of fish species, invertebrates, and symbiotic algae in tropical waters.",
+    "The Riemann hypothesis proposes that all non-trivial zeros of the zeta function have real part equal to one half, with profound implications for number theory.",
+    "Immunotherapy harnesses the body's immune defenses against tumors, training white blood cells to identify and eliminate malignant cells with unprecedented precision.",
+    "The printing revolution that Gutenberg started made written knowledge reproducible at scale, accelerating the Reformation, scientific revolution, and spread of literacy.",
+    "Blockchain creates tamper-resistant distributed ledgers by chaining cryptographic hashes, enabling trust between parties without requiring a central authority.",
+    "Photovoltaic cells convert sunlight to electricity using semiconductor junctions, with perovskite materials now rivaling traditional silicon in conversion efficiency.",
+    "The Amazon basin holds the largest tropical forest on Earth, generating its own rainfall patterns and harboring a tenth of all known animal and plant species.",
+    "Bayesian inference updates beliefs systematically as new observations arrive, combining prior probability distributions with likelihoods to compute posterior estimates.",
+    "Containerized deployment isolates applications and dependencies in lightweight packages that run identically across development, testing, and production environments.",
+    "The golden ratio permeates art and architecture from ancient Greece to the modern day, appearing in the proportions of the Parthenon and Renaissance paintings.",
+    "Fermented foods like kombucha, miso, and sauerkraut contain beneficial bacteria that support gut health and may strengthen the immune system.",
+    "Graph neural networks extend deep learning to non-Euclidean data structures, enabling predictions on molecular graphs, social networks, and knowledge bases.",
+    "Epigenetic modifications like DNA methylation and histone acetylation regulate gene expression without changing the genetic code itself, influencing development and disease.",
+    "The offside trap is a defensive soccer tactic where defenders step forward in unison just before a pass, catching attackers in an offside position.",
+    "Gravitational lensing bends light from distant galaxies around massive objects, allowing astronomers to study objects otherwise too faint or distant to observe directly.",
+    "The CAP theorem forces architects of distributed databases to choose between strong consistency and high availability when network partitions occur.",
+    "Sourdough fermentation relies on a symbiotic community of wild lactobacilli and yeasts that produce organic acids, giving the bread its distinctive tangy flavor.",
+    "Universal basic income provides unconditional cash transfers to all citizens, debated as a potential solution to automation-driven unemployment and income inequality.",
+    "Fractals exhibit self-similarity across scales, with natural examples including coastlines, fern leaves, blood vessel networks, and the branching patterns of rivers.",
+    "The bystander effect reduces individual likelihood of intervening in emergencies as group size increases, with diffusion of responsibility as the primary psychological mechanism.",
+    "Spintronics encodes data in the quantum spin of electrons rather than their charge, promising devices that are faster, smaller, and more energy-efficient than conventional electronics.",
+    "Product quantization splits high-dimensional vectors into sub-vectors and independently quantizes each with a small codebook, enabling compact approximate nearest neighbor search.",
+]
+
+
+def fetch_embeddings(passages: list[str], api_key: str) -> np.ndarray:
+    """Fetch embeddings from OpenAI text-embedding-3-small."""
+    # Use urllib to avoid adding requests as a dependency
+    import urllib.request
+
+    url = "https://api.openai.com/v1/embeddings"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    # Batch all passages in one request (limit 2048)
+    payload = json.dumps({
+        "input": passages,
+        "model": "text-embedding-3-small",
+    }).encode()
+
+    req = urllib.request.Request(url, data=payload, headers=headers, method="POST")
+
+    print(f"Requesting {len(passages)} embeddings from OpenAI...")
+    t0 = time.time()
+    with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
+        result = json.loads(resp.read().decode())
+    elapsed = time.time() - t0
+    print(f"Received {len(result['data'])} embeddings in {elapsed:.1f}s")
+    print(f"Model: {result['model']}, Usage: {result['usage']}")
+
+    # Extract and stack into (n, dim) array
+    embeddings = [item["embedding"] for item in sorted(result["data"], key=lambda x: x["index"])]
+    return np.array(embeddings, dtype=np.float32)
+
+
+def main() -> None:
+    """Generate and save embeddings."""
+    api_key = os.environ.get("OPENAI_API_KEY", "")
+    if not api_key:
+        print("ERROR: OPENAI_API_KEY not set. Source the .env file first.")
+        sys.exit(1)
+
+    out_dir = Path(__file__).parent / "data"
+    out_dir.mkdir(exist_ok=True)
+
+    embeddings = fetch_embeddings(PASSAGES, api_key)
+    print(f"Embedding matrix shape: {embeddings.shape}")
+    print(f"Embedding dtype: {embeddings.dtype}")
+    print(f"Embedding range: [{embeddings.min():.4f}, {embeddings.max():.4f}]")
+
+    # Save embeddings and passages
+    np.save(out_dir / "embeddings.npy", embeddings)
+    with open(out_dir / "passages.json", "w", encoding="utf-8") as f:
+        json.dump(PASSAGES, f, indent=2)
+
+    # Save metadata
+    meta = {
+        "model": "text-embedding-3-small",
+        "dimension": embeddings.shape[1],
+        "num_passages": len(PASSAGES),
+        "dtype": "float32",
+        "bytes_per_vector": int(embeddings.shape[1] * 4),
+        "total_bytes_fp32": int(embeddings.nbytes),
+    }
+    with open(out_dir / "metadata.json", "w", encoding="utf-8") as f:
+        json.dump(meta, f, indent=2)
+
+    print(f"\nSaved to {out_dir}/")
+    print(f"  embeddings.npy: {embeddings.nbytes:,} bytes")
+    print(f"  passages.json: {len(PASSAGES)} passages")
+    print(f"  metadata.json: experiment metadata")
+
+
+if __name__ == "__main__":
+    main()

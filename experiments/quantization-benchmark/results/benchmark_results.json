@@ -1,0 +1,136 @@
+{
+  "metadata": {
+    "model": "text-embedding-3-small",
+    "dimension": 1536,
+    "num_passages": 335,
+    "dtype": "float32",
+    "bytes_per_vector": 6144,
+    "total_bytes_fp32": 2058240
+  },
+  "config": {
+    "seed": 42,
+    "num_queries": 20,
+    "top_k": 5,
+    "num_vectors": 335,
+    "dimension": 1536
+  },
+  "results": [
+    {
+      "name": "FP32 (baseline)",
+      "bits_per_dim": 32.0,
+      "bytes_per_vector": 6144,
+      "total_bytes": 2058240,
+      "compression_ratio": 1.0,
+      "pearson_rho": 1.0,
+      "mse": 0.0,
+      "top_k_recall": 1.0,
+      "compress_time_ms": 0.0,
+      "decompress_time_ms": 0.0,
+      "notes": "Uncompressed reference"
+    },
+    {
+      "name": "FP16",
+      "bits_per_dim": 16.0,
+      "bytes_per_vector": 3072,
+      "total_bytes": 1029120,
+      "compression_ratio": 2.0,
+      "pearson_rho": 1.0,
+      "mse": 0.0,
+      "top_k_recall": 1.0,
+      "compress_time_ms": 1.04,
+      "decompress_time_ms": 0.74,
+      "notes": "Direct float16 cast"
+    },
+    {
+      "name": "uint8 scalar",
+      "bits_per_dim": 8.042,
+      "bytes_per_vector": 1544,
+      "total_bytes": 517240,
+      "compression_ratio": 3.98,
+      "pearson_rho": 0.999997,
+      "mse": 4e-08,
+      "top_k_recall": 1.0,
+      "compress_time_ms": 3.24,
+      "decompress_time_ms": 3.39,
+      "notes": "Per-vector min/max normalization"
+    },
+    {
+      "name": "PQ (M=96, simulated)",
+      "bits_per_dim": 0.5,
+      "bytes_per_vector": 96,
+      "total_bytes": 1605024,
+      "compression_ratio": 1.28,
+      "pearson_rho": 0.999999,
+      "mse": 1e-08,
+      "top_k_recall": 1.0,
+      "compress_time_ms": 5.15,
+      "decompress_time_ms": 3.06,
+      "notes": "M=96 sub-quantizers, 256 centroids, sub_dim=16"
+    },
+    {
+      "name": "TinyQuant 8-bit",
+      "bits_per_dim": 8.0,
+      "bytes_per_vector": 1536.0,
+      "total_bytes": 514560,
+      "compression_ratio": 4.0,
+      "pearson_rho": 0.99996,
+      "mse": 6e-07,
+      "top_k_recall": 0.99,
+      "compress_time_ms": 875.29,
+      "decompress_time_ms": 191.62,
+      "notes": "seed=42, residual=no"
+    },
+    {
+      "name": "TinyQuant 4-bit",
+      "bits_per_dim": 4.0,
+      "bytes_per_vector": 768.0,
+      "total_bytes": 257280,
+      "compression_ratio": 8.0,
+      "pearson_rho": 0.9981,
+      "mse": 3.21e-05,
+      "top_k_recall": 0.95,
+      "compress_time_ms": 263.1,
+      "decompress_time_ms": 203.18,
+      "notes": "seed=42, residual=no"
+    },
+    {
+      "name": "TinyQuant 4-bit + residual",
+      "bits_per_dim": 20.0,
+      "bytes_per_vector": 3840.0,
+      "total_bytes": 1286400,
+      "compression_ratio": 1.6,
+      "pearson_rho": 1.0,
+      "mse": 0.0,
+      "top_k_recall": 1.0,
+      "compress_time_ms": 208.62,
+      "decompress_time_ms": 194.34,
+      "notes": "seed=42, residual=yes"
+    },
+    {
+      "name": "TinyQuant 2-bit",
+      "bits_per_dim": 2.0,
+      "bytes_per_vector": 384.0,
+      "total_bytes": 128640,
+      "compression_ratio": 16.0,
+      "pearson_rho": 0.964271,
+      "mse": 0.00032077,
+      "top_k_recall": 0.85,
+      "compress_time_ms": 176.44,
+      "decompress_time_ms": 231.04,
+      "notes": "seed=42, residual=no"
+    },
+    {
+      "name": "TinyQuant 2-bit + residual",
+      "bits_per_dim": 18.0,
+      "bytes_per_vector": 3456.0,
+      "total_bytes": 1157760,
+      "compression_ratio": 1.78,
+      "pearson_rho": 1.0,
+      "mse": 0.0,
+      "top_k_recall": 1.0,
+      "compress_time_ms": 216.9,
+      "decompress_time_ms": 182.02,
+      "notes": "seed=42, residual=yes"
+    }
+  ]
+}
