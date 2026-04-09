@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from tinyquant.backend.protocol import SearchResult
+from tinyquant_cpu.backend.protocol import SearchResult
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence

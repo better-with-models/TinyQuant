@@ -8,8 +8,8 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 
-from tinyquant.codec.codec_config import CodecConfig
-from tinyquant.codec.rotation_matrix import RotationMatrix
+from tinyquant_cpu.codec.codec_config import CodecConfig
+from tinyquant_cpu.codec.rotation_matrix import RotationMatrix
 
 # ---------------------------------------------------------------------------
 # Factory construction

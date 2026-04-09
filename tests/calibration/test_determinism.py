@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from tinyquant.codec.codec import Codec
-from tinyquant.codec.codec_config import CodecConfig
-from tinyquant.codec.compressed_vector import CompressedVector
+from tinyquant_cpu.codec.codec import Codec
+from tinyquant_cpu.codec.codec_config import CodecConfig
+from tinyquant_cpu.codec.compressed_vector import CompressedVector
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from tinyquant.codec.codebook import Codebook
+    from tinyquant_cpu.codec.codebook import Codebook
 
 
 def test_compress_deterministic_across_calls(

@@ -8,16 +8,16 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 from numpy.typing import NDArray
 
-from tinyquant.codec._errors import (
+from tinyquant_cpu.codec._errors import (
     CodebookIncompatibleError,
     ConfigMismatchError,
     DimensionMismatchError,
 )
-from tinyquant.codec._quantize import scalar_dequantize, scalar_quantize
-from tinyquant.codec.codebook import Codebook
-from tinyquant.codec.codec import Codec, compress, decompress
-from tinyquant.codec.codec_config import CodecConfig
-from tinyquant.codec.compressed_vector import CompressedVector
+from tinyquant_cpu.codec._quantize import scalar_dequantize, scalar_quantize
+from tinyquant_cpu.codec.codebook import Codebook
+from tinyquant_cpu.codec.codec import Codec, compress, decompress
+from tinyquant_cpu.codec.codec_config import CodecConfig
+from tinyquant_cpu.codec.compressed_vector import CompressedVector
 
 # ---------------------------------------------------------------------------
 # Fixtures local to this module

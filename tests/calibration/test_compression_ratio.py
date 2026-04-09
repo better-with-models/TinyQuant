@@ -12,9 +12,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from tinyquant.codec.codec import Codec
-from tinyquant.codec.codec_config import CodecConfig
-from tinyquant.codec.compressed_vector import (
+from tinyquant_cpu.codec.codec import Codec
+from tinyquant_cpu.codec.codec_config import CodecConfig
+from tinyquant_cpu.codec.compressed_vector import (
     _HEADER_FORMAT,
     _HEADER_SIZE,
 )
@@ -22,7 +22,7 @@ from tinyquant.codec.compressed_vector import (
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from tinyquant.codec.codebook import Codebook
+    from tinyquant_cpu.codec.codebook import Codebook
 
 
 def test_4bit_compression_ratio(

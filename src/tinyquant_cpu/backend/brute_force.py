@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from tinyquant.backend.protocol import SearchResult
+from tinyquant_cpu.backend.protocol import SearchResult
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
