@@ -1,0 +1,8 @@
+{
+  "model": "text-embedding-3-small",
+  "dimension": 1536,
+  "num_passages": 335,
+  "dtype": "float32",
+  "bytes_per_vector": 6144,
+  "total_bytes_fp32": 2058240
+}

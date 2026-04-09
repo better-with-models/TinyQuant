@@ -61,6 +61,8 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "TCH", "ANN401", "S608"]
+# The sentence corpus is inherently long-form; line-wrap would mangle it.
+"experiments/quantization-benchmark/generate_embeddings.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -71,6 +73,13 @@ no_implicit_reexport = true
 
 [[tool.mypy.overrides]]
 module = "psycopg.*"
+ignore_missing_imports = true
+
+# matplotlib is only used by experiments/quantization-benchmark/generate_plots.py
+# and is intentionally not pinned as a core dev dep — so allow mypy to proceed
+# without type stubs when it isn't installed.
+[[tool.mypy.overrides]]
+module = "matplotlib.*"
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
