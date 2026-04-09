@@ -25,18 +25,23 @@ jobs:
       - name: Extract and verify version
         id: check
         run: |
+          set -euo pipefail
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          PKG_VERSION=$(python -c "
-          import tomllib
-          with open('pyproject.toml', 'rb') as f:
-              print(tomllib.load(f)['project']['version'])
-          ")
-          INIT_VERSION=$(python -c "
-          import re, pathlib
-          text = pathlib.Path('src/tinyquant_cpu/__init__.py').read_text(encoding='utf-8')
-          m = re.search(r'__version__\s*=\s*[\'\"]([^\'\"]+)[\'\"]', text)
-          print(m.group(1) if m else '')
-          ")
+          PKG_VERSION=$(grep -m1 -E '^version = "' pyproject.toml | sed -E 's/^version = "([^"]+)".*/\1/')
+          INIT_VERSION=$(grep -m1 -E '^__version__ = "' src/tinyquant_cpu/__init__.py | sed -E 's/^__version__ = "([^"]+)".*/\1/')
+          echo "Resolved versions: tag=[$TAG_VERSION] pyproject=[$PKG_VERSION] __init__=[$INIT_VERSION]"
+          if [[ -z "$TAG_VERSION" ]]; then
+            echo "::error::GITHUB_REF_NAME='${GITHUB_REF_NAME:-<unset>}' did not resolve to a non-empty tag version"
+            exit 1
+          fi
+          if [[ -z "$PKG_VERSION" ]]; then
+            echo "::error::Could not extract version from pyproject.toml"
+            exit 1
+          fi
+          if [[ -z "$INIT_VERSION" ]]; then
+            echo "::error::Could not extract __version__ from src/tinyquant_cpu/__init__.py"
+            exit 1
+          fi
           if [[ "$TAG_VERSION" != "$PKG_VERSION" ]]; then
             echo "::error::Tag v$TAG_VERSION does not match pyproject.toml version $PKG_VERSION"
             exit 1
@@ -123,6 +128,7 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          skip-existing: true
 
       - uses: actions/setup-python@v6
         with:
