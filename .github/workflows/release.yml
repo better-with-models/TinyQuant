@@ -63,14 +63,11 @@ jobs:
       - name: Research alignment
         run: pytest tests/calibration/test_research_alignment.py -x --tb=long
 
-  publish-testpypi:
-    name: Publish to TestPyPI
+  build:
+    name: Build Distributions
     runs-on: ubuntu-latest
     needs: [calibration-tests]
-    environment: testpypi
-    permissions:
-      id-token: write
-      contents: read
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
 
@@ -78,7 +75,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build distributions
+      - name: Build wheel and sdist
         run: |
           pip install build
           python -m build
@@ -88,16 +85,50 @@ jobs:
           pip install twine
           twine check dist/*
 
+      - name: Upload dist artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+          if-no-files-found: error
+
+  publish-testpypi:
+    name: Publish to TestPyPI
+    runs-on: ubuntu-latest
+    needs: [build]
+    environment: testpypi
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
       - name: Publish to TestPyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
 
-      - name: Verify installation from TestPyPI
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Verify installation from TestPyPI (with retry)
         run: |
-          pip install --index-url https://test.pypi.org/simple/ \
-            --extra-index-url https://pypi.org/simple/ \
-            tinyquant-cpu==${{ needs.verify-tag.outputs.version }}
+          for i in 1 2 3 4 5; do
+            if pip install \
+                --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                "tinyquant-cpu==${{ needs.verify-tag.outputs.version }}"; then
+              break
+            fi
+            echo "TestPyPI index not ready yet, retry $i/5..."
+            sleep 15
+          done
           python -c "import tinyquant_cpu; print(tinyquant_cpu.__version__)"
 
   publish-pypi:
@@ -109,16 +140,11 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - uses: actions/checkout@v5
-
-      - uses: actions/setup-python@v6
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.12"
-
-      - name: Build distributions
-        run: |
-          pip install build
-          python -m build
+          name: dist
+          path: dist/
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -126,7 +152,7 @@ jobs:
   github-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [verify-tag]
+    needs: [verify-tag, build]
     permissions:
       contents: write
     steps:
@@ -143,18 +169,17 @@ jobs:
           else
             NOTES=$(git log --pretty=format:"- %s (%h)")
           fi
-          echo "notes<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$NOTES" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          {
+            echo "notes<<EOF"
+            echo "$NOTES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@v6
+      - name: Download dist artifact
+        uses: actions/download-artifact@v4
         with:
-          python-version: "3.12"
-
-      - name: Build distributions
-        run: |
-          pip install build
-          python -m build
+          name: dist
+          path: dist/
 
       - name: Create release
         uses: softprops/action-gh-release@v2
