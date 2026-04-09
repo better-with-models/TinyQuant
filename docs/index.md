@@ -148,6 +148,10 @@ status: active
 
 ## Specs
 
+| Page | Summary | Date |
+|------|---------|------|
+| [[specs/plans/2026-04-09-github-actions-node24-upgrade\|GitHub Actions Node 24 Upgrade]] | Plan: bump artifact actions to `@v5`, replace `softprops/action-gh-release` with `gh release create`, reconcile CI/CD wiki | 2026-04-09 |
+
 ## Comparisons
 
 | Page | Summary | Date |

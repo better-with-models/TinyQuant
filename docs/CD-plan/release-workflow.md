@@ -169,7 +169,7 @@ graph TD
           twine check dist/*
 
       - name: Upload dist artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: dist
           path: dist/
@@ -196,7 +196,7 @@ filenames (`tinyquant_cpu-{version}-py3-none-any.whl` and
       contents: read
     steps:
       - name: Download dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: dist
           path: dist/
@@ -253,7 +253,7 @@ Notes:
       contents: read
     steps:
       - name: Download dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: dist
           path: dist/
@@ -310,25 +310,61 @@ immutable there.
           cat release-notes.md
 
       - name: Download dist artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: dist
           path: dist/
 
       - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          body_path: release-notes.md
-          draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Collect distribution files; fail loudly if the download step left
+          # dist/ empty so we don't pass a literal "dist/*" to gh.
+          shopt -s nullglob
+          dist_files=(dist/*)
+          shopt -u nullglob
+          if (( ${#dist_files[@]} == 0 )); then
+            echo "::error::No distribution files found in dist/"
+            exit 1
+          fi
+
+          args=(
+            "${GITHUB_REF_NAME}"
+            --title "${GITHUB_REF_NAME}"
+            --notes-file release-notes.md
+          )
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            args+=(--prerelease)
+          fi
+          args+=("${dist_files[@]}")
+
+          gh release create "${args[@]}"
 ```
 
 The release notes are generated entirely in shell and written to a
-file, which is then passed to `softprops/action-gh-release@v2` via
-`body_path:` instead of the inline `body:` template. This avoids any
-dependency on `$GITHUB_OUTPUT` heredocs (see "Why version isn't passed
-via job outputs" below).
+`release-notes.md` file by the preceding step, which is then passed to
+the `gh release create` call via `--notes-file`. The `gh` CLI is
+pre-installed on `ubuntu-latest` and authenticates through the
+`GH_TOKEN` env var populated from the job's default `GITHUB_TOKEN`
+(already scoped `contents: write`).
+
+> [!info] Why `gh release create` instead of `softprops/action-gh-release`
+> `softprops/action-gh-release@v2` still runs on Node.js 20 as of
+> 2026-04 and has no Node 24 release tagged
+> ([softprops/action-gh-release#742](https://github.com/softprops/action-gh-release/issues/742);
+> PRs #670 and #774 are still open). GitHub forces JavaScript actions
+> to Node 24 starting 2026-06-02, so we replaced the step with an
+> inline `gh` CLI call to remove the blocking third-party dependency.
+> The nullglob guard protects against a silent "literal `dist/*`"
+> failure if the download step ever produces an empty directory.
+> Prerelease detection via `[[ "${GITHUB_REF_NAME}" == *-* ]]`
+> preserves the prior `contains(github.ref_name, '-')` behavior for
+> SemVer pre-release tags like `v1.2.3-rc1`.
+
+This step also avoids any dependency on `$GITHUB_OUTPUT` heredocs (see
+"Why version isn't passed via job outputs" below) — the release notes
+file is the single coordination point between the two steps.
 
 ## Trusted publishing (OIDC)
 

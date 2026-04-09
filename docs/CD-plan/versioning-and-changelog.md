@@ -119,14 +119,18 @@ notes from commit messages between tags. These supplement but do not replace
 the curated `CHANGELOG.md`.
 
 ```yaml
-# In the release workflow
-- uses: softprops/action-gh-release@v2
-  with:
-    body: |
-      See [CHANGELOG.md](CHANGELOG.md) for details.
-
-      ## Commits since last release
-      ${{ steps.notes.outputs.notes }}
+# In the release workflow — see [[CD-plan/release-workflow|Release Workflow]]
+# for the full step. The notes are generated into release-notes.md by a
+# prior shell step (## Changes + git log + ## Installation) and consumed
+# here via gh release create --notes-file.
+- name: Create release
+  env:
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  run: |
+    gh release create "${GITHUB_REF_NAME}" \
+      --title "${GITHUB_REF_NAME}" \
+      --notes-file release-notes.md \
+      dist/*
 ```
 
 ## Release cadence
