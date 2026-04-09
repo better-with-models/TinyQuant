@@ -1,6 +1,11 @@
 {
   "config": {
     "default": true,
-    "MD013": false
+    "MD013": false,
+    // Keep a Changelog repeats the same section names (Added, Changed,
+    // Fixed, Removed, Deprecated, Security) under every version heading.
+    // That is idiomatic, not a mistake — only flag duplicates at the
+    // same heading level with the same parent.
+    "MD024": { "siblings_only": true }
   }
 }
