@@ -1,12 +1,12 @@
 """Integration tests for PgvectorAdapter → PostgreSQL (EB-02).
 
 Requires a running PostgreSQL instance with the pgvector extension.
-All tests are skipped when PGVECTOR_TEST_DSN is not set.
+The ``pgvector_dsn`` fixture (provided by ``conftest.py``) resolves
+the connection string from the environment, testcontainers, or skips.
 """
 
 from __future__ import annotations
 
-import os
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock
 
@@ -20,13 +20,7 @@ from tinyquant.backend.protocol import SearchResult
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
-_DSN = os.environ.get("PGVECTOR_TEST_DSN", "")
-_SKIP = not _DSN
-
-pytestmark = [
-    pytest.mark.skipif(_SKIP, reason="PGVECTOR_TEST_DSN not set"),
-    pytest.mark.pgvector,
-]
+pytestmark = [pytest.mark.pgvector]
 
 _TABLE = "tinyquant_test_vectors"
 _DIM = 8
@@ -38,11 +32,11 @@ _DIM = 8
 
 
 @pytest.fixture(scope="session")
-def pgvector_connection() -> Generator[Any, None, None]:
+def pgvector_connection(pgvector_dsn: str) -> Generator[Any, None, None]:
     """Session-scoped PostgreSQL connection with test table setup/teardown."""
     import psycopg
 
-    conn = psycopg.connect(_DSN)
+    conn = psycopg.connect(pgvector_dsn)
     with conn.cursor() as cur:
         cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
         cur.execute(f"DROP TABLE IF EXISTS {_TABLE}")
@@ -143,9 +137,13 @@ class TestPgvectorAdapter:
         vec = np.arange(_DIM, dtype=np.float32)
         adapter.ingest({"dim-check": vec})
         with pgvector_connection.cursor() as cur:
-            cur.execute(f"SELECT embedding FROM {_TABLE} WHERE id = 'dim-check'")
+            cur.execute(
+                f"SELECT embedding::text FROM {_TABLE} WHERE id = 'dim-check'",
+            )
             raw = cur.fetchone()[0]
-        assert len(raw) == _DIM
+        # pgvector returns '[0,1,2,...,7]'; parse to count elements
+        elements = raw.strip("[]").split(",")
+        assert len(elements) == _DIM
 
     def test_remove_deletes_from_database(
         self,
