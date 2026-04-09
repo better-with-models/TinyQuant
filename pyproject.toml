@@ -75,6 +75,13 @@ no_implicit_reexport = true
 module = "psycopg.*"
 ignore_missing_imports = true
 
+# matplotlib is only used by experiments/quantization-benchmark/generate_plots.py
+# and is intentionally not pinned as a core dev dep — so allow mypy to proceed
+# without type stubs when it isn't installed.
+[[tool.mypy.overrides]]
+module = "matplotlib.*"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--import-mode=importlib -x --tb=short"
