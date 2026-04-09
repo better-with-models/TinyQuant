@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -47,17 +48,27 @@ class RotationMatrix:
     def from_config(cls, config: CodecConfig) -> RotationMatrix:
         """Generate a rotation matrix deterministically from a codec config.
 
+        Results are cached by ``(seed, dimension)`` because the QR
+        decomposition of a 768x768 matrix is expensive.
+        """
+        return cls._cached_build(config.seed, config.dimension)
+
+    @staticmethod
+    @functools.lru_cache(maxsize=8)
+    def _cached_build(seed: int, dimension: int) -> RotationMatrix:
+        """Build and cache the rotation matrix for a ``(seed, dimension)`` pair.
+
         Uses QR decomposition of a seeded random matrix to produce a
         uniformly distributed orthogonal matrix (Haar measure).
         """
-        rng = np.random.default_rng(config.seed)
-        random_matrix = rng.standard_normal((config.dimension, config.dimension))
+        rng = np.random.default_rng(seed)
+        random_matrix = rng.standard_normal((dimension, dimension))
         q, r = np.linalg.qr(random_matrix)
         # Haar-measure sign correction: ensure deterministic sign convention.
         d = np.diag(r)
         ph = np.sign(d)
         q = q * ph[np.newaxis, :]
-        return cls(matrix=q, seed=config.seed, dimension=config.dimension)
+        return RotationMatrix(matrix=q, seed=seed, dimension=dimension)
 
     def apply(self, vector: NDArray[np.float32]) -> NDArray[np.float32]:
         """Rotate a vector: ``R @ vector``.

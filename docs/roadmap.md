@@ -37,8 +37,8 @@ gantt
         Phase 7 - Architecture & E2E Tests  :done, p7, after p6, 1
     section Delivery
         Phase 8 - CI/CD Workflows           :done, p8, after p7, 1
-        Phase 9 - Pgvector Adapter          :p9, after p8, 1
-        Phase 10 - Calibration & Release    :p10, after p9, 1
+        Phase 9 - Pgvector Adapter          :done, p9, after p8, 1
+        Phase 10 - Calibration & Release    :done, p10, after p9, 1
 ```
 
 ## Phase summary
@@ -53,12 +53,12 @@ gantt
 | 6 | Serialization | **complete** | 11 | Phase 5 | [[plans/phase-06-serialization\|Plan]] |
 | 7 | Architecture & E2E Tests | **complete** | 23 | Phase 6 | [[plans/phase-07-architecture-e2e-tests\|Plan]] |
 | 8 | CI/CD Workflows | **complete** | — | Phase 7 | [[plans/phase-08-ci-cd-workflows\|Plan]] |
-| 9 | Pgvector Adapter | pending | — | Phase 8 | [[plans/phase-09-pgvector-adapter\|Plan]] |
-| 10 | Calibration & Release | pending | — | Phase 9 | [[plans/phase-10-calibration-release\|Plan]] |
+| 9 | Pgvector Adapter | **complete** | 6 | Phase 8 | [[plans/phase-09-pgvector-adapter\|Plan]] |
+| 10 | Calibration & Release | **complete** | 15 | Phase 9 | [[plans/phase-10-calibration-release\|Plan]] |
 
 > [!success] Current progress
-> **8 of 10 phases complete** — 193 tests passing, ruff + mypy --strict clean.
-> Next up: [[plans/phase-09-pgvector-adapter|Phase 9: Pgvector Adapter]].
+> **10 of 10 phases complete** — 214 tests (208 passed, 6 skipped), ruff + mypy --strict clean, 90.95% coverage.
+> Version 0.1.0 built and verified. Ready for TestPyPI release.
 
 ## Design constraints per phase
 
