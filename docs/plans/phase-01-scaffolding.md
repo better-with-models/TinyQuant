@@ -28,13 +28,13 @@ category: planning
 | File | Purpose |
 |------|---------|
 | `pyproject.toml` | Package metadata, dependencies, tool config (ruff, mypy, pytest) |
-| `src/tinyquant/__init__.py` | Top-level package with `__version__` |
-| `src/tinyquant/py.typed` | PEP 561 marker for mypy consumers |
-| `src/tinyquant/codec/__init__.py` | Empty codec package |
-| `src/tinyquant/corpus/__init__.py` | Empty corpus package |
-| `src/tinyquant/backend/__init__.py` | Empty backend package |
-| `src/tinyquant/backend/adapters/__init__.py` | Empty adapters sub-package |
-| `src/tinyquant/_types.py` | Shared type aliases (empty stubs) |
+| `src/tinyquant_cpu/__init__.py` | Top-level package with `__version__` |
+| `src/tinyquant_cpu/py.typed` | PEP 561 marker for mypy consumers |
+| `src/tinyquant_cpu/codec/__init__.py` | Empty codec package |
+| `src/tinyquant_cpu/corpus/__init__.py` | Empty corpus package |
+| `src/tinyquant_cpu/backend/__init__.py` | Empty backend package |
+| `src/tinyquant_cpu/backend/adapters/__init__.py` | Empty adapters sub-package |
+| `src/tinyquant_cpu/_types.py` | Shared type aliases (empty stubs) |
 | `tests/__init__.py` | Test root |
 | `tests/conftest.py` | Shared fixtures (empty) |
 | `tests/codec/__init__.py` | Codec test package |
@@ -55,7 +55,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tinyquant"
+name = "tinyquant-cpu"
 version = "0.1.0"
 description = "CPU-only vector quantization codec for embedding storage compression"
 requires-python = ">=3.12"
@@ -106,11 +106,11 @@ addopts = "--import-mode=importlib -x --tb=short"
 
 ## Steps (TDD order)
 
-1. Create directory structure: `src/tinyquant/`, `tests/`, all `__init__.py` files
+1. Create directory structure: `src/tinyquant_cpu/`, `tests/`, all `__init__.py` files
 2. Write `pyproject.toml` with full tool configuration
-3. Write `src/tinyquant/__init__.py` with `__version__ = "0.1.0"`
-4. Write `src/tinyquant/py.typed` (empty marker file)
-5. Write `src/tinyquant/_types.py` with stub type aliases
+3. Write `src/tinyquant_cpu/__init__.py` with `__version__ = "0.1.0"`
+4. Write `src/tinyquant_cpu/py.typed` (empty marker file)
+5. Write `src/tinyquant_cpu/_types.py` with stub type aliases
 6. Write `tests/conftest.py` (empty, with a docstring)
 7. Write one smoke test: `tests/test_smoke.py` — `test_import_tinyquant`
 8. Run `pip install -e ".[dev]"` — must succeed

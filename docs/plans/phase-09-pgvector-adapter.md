@@ -26,8 +26,8 @@ category: planning
 
 | File | Class | Spec |
 |------|-------|------|
-| `src/tinyquant/backend/adapters/pgvector.py` | `PgvectorAdapter` | [[classes/pgvector-adapter\|PgvectorAdapter]] |
-| `src/tinyquant/backend/adapters/__init__.py` | Re-export adapter | — |
+| `src/tinyquant_cpu/backend/adapters/pgvector.py` | `PgvectorAdapter` | [[classes/pgvector-adapter\|PgvectorAdapter]] |
+| `src/tinyquant_cpu/backend/adapters/__init__.py` | Re-export adapter | — |
 | `tests/integration/test_pgvector.py` | ~6 integration tests | [[qa/integration-plan/README\|Integration Plan EB-02]] |
 
 ## Steps (TDD order)

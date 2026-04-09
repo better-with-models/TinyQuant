@@ -60,9 +60,9 @@ category: qa
 
 | Package | Floor |
 |---------|-------|
-| `tinyquant/codec/` | 95% |
-| `tinyquant/corpus/` | 90% |
-| `tinyquant/backend/` | 80% |
+| `tinyquant_cpu/codec/` | 95% |
+| `tinyquant_cpu/corpus/` | 90% |
+| `tinyquant_cpu/backend/` | 80% |
 | Overall | 90% |
 
 ## See also

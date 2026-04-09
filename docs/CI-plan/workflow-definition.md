@@ -181,9 +181,9 @@ jobs:
 
       - name: Coverage report
         run: |
-          pytest --cov=tinyquant --cov-report=xml --cov-fail-under=90
-          pytest --cov=tinyquant/codec --cov-report=term --cov-fail-under=95
-          pytest --cov=tinyquant/corpus --cov-report=term --cov-fail-under=90
+          pytest --cov=tinyquant_cpu --cov-report=xml --cov-fail-under=90
+          pytest --cov=tinyquant_cpu/codec --cov-report=term --cov-fail-under=95
+          pytest --cov=tinyquant_cpu/corpus --cov-report=term --cov-fail-under=90
 
       - name: Upload coverage
         if: matrix.python-version == '3.12'

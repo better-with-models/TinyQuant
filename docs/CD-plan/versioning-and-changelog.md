@@ -63,7 +63,7 @@ v1.0.0       — first stable release (API contract begins)
 ```toml
 # pyproject.toml
 [project]
-name = "tinyquant"
+name = "tinyquant-cpu"
 version = "0.1.0"
 ```
 

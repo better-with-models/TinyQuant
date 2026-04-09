@@ -95,7 +95,7 @@ flag stops on first failure (fail fast).
 
 | Job | Command | Duration | Blocks |
 |-----|---------|----------|--------|
-| `coverage` | `pytest --cov=tinyquant --cov-fail-under=90` | Combined with tests | Artifact |
+| `coverage` | `pytest --cov=tinyquant_cpu --cov-fail-under=90` | Combined with tests | Artifact |
 
 **Rationale:** coverage gate runs as part of the test stage but reported
 separately. Enforces the floors from

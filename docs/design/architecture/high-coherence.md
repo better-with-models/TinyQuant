@@ -49,9 +49,9 @@ module coherence structurally visible.
 Dependency direction is explicit and acyclic:
 
 ```text
-tinyquant.codec  →  (no dependencies on corpus or backend)
-tinyquant.corpus →  depends on codec (value objects and service)
-tinyquant.backend → depends on corpus (decompressed vector handoff)
+tinyquant_cpu.codec  →  (no dependencies on corpus or backend)
+tinyquant_cpu.corpus →  depends on codec (value objects and service)
+tinyquant_cpu.backend → depends on corpus (decompressed vector handoff)
 ```
 
 No cycles. No shared mutable state. No hidden side channels.

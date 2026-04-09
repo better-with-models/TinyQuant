@@ -23,7 +23,7 @@ category: planning
 
 | File | What | Spec |
 |------|------|------|
-| `src/tinyquant/codec/compressed_vector.py` | `to_bytes`, `from_bytes` (replace stubs) | [[classes/compressed-vector\|CompressedVector]] |
+| `src/tinyquant_cpu/codec/compressed_vector.py` | `to_bytes`, `from_bytes` (replace stubs) | [[classes/compressed-vector\|CompressedVector]] |
 | `tests/codec/test_compressed_vector.py` | Add serialization tests (~4 new) | [[qa/unit-tests/test-compressed-vector\|Test spec]] |
 | `tests/integration/test_serialization.py` | ~7 integration tests | [[qa/integration-plan/README\|Integration Plan EB-01]] |
 

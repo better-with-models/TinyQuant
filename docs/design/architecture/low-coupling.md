@@ -27,8 +27,8 @@ category: design
 | Prefer value objects over mutable shared references at package boundaries | Immutable data cannot create action-at-a-distance |
 
 **Enforcement:** `ruff` import rules + architecture tests that assert
-`tinyquant.codec` does not import from `tinyquant.corpus` or
-`tinyquant.backend`.
+`tinyquant_cpu.codec` does not import from `tinyquant_cpu.corpus` or
+`tinyquant_cpu.backend`.
 
 ### Contract coupling (APIs, protocols, serialization formats)
 
@@ -60,11 +60,11 @@ consumer's concern, not TinyQuant's. However:
 ## Dependency direction
 
 ```text
-tinyquant.codec    (leaf: no internal dependencies)
+tinyquant_cpu.codec    (leaf: no internal dependencies)
     ↑
-tinyquant.corpus   (depends on codec value objects and service)
+tinyquant_cpu.corpus   (depends on codec value objects and service)
     ↑
-tinyquant.backend  (depends on corpus for decompressed vector handoff)
+tinyquant_cpu.backend  (depends on corpus for decompressed vector handoff)
 ```
 
 This is a strict layered dependency. No upward or lateral imports.

@@ -22,14 +22,14 @@ Every public class lives in its own file, named after the class in
 `snake_case`:
 
 ```text
-tinyquant/codec/codec_config.py     → class CodecConfig
-tinyquant/codec/rotation_matrix.py  → class RotationMatrix
-tinyquant/codec/codebook.py         → class Codebook
-tinyquant/codec/compressed_vector.py → class CompressedVector
-tinyquant/codec/codec.py            → class Codec
-tinyquant/corpus/corpus.py          → class Corpus
-tinyquant/corpus/vector_entry.py    → class VectorEntry
-tinyquant/corpus/compression_policy.py → class CompressionPolicy
+tinyquant_cpu/codec/codec_config.py     → class CodecConfig
+tinyquant_cpu/codec/rotation_matrix.py  → class RotationMatrix
+tinyquant_cpu/codec/codebook.py         → class Codebook
+tinyquant_cpu/codec/compressed_vector.py → class CompressedVector
+tinyquant_cpu/codec/codec.py            → class Codec
+tinyquant_cpu/corpus/corpus.py          → class Corpus
+tinyquant_cpu/corpus/vector_entry.py    → class VectorEntry
+tinyquant_cpu/corpus/compression_policy.py → class CompressionPolicy
 ```
 
 ### Why
@@ -39,7 +39,7 @@ tinyquant/corpus/compression_policy.py → class CompressionPolicy
   file
 - **Blame clarity:** `git blame` on a file tracks one concept's history
 - **Test correspondence:** `tests/codec/test_codec_config.py` maps directly
-  to `tinyquant/codec/codec_config.py`
+  to `tinyquant_cpu/codec/codec_config.py`
 
 ### Exceptions
 

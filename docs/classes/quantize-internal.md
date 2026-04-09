@@ -18,7 +18,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/codec/_quantize.py
+src/tinyquant_cpu/codec/_quantize.py
 ```
 
 ## Category

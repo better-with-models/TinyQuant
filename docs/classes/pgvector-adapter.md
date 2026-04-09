@@ -19,7 +19,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/backend/adapters/pgvector.py
+src/tinyquant_cpu/backend/adapters/pgvector.py
 ```
 
 ## Category

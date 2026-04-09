@@ -94,10 +94,10 @@ def compress(
 ruff check --select D .
 
 # Generate API docs with Sphinx
-sphinx-apidoc -o docs/api src/tinyquant/
+sphinx-apidoc -o docs/api src/tinyquant_cpu/
 
 # Quick runtime check
-python -m pydoc tinyquant.codec.codec
+python -m pydoc tinyquant_cpu.codec.codec
 ```
 
 ## See also

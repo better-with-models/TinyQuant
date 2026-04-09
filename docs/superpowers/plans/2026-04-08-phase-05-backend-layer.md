@@ -25,9 +25,9 @@ category: implementation-plan
 
 | File | Action | Responsibility |
 |------|--------|----------------|
-| `src/tinyquant/backend/protocol.py` | Create | `SearchResult` value object + `SearchBackend` protocol |
-| `src/tinyquant/backend/brute_force.py` | Create | `BruteForceBackend` concrete implementation |
-| `src/tinyquant/backend/__init__.py` | Modify | Public re-exports |
+| `src/tinyquant_cpu/backend/protocol.py` | Create | `SearchResult` value object + `SearchBackend` protocol |
+| `src/tinyquant_cpu/backend/brute_force.py` | Create | `BruteForceBackend` concrete implementation |
+| `src/tinyquant_cpu/backend/__init__.py` | Modify | Public re-exports |
 | `tests/backend/test_brute_force.py` | Create | 13 tests across ingest/search/remove/clear |
 
 No changes to codec, corpus, or project config — all tooling is already configured.
@@ -37,7 +37,7 @@ No changes to codec, corpus, or project config — all tooling is already config
 ## Task 1: SearchResult Value Object
 
 **Files:**
-- Create: `src/tinyquant/backend/protocol.py`
+- Create: `src/tinyquant_cpu/backend/protocol.py`
 - Create: `tests/backend/test_brute_force.py`
 
 - [ ] **Step 1: Write failing tests for SearchResult**
@@ -51,7 +51,7 @@ from __future__ import annotations
 
 import pytest
 
-from tinyquant.backend.protocol import SearchResult
+from tinyquant_cpu.backend.protocol import SearchResult
 
 
 # ===========================================================================
@@ -90,7 +90,7 @@ Expected: FAIL — `ImportError: cannot import name 'SearchResult'`
 
 - [ ] **Step 3: Implement SearchResult**
 
-Create `src/tinyquant/backend/protocol.py`:
+Create `src/tinyquant_cpu/backend/protocol.py`:
 
 ```python
 """Search protocol and result value object."""
@@ -126,13 +126,13 @@ Expected: 3 passed
 
 - [ ] **Step 5: Lint and type-check**
 
-Run: `ruff check src/tinyquant/backend/protocol.py && ruff format --check src/tinyquant/backend/protocol.py && mypy --strict src/tinyquant/backend/protocol.py`
+Run: `ruff check src/tinyquant_cpu/backend/protocol.py && ruff format --check src/tinyquant_cpu/backend/protocol.py && mypy --strict src/tinyquant_cpu/backend/protocol.py`
 Expected: clean
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/tinyquant/backend/protocol.py tests/backend/test_brute_force.py
+git add src/tinyquant_cpu/backend/protocol.py tests/backend/test_brute_force.py
 git commit -m "feat(backend): add SearchResult frozen dataclass with descending ordering"
 ```
 
@@ -141,11 +141,11 @@ git commit -m "feat(backend): add SearchResult frozen dataclass with descending 
 ## Task 2: SearchBackend Protocol
 
 **Files:**
-- Modify: `src/tinyquant/backend/protocol.py`
+- Modify: `src/tinyquant_cpu/backend/protocol.py`
 
 - [ ] **Step 1: Rewrite protocol.py to add SearchBackend**
 
-Replace `src/tinyquant/backend/protocol.py` with the complete file. Key convention: numpy and NDArray are under `TYPE_CHECKING` since they're only used in annotations (matches `corpus.py` pattern).
+Replace `src/tinyquant_cpu/backend/protocol.py` with the complete file. Key convention: numpy and NDArray are under `TYPE_CHECKING` since they're only used in annotations (matches `corpus.py` pattern).
 
 ```python
 """Search protocol and result value object."""
@@ -232,13 +232,13 @@ This is the complete final state of `protocol.py`. The SearchResult from Task 1 
 
 - [ ] **Step 2: Lint and type-check**
 
-Run: `ruff check src/tinyquant/backend/protocol.py && mypy --strict src/tinyquant/backend/protocol.py`
+Run: `ruff check src/tinyquant_cpu/backend/protocol.py && mypy --strict src/tinyquant_cpu/backend/protocol.py`
 Expected: clean
 
 - [ ] **Step 3: Commit**
 
 ```bash
-git add src/tinyquant/backend/protocol.py
+git add src/tinyquant_cpu/backend/protocol.py
 git commit -m "feat(backend): add SearchBackend protocol with search/ingest/remove"
 ```
 
@@ -247,7 +247,7 @@ git commit -m "feat(backend): add SearchBackend protocol with search/ingest/remo
 ## Task 3: BruteForceBackend — Ingest
 
 **Files:**
-- Create: `src/tinyquant/backend/brute_force.py`
+- Create: `src/tinyquant_cpu/backend/brute_force.py`
 - Modify: `tests/backend/test_brute_force.py`
 
 - [ ] **Step 1: Write failing ingest tests**
@@ -258,7 +258,7 @@ Add to `tests/backend/test_brute_force.py`:
 import numpy as np
 from numpy.typing import NDArray
 
-from tinyquant.backend.brute_force import BruteForceBackend
+from tinyquant_cpu.backend.brute_force import BruteForceBackend
 
 
 # ===========================================================================
@@ -316,7 +316,7 @@ Expected: FAIL — `ImportError: cannot import name 'BruteForceBackend'`
 
 - [ ] **Step 3: Implement BruteForceBackend with ingest and count**
 
-Create `src/tinyquant/backend/brute_force.py`:
+Create `src/tinyquant_cpu/backend/brute_force.py`:
 
 ```python
 """Brute-force search backend: exhaustive cosine similarity."""
@@ -328,7 +328,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from tinyquant.backend.protocol import SearchResult
+from tinyquant_cpu.backend.protocol import SearchResult
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -399,13 +399,13 @@ Expected: 3 passed
 
 - [ ] **Step 5: Lint and type-check**
 
-Run: `ruff check src/tinyquant/backend/brute_force.py && mypy --strict src/tinyquant/backend/brute_force.py`
+Run: `ruff check src/tinyquant_cpu/backend/brute_force.py && mypy --strict src/tinyquant_cpu/backend/brute_force.py`
 Expected: clean
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/tinyquant/backend/brute_force.py tests/backend/test_brute_force.py
+git add src/tinyquant_cpu/backend/brute_force.py tests/backend/test_brute_force.py
 git commit -m "feat(backend): add BruteForceBackend with ingest and count"
 ```
 
@@ -414,7 +414,7 @@ git commit -m "feat(backend): add BruteForceBackend with ingest and count"
 ## Task 4: BruteForceBackend — Search
 
 **Files:**
-- Modify: `src/tinyquant/backend/brute_force.py`
+- Modify: `src/tinyquant_cpu/backend/brute_force.py`
 - Modify: `tests/backend/test_brute_force.py`
 
 - [ ] **Step 1: Write failing search tests**
@@ -491,7 +491,7 @@ Expected: FAIL — `NotImplementedError`
 
 - [ ] **Step 3: Implement search with cosine similarity**
 
-Replace the `search` method in `src/tinyquant/backend/brute_force.py`:
+Replace the `search` method in `src/tinyquant_cpu/backend/brute_force.py`:
 
 ```python
     def search(
@@ -538,7 +538,7 @@ Expected: 13 passed (3 SearchResult + 3 ingest + 7 search)
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/tinyquant/backend/brute_force.py tests/backend/test_brute_force.py
+git add src/tinyquant_cpu/backend/brute_force.py tests/backend/test_brute_force.py
 git commit -m "feat(backend): implement BruteForceBackend.search with cosine similarity"
 ```
 
@@ -547,7 +547,7 @@ git commit -m "feat(backend): implement BruteForceBackend.search with cosine sim
 ## Task 5: BruteForceBackend — Remove and Clear
 
 **Files:**
-- Modify: `src/tinyquant/backend/brute_force.py`
+- Modify: `src/tinyquant_cpu/backend/brute_force.py`
 - Modify: `tests/backend/test_brute_force.py`
 
 - [ ] **Step 1: Write failing remove/clear tests**
@@ -594,7 +594,7 @@ Expected: FAIL — `NotImplementedError`
 
 - [ ] **Step 3: Implement remove and clear**
 
-Replace the stubs in `src/tinyquant/backend/brute_force.py`:
+Replace the stubs in `src/tinyquant_cpu/backend/brute_force.py`:
 
 ```python
     def remove(
@@ -627,7 +627,7 @@ Expected: 16 passed
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/tinyquant/backend/brute_force.py tests/backend/test_brute_force.py
+git add src/tinyquant_cpu/backend/brute_force.py tests/backend/test_brute_force.py
 git commit -m "feat(backend): implement BruteForceBackend.remove and clear"
 ```
 
@@ -636,18 +636,18 @@ git commit -m "feat(backend): implement BruteForceBackend.remove and clear"
 ## Task 6: Update `__init__.py` and Re-exports
 
 **Files:**
-- Modify: `src/tinyquant/backend/__init__.py` (line 1)
-- Optionally modify: `src/tinyquant/__init__.py` (line 5)
+- Modify: `src/tinyquant_cpu/backend/__init__.py` (line 1)
+- Optionally modify: `src/tinyquant_cpu/__init__.py` (line 5)
 
 - [ ] **Step 1: Update backend `__init__.py`**
 
-Replace the contents of `src/tinyquant/backend/__init__.py` with:
+Replace the contents of `src/tinyquant_cpu/backend/__init__.py` with:
 
 ```python
 """TinyQuant backend: search protocol and adapter contracts."""
 
-from tinyquant.backend.brute_force import BruteForceBackend
-from tinyquant.backend.protocol import SearchBackend, SearchResult
+from tinyquant_cpu.backend.brute_force import BruteForceBackend
+from tinyquant_cpu.backend.protocol import SearchBackend, SearchResult
 
 __all__ = [
     "BruteForceBackend",
@@ -658,18 +658,18 @@ __all__ = [
 
 - [ ] **Step 2: Verify imports work**
 
-Run: `python -c "from tinyquant.backend import SearchBackend, SearchResult, BruteForceBackend; print('OK')"`
+Run: `python -c "from tinyquant_cpu.backend import SearchBackend, SearchResult, BruteForceBackend; print('OK')"`
 Expected: `OK`
 
 - [ ] **Step 3: Lint and type-check the package**
 
-Run: `ruff check src/tinyquant/backend/ && mypy --strict src/tinyquant/backend/`
+Run: `ruff check src/tinyquant_cpu/backend/ && mypy --strict src/tinyquant_cpu/backend/`
 Expected: clean
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add src/tinyquant/backend/__init__.py
+git add src/tinyquant_cpu/backend/__init__.py
 git commit -m "feat(backend): export SearchBackend, SearchResult, BruteForceBackend"
 ```
 
@@ -691,7 +691,7 @@ Expected: clean (no new errors)
 
 - [ ] **Step 3: Run backend tests with coverage**
 
-Run: `pytest tests/backend/ -v --cov=tinyquant/backend --cov-fail-under=80`
+Run: `pytest tests/backend/ -v --cov=tinyquant_cpu/backend --cov-fail-under=80`
 Expected: 16 passed, coverage >= 80%
 
 - [ ] **Step 4: Run regression tests**

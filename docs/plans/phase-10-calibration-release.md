@@ -76,7 +76,7 @@ category: planning
 
 1. Update `README.md` with:
    - Project description and value proposition
-   - Installation instructions (`pip install tinyquant`)
+   - Installation instructions (`pip install tinyquant-cpu`)
    - Quick start example (compress → store → decompress → search in <10 lines)
    - Link to API docs and design docs
 2. Populate `CHANGELOG.md` with `[0.1.0]` entries covering all implemented features
@@ -86,8 +86,8 @@ category: planning
 
 1. Run full CI suite locally: `ruff check . && mypy . && pytest`
 2. Build: `python -m build && twine check dist/*`
-3. Verify `import tinyquant; print(tinyquant.__version__)` returns `0.1.0`
-4. Test install from local wheel: `pip install dist/tinyquant-0.1.0-py3-none-any.whl`
+3. Verify `import tinyquant_cpu; print(tinyquant_cpu.__version__)` returns `0.1.0`
+4. Test install from local wheel: `pip install dist/tinyquant_cpu-0.1.0-py3-none-any.whl`
 
 ### 9. Tag and release
 
@@ -103,7 +103,7 @@ category: planning
 ```bash
 ruff check . && ruff format --check .
 mypy --strict .
-pytest --cov=tinyquant --cov-fail-under=90
+pytest --cov=tinyquant_cpu --cov-fail-under=90
 pytest tests/calibration/ -v  # calibration suite
 python -m build && twine check dist/*
 ```

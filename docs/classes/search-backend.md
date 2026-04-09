@@ -19,7 +19,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/backend/protocol.py
+src/tinyquant_cpu/backend/protocol.py
 ```
 
 ## Category

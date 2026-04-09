@@ -25,11 +25,11 @@ category: planning
 
 | File | Class | Spec |
 |------|-------|------|
-| `src/tinyquant/corpus/compression_policy.py` | `CompressionPolicy` | [[classes/compression-policy\|CompressionPolicy]] |
-| `src/tinyquant/corpus/vector_entry.py` | `VectorEntry` | [[classes/vector-entry\|VectorEntry]] |
-| `src/tinyquant/corpus/events.py` | 4 event dataclasses | [[classes/corpus-events\|Corpus Events]] |
-| `src/tinyquant/corpus/corpus.py` | `Corpus` | [[classes/corpus\|Corpus]] |
-| `src/tinyquant/corpus/__init__.py` | Public re-exports | — |
+| `src/tinyquant_cpu/corpus/compression_policy.py` | `CompressionPolicy` | [[classes/compression-policy\|CompressionPolicy]] |
+| `src/tinyquant_cpu/corpus/vector_entry.py` | `VectorEntry` | [[classes/vector-entry\|VectorEntry]] |
+| `src/tinyquant_cpu/corpus/events.py` | 4 event dataclasses | [[classes/corpus-events\|Corpus Events]] |
+| `src/tinyquant_cpu/corpus/corpus.py` | `Corpus` | [[classes/corpus\|Corpus]] |
+| `src/tinyquant_cpu/corpus/__init__.py` | Public re-exports | — |
 | `tests/corpus/test_compression_policy.py` | ~6 tests | [[qa/unit-tests/test-compression-policy\|Test spec]] |
 | `tests/corpus/test_vector_entry.py` | ~8 tests | [[qa/unit-tests/test-vector-entry\|Test spec]] |
 | `tests/corpus/test_events.py` | ~10 tests | [[qa/unit-tests/test-events\|Test spec]] |
@@ -106,7 +106,7 @@ category: planning
 ```bash
 ruff check . && ruff format --check .
 mypy --strict .
-pytest tests/corpus/ -v --cov=tinyquant/corpus --cov-fail-under=90
+pytest tests/corpus/ -v --cov=tinyquant_cpu/corpus --cov-fail-under=90
 pytest tests/codec/ -v  # regression check
 ```
 

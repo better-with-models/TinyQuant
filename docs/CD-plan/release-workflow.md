@@ -156,8 +156,8 @@ graph TD
         run: |
           pip install --index-url https://test.pypi.org/simple/ \
             --extra-index-url https://pypi.org/simple/ \
-            tinyquant==${{ needs.verify-tag.outputs.version }}
-          python -c "import tinyquant; print(tinyquant.__version__)"
+            tinyquant-cpu==${{ needs.verify-tag.outputs.version }}
+          python -c "import tinyquant_cpu; print(tinyquant_cpu.__version__)"
 ```
 
 ### `publish-pypi`
@@ -239,7 +239,7 @@ graph TD
             ## Installation
 
             ```bash
-            pip install tinyquant==${{ needs.verify-tag.outputs.version }}
+            pip install tinyquant-cpu==${{ needs.verify-tag.outputs.version }}
             ```
           draft: false
           prerelease: ${{ contains(github.ref_name, '-') }}

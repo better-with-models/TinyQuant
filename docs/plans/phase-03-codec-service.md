@@ -26,9 +26,9 @@ category: planning
 
 | File | Class/Module | Spec |
 |------|-------------|------|
-| `src/tinyquant/codec/_quantize.py` | Private helpers | [[classes/quantize-internal\|_quantize]] |
-| `src/tinyquant/codec/codec.py` | `Codec` service + module functions | [[classes/codec\|Codec]] |
-| `src/tinyquant/codec/__init__.py` | Add `Codec`, `compress`, `decompress` | — |
+| `src/tinyquant_cpu/codec/_quantize.py` | Private helpers | [[classes/quantize-internal\|_quantize]] |
+| `src/tinyquant_cpu/codec/codec.py` | `Codec` service + module functions | [[classes/codec\|Codec]] |
+| `src/tinyquant_cpu/codec/__init__.py` | Add `Codec`, `compress`, `decompress` | — |
 | `tests/codec/test_codec.py` | ~25 tests | [[qa/unit-tests/test-codec\|Test spec]] |
 | `tests/conftest.py` | Add trained_codebook, sample_vector fixtures | — |
 
@@ -87,7 +87,7 @@ category: planning
 ```bash
 ruff check . && ruff format --check .
 mypy --strict .
-pytest tests/codec/ -v --cov=tinyquant/codec --cov-fail-under=95
+pytest tests/codec/ -v --cov=tinyquant_cpu/codec --cov-fail-under=95
 ```
 
 ## Estimated scope

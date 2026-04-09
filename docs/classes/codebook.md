@@ -18,7 +18,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/codec/codebook.py
+src/tinyquant_cpu/codec/codebook.py
 ```
 
 ## Category

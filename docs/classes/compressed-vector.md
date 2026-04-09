@@ -19,7 +19,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/codec/compressed_vector.py
+src/tinyquant_cpu/codec/compressed_vector.py
 ```
 
 ## Category

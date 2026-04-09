@@ -25,12 +25,12 @@ category: planning
 
 | File | Class | Spec |
 |------|-------|------|
-| `src/tinyquant/_types.py` | Type aliases | [[classes/shared-types\|Shared Types]] |
-| `src/tinyquant/codec/codec_config.py` | `CodecConfig` | [[classes/codec-config\|CodecConfig]] |
-| `src/tinyquant/codec/rotation_matrix.py` | `RotationMatrix` | [[classes/rotation-matrix\|RotationMatrix]] |
-| `src/tinyquant/codec/codebook.py` | `Codebook` | [[classes/codebook\|Codebook]] |
-| `src/tinyquant/codec/compressed_vector.py` | `CompressedVector` | [[classes/compressed-vector\|CompressedVector]] |
-| `src/tinyquant/codec/__init__.py` | Public re-exports | [[design/architecture/namespace-and-module-structure\|Namespace Structure]] |
+| `src/tinyquant_cpu/_types.py` | Type aliases | [[classes/shared-types\|Shared Types]] |
+| `src/tinyquant_cpu/codec/codec_config.py` | `CodecConfig` | [[classes/codec-config\|CodecConfig]] |
+| `src/tinyquant_cpu/codec/rotation_matrix.py` | `RotationMatrix` | [[classes/rotation-matrix\|RotationMatrix]] |
+| `src/tinyquant_cpu/codec/codebook.py` | `Codebook` | [[classes/codebook\|Codebook]] |
+| `src/tinyquant_cpu/codec/compressed_vector.py` | `CompressedVector` | [[classes/compressed-vector\|CompressedVector]] |
+| `src/tinyquant_cpu/codec/__init__.py` | Public re-exports | [[design/architecture/namespace-and-module-structure\|Namespace Structure]] |
 | `tests/codec/test_codec_config.py` | ~15 tests | [[qa/unit-tests/test-codec-config\|Test spec]] |
 | `tests/codec/test_rotation_matrix.py` | ~12 tests | [[qa/unit-tests/test-rotation-matrix\|Test spec]] |
 | `tests/codec/test_codebook.py` | ~14 tests | [[qa/unit-tests/test-codebook\|Test spec]] |
@@ -87,7 +87,7 @@ category: planning
 ```bash
 ruff check . && ruff format --check .
 mypy --strict .
-pytest tests/codec/ -v --cov=tinyquant/codec --cov-fail-under=95
+pytest tests/codec/ -v --cov=tinyquant_cpu/codec --cov-fail-under=95
 ```
 
 ## Estimated scope

@@ -111,9 +111,9 @@ CI (or vice versa), that is a tooling bug to fix immediately.
 
 | Layer | Minimum coverage |
 |-------|-----------------|
-| `tinyquant/codec/` | 95% |
-| `tinyquant/corpus/` | 90% |
-| `tinyquant/backend/` | 80% |
+| `tinyquant_cpu/codec/` | 95% |
+| `tinyquant_cpu/corpus/` | 90% |
+| `tinyquant_cpu/backend/` | 80% |
 | Overall | 90% |
 
 Coverage is a floor, not a target. 100% coverage with weak assertions is

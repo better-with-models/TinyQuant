@@ -18,7 +18,7 @@ category: design
 ## Location
 
 ```text
-src/tinyquant/codec/rotation_matrix.py
+src/tinyquant_cpu/codec/rotation_matrix.py
 ```
 
 ## Category
