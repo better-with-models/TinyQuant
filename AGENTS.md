@@ -1,5 +1,21 @@
 # AGENTS.md — TinyQuant
 
+## About TinyQuant
+
+> *CPU-only vector quantization codec for embedding storage compression.*
+
+TinyQuant is a CPU-only vector quantization codec that compresses
+high-dimensional embedding vectors to low-bit representations while
+preserving cosine similarity rankings. It combines random orthogonal
+preconditioning with two-stage scalar quantization and optional FP16
+residual correction to hit 8× compression at 4-bit with Pearson ρ ≈ 0.998
+and 95% top-5 recall on real OpenAI embeddings.
+
+See [README.md](README.md) for the vanilla, PyPI-friendly landing page
+and [.github/README.md](.github/README.md) for the rich GitHub-flavored
+version (with logo hero, admonitions, and collapsible recipes) that
+GitHub auto-prefers for the repo landing page.
+
 ## Repository overview
 
 TinyQuant uses an LLM-maintained documentation vault under `docs/`. The
@@ -104,6 +120,35 @@ under `docs/`. In other words, `docs/` is the compiled knowledge layer, while
 - Keep markdown outside `docs/` in ordinary markdown, not Obsidian-flavored
   markdown
 - Treat non-`docs/` markdown as subject to strict markdownlint discipline
+
+## Cross-file prose alignment
+
+Four files describe TinyQuant's identity and must stay in sync:
+
+- `README.md` — root-level, vanilla markdown, what ships to PyPI and
+  what non-GitHub renderers see
+- `.github/README.md` — rich GitHub-flavored landing page that GitHub
+  auto-prefers for the repo page (with logo hero, admonitions,
+  collapsibles)
+- `AGENTS.md` — agent operating contract (this file)
+- `CLAUDE.md` — Claude-specific redirect to `AGENTS.md`
+
+**Rule:** if you edit the project tagline, elevator-pitch paragraph, or
+headline benchmark numbers in any one of these files, propagate the same
+change to the other three in the same commit. The canonical tagline
+today is:
+
+> *CPU-only vector quantization codec for embedding storage compression.*
+
+The canonical elevator-pitch paragraph lives at the top of this file
+under `## About TinyQuant`, in the lead of `README.md`, and in the
+`[!NOTE]` TL;DR callout of `.github/README.md`. `CLAUDE.md` carries
+the short tagline under its h1.
+
+This rule exists because these four files are read by different
+audiences (humans on GitHub, humans on PyPI, agents acting on the repo,
+Claude sessions specifically) and drift erodes trust in the repo's
+self-description.
 
 ## Documentation maturity standard
 
