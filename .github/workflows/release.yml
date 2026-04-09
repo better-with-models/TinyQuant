@@ -189,9 +189,27 @@ jobs:
           path: dist/
 
       - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/*
-          body_path: release-notes.md
-          draft: false
-          prerelease: ${{ contains(github.ref_name, '-') }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Collect distribution files; fail loudly if the download step left
+          # dist/ empty so we don't pass a literal "dist/*" to gh.
+          shopt -s nullglob
+          dist_files=(dist/*)
+          shopt -u nullglob
+          if (( ${#dist_files[@]} == 0 )); then
+            echo "::error::No distribution files found in dist/"
+            exit 1
+          fi
+
+          args=(
+            "${GITHUB_REF_NAME}"
+            --title "${GITHUB_REF_NAME}"
+            --notes-file release-notes.md
+          )
+          if [[ "${GITHUB_REF_NAME}" == *-* ]]; then
+            args+=(--prerelease)
+          fi
+          args+=("${dist_files[@]}")
+
+          gh release create "${args[@]}"
