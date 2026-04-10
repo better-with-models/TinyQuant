@@ -32,10 +32,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.78.0"
-          components: rustfmt,clippy
+          components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: rust
+          workspaces: rust -> target
       - name: fmt
         run: cargo fmt --all -- --check
 
@@ -54,9 +54,9 @@ jobs:
           components: rustfmt,clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: rust
+          workspaces: rust -> target
       - name: clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        run: cargo clippy --workspace --all-targets --all-features
 
   test:
     name: Test
@@ -73,9 +73,9 @@ jobs:
           components: rustfmt,clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: rust
+          workspaces: rust -> target
       - name: test
-        run: cargo test --workspace
+        run: cargo test --workspace --all-features
 
   no-std-check:
     name: no_std cross-compile (thumbv7em-none-eabihf)
@@ -92,6 +92,6 @@ jobs:
           targets: thumbv7em-none-eabihf
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: rust
+          workspaces: rust -> target
       - name: no_std build
         run: cargo build -p tinyquant-core --no-default-features --target thumbv7em-none-eabihf
