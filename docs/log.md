@@ -423,3 +423,13 @@ Created the Cargo workspace under `rust/` with all 10 workspace members.
 - `rust/xtask/` — cargo xtask dispatcher (fmt/lint/test/help)
 - `.github/workflows/rust-ci.yml` — fmt → clippy → {test, no-std-check}
 - All 5 acceptance criteria pass: build, test, fmt, clippy, no_std cross-compile
+
+## [2026-04-10] implement | Phase 12 — Shared Types and Error Enums
+
+Populated `tinyquant-core::types` (6 type aliases: `VectorId`, `ConfigHash`,
+`CorpusId`, `Vector`, `VectorSlice`, `Timestamp`) and `tinyquant-core::errors`
+(`CodecError` 11 variants, `CorpusError` 4 variants with `#[from] #[source]`
+source chain, `BackendError` 3 variants). Bumped MSRV 1.78 → 1.81 and
+thiserror 1 → 2 to enable `no_std` error derives via `core::error::Error`.
+28 `tinyquant-core` tests pass (smoke + types + errors); `no_std` build on
+`thumbv7em-none-eabihf` verified. Clippy and fmt clean.

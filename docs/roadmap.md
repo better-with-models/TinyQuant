@@ -46,7 +46,7 @@ gantt
         Phase 10 - Calibration & Release    :done, p10, after p9, 1
     section Rust Foundation
         Phase 11 - Rust Workspace Scaffold  :done, p11, after p10, 1
-        Phase 12 - Shared Types & Errors    :active, p12, after p11, 1
+        Phase 12 - Shared Types & Errors    :done, p12, after p11, 1
     section Rust Codec
         Phase 13 - Rotation & Numerics      :p13, after p12, 1
         Phase 14 - Codebook & Quantize      :p14, after p13, 1
@@ -91,7 +91,7 @@ gantt
 | Phase | Name | Status | Crates | Depends on | Details |
 |-------|------|--------|--------|-----------|---------|
 | 11 | Rust Workspace Scaffold | **complete** | workspace, xtask | Phase 10 | [[plans/rust/phase-11-rust-workspace-scaffold\|Plan]] |
-| 12 | Shared Types & Errors | **active** | tinyquant-core (types, errors) | Phase 11 | [[plans/rust/phase-12-shared-types-and-errors\|Plan]] |
+| 12 | Shared Types & Errors | **complete** | tinyquant-core (types, errors) | Phase 11 | [[plans/rust/phase-12-shared-types-and-errors\|Plan]] |
 | 13 | Rotation Matrix & Numerics | **planned** | tinyquant-core (rotation_matrix, rotation_cache) | Phase 12 | [[plans/rust/phase-13-rotation-numerics\|Plan]] |
 | 14 | Codebook & Quantize Kernels | **planned** | tinyquant-core (codebook, quantize) | Phase 13 | [[plans/rust/phase-14-codebook-quantize\|Plan]] |
 | 15 | Codec Service & Residual | **planned** | tinyquant-core (codec, residual, compressed_vector) | Phase 14 | [[plans/rust/phase-15-codec-service-residual\|Plan]] |
