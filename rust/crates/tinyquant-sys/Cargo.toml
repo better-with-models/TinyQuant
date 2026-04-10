@@ -9,7 +9,7 @@ repository.workspace   = true
 build = "build.rs"
 
 [lib]
-crate-type = ["cdylib", "staticlib"]
+crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
 tinyquant-core = { workspace = true }

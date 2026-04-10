@@ -15,7 +15,3 @@ harness = false
 criterion      = { workspace = true }
 tinyquant-core = { workspace = true }
 tinyquant-io   = { workspace = true }
-
-[dependencies]
-tinyquant-core = { workspace = true }
-tinyquant-io   = { workspace = true }

@@ -56,7 +56,7 @@ jobs:
         with:
           workspaces: rust -> target
       - name: clippy
-        run: cargo clippy --workspace --all-targets --all-features
+        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
   test:
     name: Test

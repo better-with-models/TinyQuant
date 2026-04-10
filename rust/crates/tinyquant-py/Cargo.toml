@@ -18,4 +18,4 @@ tinyquant-io   = { workspace = true }
 
 [features]
 default = ["simd"]
-simd    = ["tinyquant-core/simd"]
+simd    = ["tinyquant-core/simd", "tinyquant-io/simd"]
