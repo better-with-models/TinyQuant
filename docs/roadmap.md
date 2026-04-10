@@ -61,8 +61,7 @@ gantt
 | 11 | Rust Workspace Scaffold | **complete** | workspace, xtask | Phase 10 | [[plans/rust/phase-11-rust-workspace-scaffold\|Plan]] |
 
 > [!success] Current progress
-> **10 of 10 phases complete** — 214 tests (208 passed, 6 skipped), ruff + mypy --strict clean, 90.95% coverage.
-> Version 0.1.0 built and verified. Ready for TestPyPI release.
+> **11 phases complete** — Python baseline: 214 tests, 90.95% coverage, v0.1.0 released. Rust workspace scaffold complete.
 
 ## Design constraints per phase
 
