@@ -1,0 +1,15 @@
+[package]
+name         = "tinyquant-bruteforce"
+description  = "Brute-force search backend for TinyQuant."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+[dependencies]
+tinyquant-core = { workspace = true }
+
+[features]
+default = ["simd"]
+simd    = ["tinyquant-core/simd"]

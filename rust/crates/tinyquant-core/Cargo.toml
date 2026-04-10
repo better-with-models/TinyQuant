@@ -1,0 +1,18 @@
+[package]
+name         = "tinyquant-core"
+description  = "CPU-only vector quantization codec — core types, codec, corpus, and backend trait (no_std)."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+[features]
+default = []
+std     = []
+simd    = ["std"]
+
+# NOTE: [dependencies] intentionally empty in Phase 11.
+# thiserror 1.x requires std::error::Error which is not in core until Rust 1.81+.
+# half, bytemuck, sha2, hex, faer, rand added in Phase 12 when used.
+[dependencies]
