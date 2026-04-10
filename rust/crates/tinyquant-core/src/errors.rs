@@ -1,4 +1,4 @@
-//! Error enums for the TinyQuant core.
+//! Error enums for the `TinyQuant` core.
 //!
 //! Three enums cover the three architectural layers:
 //!
@@ -131,7 +131,11 @@ pub enum CorpusError {
     /// Do NOT use `#[error(transparent)]` — that delegates `source()` to
     /// `self.0.source()` (None for leaf variants), losing the chain link.
     #[error("codec error: {0}")]
-    Codec(#[from] #[source] CodecError),
+    Codec(
+        #[from]
+        #[source]
+        CodecError,
+    ),
 
     /// A vector with this id already exists in the corpus.
     #[error("duplicate vector_id {id:?}")]

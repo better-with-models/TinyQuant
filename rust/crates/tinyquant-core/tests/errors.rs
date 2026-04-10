@@ -28,7 +28,10 @@ fn invalid_dimension_message() {
 
 #[test]
 fn dimension_mismatch_message() {
-    let e = CodecError::DimensionMismatch { expected: 768, got: 1024 };
+    let e = CodecError::DimensionMismatch {
+        expected: 768,
+        got: 1024,
+    };
     assert_eq!(
         e.to_string(),
         "vector length 1024 does not match config dimension 768",
@@ -37,7 +40,10 @@ fn dimension_mismatch_message() {
 
 #[test]
 fn codebook_incompatible_message() {
-    let e = CodecError::CodebookIncompatible { expected: 4, got: 8 };
+    let e = CodecError::CodebookIncompatible {
+        expected: 4,
+        got: 8,
+    };
     assert_eq!(
         e.to_string(),
         "codebook bit_width 8 does not match config bit_width 4",
@@ -58,7 +64,11 @@ fn config_mismatch_message() {
 
 #[test]
 fn codebook_entry_count_message() {
-    let e = CodecError::CodebookEntryCount { expected: 16, got: 8, bit_width: 4 };
+    let e = CodecError::CodebookEntryCount {
+        expected: 16,
+        got: 8,
+        bit_width: 4,
+    };
     assert_eq!(
         e.to_string(),
         "codebook must have 16 entries for bit_width=4, got 8",
@@ -73,7 +83,10 @@ fn codebook_not_sorted_message() {
 
 #[test]
 fn codebook_duplicate_message() {
-    let e = CodecError::CodebookDuplicate { expected: 16, got: 14 };
+    let e = CodecError::CodebookDuplicate {
+        expected: 16,
+        got: 14,
+    };
     assert_eq!(
         e.to_string(),
         "codebook must contain 16 distinct values, got 14",
@@ -91,7 +104,10 @@ fn insufficient_training_data_message() {
 
 #[test]
 fn index_out_of_range_message() {
-    let e = CodecError::IndexOutOfRange { index: 20, bound: 16 };
+    let e = CodecError::IndexOutOfRange {
+        index: 20,
+        bound: 16,
+    };
     assert_eq!(e.to_string(), "index 20 is out of range [0, 16)");
 }
 
@@ -107,7 +123,10 @@ fn length_mismatch_message() {
 fn corpus_codec_wraps_via_from() {
     let ce = CodecError::InvalidDimension { got: 0 };
     let corpus: CorpusError = ce.clone().into();
-    assert!(matches!(corpus, CorpusError::Codec(CodecError::InvalidDimension { got: 0 })));
+    assert!(matches!(
+        corpus,
+        CorpusError::Codec(CodecError::InvalidDimension { got: 0 })
+    ));
 }
 
 #[test]
@@ -117,10 +136,16 @@ fn corpus_error_source_is_codec_error() {
     // the codec error's own source. This matches the manual impl shown
     // in docs/design/rust/error-model.md.
     use core::error::Error;
-    let ce = CodecError::DimensionMismatch { expected: 768, got: 100 };
+    let ce = CodecError::DimensionMismatch {
+        expected: 768,
+        got: 100,
+    };
     let corpus: CorpusError = ce.into();
     let source = corpus.source();
-    assert!(source.is_some(), "CorpusError::Codec must expose the inner CodecError via source()");
+    assert!(
+        source.is_some(),
+        "CorpusError::Codec must expose the inner CodecError via source()"
+    );
     assert_eq!(
         source.unwrap().to_string(),
         "vector length 100 does not match config dimension 768",
