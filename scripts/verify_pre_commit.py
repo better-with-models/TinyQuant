@@ -50,7 +50,10 @@ def ok(message: str) -> None:
 # - .venv/      : throwaway virtualenvs created for worktree sanity
 #                 checks; their vendored LICENSE.md files are upstream
 #                 and not subject to our lint rules.
-_EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv"}
+# - .worktrees/ : git worktrees share the repo's .git but live under a
+#                 separate directory; their docs/ contain Obsidian markdown
+#                 and are governed by their own branch's pre-commit hook.
+_EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv", ".worktrees"}
 
 
 def markdown_files_outside_docs() -> list[Path]:
