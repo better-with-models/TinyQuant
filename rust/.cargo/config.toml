@@ -1,0 +1,5 @@
+[build]
+rustflags = ["-D", "warnings"]
+
+[alias]
+xtask = "run --manifest-path ${CARGO_WORKSPACE_DIR}xtask/Cargo.toml --"

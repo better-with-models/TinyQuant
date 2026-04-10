@@ -1,0 +1,21 @@
+[package]
+name         = "tinyquant-py"
+description  = "pyo3 Python bindings for TinyQuant (importable as `tinyquant_rs`)."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+[lib]
+name       = "tinyquant_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3           = { workspace = true }
+tinyquant-core = { workspace = true }
+tinyquant-io   = { workspace = true }
+
+[features]
+default = ["simd"]
+simd    = ["tinyquant-core/simd"]

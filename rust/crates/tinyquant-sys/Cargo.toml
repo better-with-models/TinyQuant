@@ -1,0 +1,20 @@
+[package]
+name         = "tinyquant-sys"
+description  = "C ABI façade for TinyQuant (cdylib + staticlib)."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+build = "build.rs"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+tinyquant-core = { workspace = true }
+tinyquant-io   = { workspace = true }
+
+[features]
+default = ["simd"]
+simd    = ["tinyquant-core/simd", "tinyquant-io/simd"]

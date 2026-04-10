@@ -1,0 +1,16 @@
+[package]
+name         = "tinyquant-cli"
+description  = "Standalone `tinyquant` CLI binary."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+[[bin]]
+name = "tinyquant"
+path = "src/main.rs"
+
+[dependencies]
+tinyquant-core = { workspace = true }
+tinyquant-io   = { workspace = true }

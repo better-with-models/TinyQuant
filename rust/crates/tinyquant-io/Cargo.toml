@@ -1,0 +1,16 @@
+[package]
+name         = "tinyquant-io"
+description  = "Serialization, mmap, and file I/O for TinyQuant."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+[dependencies]
+tinyquant-core = { workspace = true }
+
+[features]
+default = ["simd"]
+simd    = ["tinyquant-core/simd"]
+# mmap and rayon features added in Phase 17/21 when deps are wired

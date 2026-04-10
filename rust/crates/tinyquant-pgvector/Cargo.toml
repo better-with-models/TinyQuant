@@ -1,0 +1,16 @@
+[package]
+name         = "tinyquant-pgvector"
+description  = "pgvector search backend for TinyQuant."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+
+[dependencies]
+tinyquant-core = { workspace = true }
+
+[features]
+default  = []
+pgvector = []
+# postgres deps wired in Phase 19
