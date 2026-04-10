@@ -66,3 +66,6 @@ Desktop.ini
 .worktrees/
 docs/.obsidian/app.json
 docs/.obsidian/appearance.json
+docs/.obsidian/graph.json
+docs/.obsidian/hotkeys.json
+docs/.obsidian/workspace.json
