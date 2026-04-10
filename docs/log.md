@@ -411,3 +411,15 @@ release workflow runs (GitHub force-upgrades JS actions to Node 24 on
   [[CD-plan/versioning-and-changelog|Versioning and Changelog]] to reflect
   the new action versions and the replaced release step
 - Plan recorded at [[specs/plans/2026-04-09-github-actions-node24-upgrade|GitHub Actions Node 24 Upgrade]]
+
+## [2026-04-10] scaffold | Phase 11 — Rust workspace scaffold
+
+Created the Cargo workspace under `rust/` with all 10 workspace members.
+
+- `rust/Cargo.toml` — workspace root, resolver v2, 10 members, shared deps
+- `rust/rust-toolchain.toml` — channel 1.78.0, rustfmt + clippy + thumbv7em target
+- `rust/.cargo/config.toml` — RUSTFLAGS = -D warnings, cargo xtask alias
+- `rust/crates/tinyquant-{core,io,bruteforce,pgvector,sys,py,cli,bench,fuzz}/`
+- `rust/xtask/` — cargo xtask dispatcher (fmt/lint/test/help)
+- `.github/workflows/rust-ci.yml` — fmt → clippy → {test, no-std-check}
+- All 5 acceptance criteria pass: build, test, fmt, clippy, no_std cross-compile

@@ -39,6 +39,9 @@ gantt
         Phase 8 - CI/CD Workflows           :done, p8, after p7, 1
         Phase 9 - Pgvector Adapter          :done, p9, after p8, 1
         Phase 10 - Calibration & Release    :done, p10, after p9, 1
+    section Rust
+        Phase 11 - Rust Workspace Scaffold  :done, p11, after p10, 1
+        Phase 12 - Shared Types & Errors    :active, p12, after p11, 1
 ```
 
 ## Phase summary
@@ -55,6 +58,7 @@ gantt
 | 8 | CI/CD Workflows | **complete** | — | Phase 7 | [[plans/phase-08-ci-cd-workflows\|Plan]] |
 | 9 | Pgvector Adapter | **complete** | 6 | Phase 8 | [[plans/phase-09-pgvector-adapter\|Plan]] |
 | 10 | Calibration & Release | **complete** | 15 | Phase 9 | [[plans/phase-10-calibration-release\|Plan]] |
+| 11 | Rust Workspace Scaffold | **complete** | workspace, xtask | Phase 10 | [[plans/rust/phase-11-rust-workspace-scaffold\|Plan]] |
 
 > [!success] Current progress
 > **10 of 10 phases complete** — 214 tests (208 passed, 6 skipped), ruff + mypy --strict clean, 90.95% coverage.

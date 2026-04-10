@@ -145,6 +145,7 @@ status: active
 | [[plans/phase-08-ci-cd-workflows|Phase 8: CI/CD Workflows]] | ci.yml and release.yml GitHub Actions workflows | 2026-04-08 |
 | [[plans/phase-09-pgvector-adapter|Phase 9: Pgvector Adapter]] | PgvectorAdapter ACL + ~6 integration tests | 2026-04-08 |
 | [[plans/phase-10-calibration-release|Phase 10: Calibration & Release]] | Calibration tests, CHANGELOG, README, v0.1.0 tag | 2026-04-08 |
+| [[plans/rust/phase-11-rust-workspace-scaffold\|Phase 11: Rust Workspace Scaffold]] | Cargo workspace scaffold: 10 members, toolchain pin 1.78.0, lint wall, smoke tests, rust-ci.yml | 2026-04-10 |
 
 ## Specs
 
