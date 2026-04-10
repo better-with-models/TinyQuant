@@ -16,7 +16,7 @@ members = [
 [workspace.package]
 version      = "0.1.0"
 edition      = "2021"
-rust-version = "1.78"
+rust-version = "1.81"
 license      = "Apache-2.0"
 repository   = "https://github.com/better-with-models/TinyQuant"
 authors      = ["TinyQuant Contributors"]
@@ -37,7 +37,7 @@ rand        = { version = "0.8",  default-features = false }
 rand_chacha = { version = "0.3",  default-features = false }
 
 # std-only (used by io, bruteforce, sys, py, cli, bench)
-thiserror = "1"
+thiserror = { version = "2", default-features = false }
 memmap2   = "0.9"
 rayon     = "1"
 pyo3      = { version = "0.22", features = ["extension-module"] }
