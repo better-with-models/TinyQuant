@@ -27,7 +27,9 @@ pub fn to_bytes(cv: &CompressedVector) -> Vec<u8> {
         None => out.push(0x00),
         Some(r) => {
             out.push(0x01);
-            #[allow(clippy::cast_possible_truncation)] // residual len is 2*dim, bounded by u32
+            // dim is u32; residual len = 2*dim fits in u32 only when dim <= 2^31.
+            // Embedding dimensions in practice are <4096, so truncation cannot occur.
+            #[allow(clippy::cast_possible_truncation)]
             let rlen = r.len() as u32;
             out.extend_from_slice(&rlen.to_le_bytes());
             out.extend_from_slice(r);
