@@ -74,9 +74,9 @@ research line represented by [[QJL]], [[PolarQuant]], and especially
 
 - [[tinyquant-library-research]]
 - [[tinyquant-better-router-integration]]
-- [[vector-quantization-paper-synthesis]]
-- [[turbo-quant-deep-research-report]]
-- [[turboquant-integration]]
+- [[sources/vector-quantization-paper-synthesis|vector-quantization-paper-synthesis]]
+- [[sources/turbo-quant-deep-research-report|turbo-quant-deep-research-report]]
+- [[sources/turboquant-integration|turboquant-integration]]
 - [[TurboQuant]]
 - [[storage-codec-vs-search-backend-separation]]
 - [[per-collection-compression-policy]]
