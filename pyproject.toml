@@ -84,6 +84,11 @@ ignore_missing_imports = true
 module = "matplotlib.*"
 ignore_missing_imports = true
 
+[tool.coverage.run]
+omit = [
+    "src/tinyquant_cpu/tools/*",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--import-mode=importlib -x --tb=short"
