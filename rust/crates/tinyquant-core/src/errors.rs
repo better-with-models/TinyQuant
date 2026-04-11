@@ -162,6 +162,27 @@ pub enum CorpusError {
     /// frozen.
     #[error("compression policy is immutable once set")]
     PolicyImmutable,
+
+    /// A vector's dimension does not match the corpus's declared dimension.
+    #[error("dimension mismatch: expected {expected}, got {got}")]
+    DimensionMismatch {
+        /// The dimension declared in the corpus's `CodecConfig`.
+        expected: u32,
+        /// The actual length of the supplied vector.
+        got: u32,
+    },
+
+    /// `insert_batch` failed atomically: the vector at `index` produced
+    /// `source`; the corpus was not modified.
+    ///
+    /// `source` is boxed to keep `CorpusError` `Sized`.
+    #[error("batch atomicity failure at index {index}: {source}")]
+    BatchAtomicityFailure {
+        /// Zero-based index of the first failing vector in the batch.
+        index: usize,
+        /// The error produced by the failing vector.
+        source: alloc::boxed::Box<CorpusError>,
+    },
 }
 
 /// Errors produced by the search-backend layer.
