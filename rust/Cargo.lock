@@ -1064,6 +1064,9 @@ dependencies = [
 name = "tinyquant-io"
 version = "0.1.0"
 dependencies = [
+ "rand_chacha",
+ "serde_json",
+ "thiserror",
  "tinyquant-core",
 ]
 
