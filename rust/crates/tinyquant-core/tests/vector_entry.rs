@@ -35,7 +35,7 @@ fn make_entry(id: &str, dim: u8) -> VectorEntry {
 
     use tinyquant_core::codec::Codec;
     let compressed = Codec::new().compress(&vector, &config, &codebook).unwrap();
-    VectorEntry::new(Arc::from(id), compressed, 0, BTreeMap::new())
+    VectorEntry::new(Arc::from(id), compressed, dim as u32, 0, BTreeMap::new())
 }
 
 // ── Identity ──────────────────────────────────────────────────────────────────
@@ -92,7 +92,7 @@ fn vector_entry_config_hash_is_stable() {
     use tinyquant_core::codec::Codec;
     let vector: Vec<f32> = (0..8).map(|i| i as f32 * 0.01).collect();
     let compressed = Codec::new().compress(&vector, &config, &codebook).unwrap();
-    let entry = VectorEntry::new(Arc::from("v"), compressed, 0, BTreeMap::new());
+    let entry = VectorEntry::new(Arc::from("v"), compressed, 8, 0, BTreeMap::new());
     assert_eq!(entry.config_hash().as_ref(), config.config_hash().as_ref());
 }
 
@@ -105,7 +105,7 @@ fn vector_entry_metadata_mut_allows_update() {
     use tinyquant_core::codec::Codec;
     let vector: Vec<f32> = (0..8).map(|i| i as f32 * 0.01).collect();
     let compressed = Codec::new().compress(&vector, &config, &codebook).unwrap();
-    let mut entry = VectorEntry::new(Arc::from("v"), compressed, 0, BTreeMap::new());
+    let mut entry = VectorEntry::new(Arc::from("v"), compressed, 8, 0, BTreeMap::new());
 
     entry
         .metadata_mut()
@@ -121,6 +121,6 @@ fn vector_entry_inserted_at_is_stored() {
     let vector: Vec<f32> = (0..8).map(|i| i as f32 * 0.01).collect();
     let compressed = Codec::new().compress(&vector, &config, &codebook).unwrap();
     let ts = 1_700_000_000_000_000_000_i64;
-    let entry = VectorEntry::new(Arc::from("v"), compressed, ts, BTreeMap::new());
+    let entry = VectorEntry::new(Arc::from("v"), compressed, 8, ts, BTreeMap::new());
     assert_eq!(entry.inserted_at(), ts);
 }

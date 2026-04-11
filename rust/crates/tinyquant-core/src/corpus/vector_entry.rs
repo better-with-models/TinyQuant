@@ -22,6 +22,9 @@ use crate::types::{Timestamp, VectorId};
 pub struct VectorEntry {
     vector_id: VectorId,
     compressed: CompressedVector,
+    /// The actual f32 vector dimension (not the byte count stored in
+    /// `compressed.dimension()` for Passthrough/Fp16 policies).
+    declared_dimension: u32,
     inserted_at: Timestamp,
     metadata: BTreeMap<String, EntryMetaValue>,
 }
@@ -29,18 +32,25 @@ pub struct VectorEntry {
 impl VectorEntry {
     /// Construct a new `VectorEntry`.
     ///
+    /// `declared_dimension` is the number of f32 elements in the original
+    /// vector.  For `Compress` policy this equals `compressed.dimension()`;
+    /// for `Passthrough` and `Fp16` the compressed dimension is a byte count
+    /// that differs from the f32 dimension.
+    ///
     /// `inserted_at` should be a nanosecond Unix timestamp from the caller's
     /// time source.  `metadata` may be empty.
     #[must_use]
     pub const fn new(
         vector_id: VectorId,
         compressed: CompressedVector,
+        declared_dimension: u32,
         inserted_at: Timestamp,
         metadata: BTreeMap<String, EntryMetaValue>,
     ) -> Self {
         Self {
             vector_id,
             compressed,
+            declared_dimension,
             inserted_at,
             metadata,
         }
@@ -81,10 +91,14 @@ impl VectorEntry {
         self.compressed.config_hash()
     }
 
-    /// Convenience delegate: number of dimensions.
+    /// The number of f32 dimensions in the original vector.
+    ///
+    /// For `Compress` policy this matches `compressed.dimension()`.  For
+    /// `Passthrough` and `Fp16` policies `compressed.dimension()` holds a
+    /// byte count; this method always returns the true f32 vector length.
     #[must_use]
     pub const fn dimension(&self) -> u32 {
-        self.compressed.dimension()
+        self.declared_dimension
     }
 
     /// Convenience delegate: whether a residual buffer is present.

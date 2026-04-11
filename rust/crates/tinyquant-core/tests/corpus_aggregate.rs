@@ -277,7 +277,7 @@ fn decompress_all_emits_decompressed_event() {
     }
     let _ = corpus.drain_events();
 
-    let all = corpus.decompress_all().unwrap();
+    let all = corpus.decompress_all_at(0).unwrap();
     assert_eq!(all.len(), 3);
 
     let events = corpus.drain_events();
@@ -420,4 +420,79 @@ fn compress_policy_round_trip_within_mse_bound() {
         .sum::<f32>()
         / original.len() as f32;
     assert!(mse < 1e-2, "Compress MSE {mse} >= 1e-2");
+}
+
+// ── VectorEntry::dimension() returns f32 vector dim, not byte count ───────────
+
+#[test]
+fn vector_entry_dimension_returns_f32_dim_for_passthrough() {
+    let config = make_config();
+    let codebook = make_codebook(&config);
+    let mut corpus = Corpus::new(
+        Arc::from("pt-dim-corpus"),
+        config,
+        codebook,
+        CompressionPolicy::Passthrough,
+        BTreeMap::new(),
+    );
+    let _ = corpus.drain_events();
+
+    let original = make_vector(0);
+    corpus.insert(Arc::from("v1"), &original, None, 0).unwrap();
+
+    // dimension() must return the f32 vector length (DIM), not DIM*4 (byte count).
+    let (_, entry) = corpus.iter().next().unwrap();
+    assert_eq!(
+        entry.dimension(),
+        DIM,
+        "Passthrough dimension() should return {} (f32 count), not {}",
+        DIM,
+        DIM * 4,
+    );
+}
+
+#[test]
+fn vector_entry_dimension_returns_f32_dim_for_fp16() {
+    let config = make_config();
+    let codebook = make_codebook(&config);
+    let mut corpus = Corpus::new(
+        Arc::from("fp16-dim-corpus"),
+        config,
+        codebook,
+        CompressionPolicy::Fp16,
+        BTreeMap::new(),
+    );
+    let _ = corpus.drain_events();
+
+    let original = make_vector(0);
+    corpus.insert(Arc::from("v1"), &original, None, 0).unwrap();
+
+    // dimension() must return the f32 vector length (DIM), not DIM*2 (byte count).
+    let (_, entry) = corpus.iter().next().unwrap();
+    assert_eq!(
+        entry.dimension(),
+        DIM,
+        "Fp16 dimension() should return {} (f32 count), not {}",
+        DIM,
+        DIM * 2,
+    );
+}
+
+// ── decompress_all on empty corpus emits no event ─────────────────────────────
+
+#[test]
+fn decompress_all_on_empty_corpus_emits_no_event() {
+    let mut corpus = make_corpus();
+    // Drain the initial Created event.
+    let _ = corpus.drain_events();
+
+    let result = corpus.decompress_all_at(0).unwrap();
+    assert!(result.is_empty());
+
+    // No Decompressed event should be emitted for an empty corpus.
+    let events = corpus.drain_events();
+    assert!(
+        events.is_empty(),
+        "expected no events for empty corpus decompress_all_at, got {events:?}"
+    );
 }

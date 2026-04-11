@@ -216,7 +216,9 @@ impl Corpus {
 
         let compressed = self.compress_vector(vector)?;
         let meta = Self::unwrap_meta(entry_metadata);
-        let entry = VectorEntry::new(Arc::clone(&id), compressed, timestamp, meta);
+        #[allow(clippy::cast_possible_truncation)]
+        let declared_dim = vector.len() as u32;
+        let entry = VectorEntry::new(Arc::clone(&id), compressed, declared_dim, timestamp, meta);
 
         self.vectors.insert(Arc::clone(&id), entry);
 
@@ -286,9 +288,17 @@ impl Corpus {
             };
 
             let entry_meta = Self::unwrap_meta(meta.clone());
+            #[allow(clippy::cast_possible_truncation)]
+            let declared_dim = vector.len() as u32;
             staged.push((
                 Arc::clone(id),
-                VectorEntry::new(Arc::clone(id), compressed, timestamp, entry_meta),
+                VectorEntry::new(
+                    Arc::clone(id),
+                    compressed,
+                    declared_dim,
+                    timestamp,
+                    entry_meta,
+                ),
             ));
         }
 
@@ -335,35 +345,10 @@ impl Corpus {
         self.decompress_entry(entry)
     }
 
-    /// Decompress all vectors and return them as an insertion-ordered map.
-    ///
-    /// Emits exactly one [`CorpusEvent::Decompressed`] on success.
-    ///
-    /// # Errors
-    ///
-    /// Propagates errors from the codec pipeline for any individual vector.
-    pub fn decompress_all(&mut self) -> Result<BTreeMap<VectorId, Vec<f32>>, CorpusError> {
-        let mut out = BTreeMap::new();
-        for (id, entry) in self.vectors.iter() {
-            let decompressed = self.decompress_entry(entry)?;
-            out.insert(Arc::clone(id), decompressed);
-        }
-
-        #[allow(clippy::cast_possible_truncation)]
-        let vector_count = out.len() as u32;
-
-        self.pending_events.push(CorpusEvent::Decompressed {
-            corpus_id: Arc::clone(&self.corpus_id),
-            vector_count,
-            timestamp: 0,
-        });
-
-        Ok(out)
-    }
-
     /// Decompress all vectors and return them with an explicit timestamp.
     ///
     /// Emits exactly one [`CorpusEvent::Decompressed`] on success.
+    /// No event is emitted when the corpus is empty — matches Python parity.
     ///
     /// # Errors
     ///
@@ -372,6 +357,11 @@ impl Corpus {
         &mut self,
         timestamp: Timestamp,
     ) -> Result<BTreeMap<VectorId, Vec<f32>>, CorpusError> {
+        // No event emitted for empty corpus — matches Python parity.
+        if self.vectors.is_empty() {
+            return Ok(BTreeMap::new());
+        }
+
         let mut out = BTreeMap::new();
         for (id, entry) in self.vectors.iter() {
             let decompressed = self.decompress_entry(entry)?;
