@@ -94,7 +94,7 @@ gantt
 | 12 | Shared Types & Errors | **complete** | tinyquant-core (types, errors) | Phase 11 | [[plans/rust/phase-12-shared-types-and-errors\|Plan]] |
 | 13 | Rotation Matrix & Numerics | **complete** | tinyquant-core (rotation_matrix, rotation_cache) | Phase 12 | [[plans/rust/phase-13-rotation-numerics\|Plan]] |
 | 14 | Codebook & Quantize Kernels | **complete** | tinyquant-core (codebook, quantize) | Phase 13 | [[plans/rust/phase-14-codebook-quantize\|Plan]] |
-| 15 | Codec Service & Residual | **planned** | tinyquant-core (codec, residual, compressed_vector) | Phase 14 | [[plans/rust/phase-15-codec-service-residual\|Plan]] |
+| 15 | Codec Service & Residual | **complete** | tinyquant-core (codec, residual, compressed_vector) | Phase 14 | [[plans/rust/phase-15-codec-service-residual\|Plan]] |
 | 16 | Serialization & Python Parity | **planned** | tinyquant-io (compressed_vector/*) | Phase 15 | [[plans/rust/phase-16-serialization-parity\|Plan]] |
 | 17 | Zero-copy & Mmap | **planned** | tinyquant-io (zero_copy, mmap, codec_file) | Phase 16 | [[plans/rust/phase-17-zero-copy-mmap\|Plan]] |
 | 18 | Corpus Aggregate & Events | **planned** | tinyquant-core (corpus) | Phase 17 | [[plans/rust/phase-18-corpus-aggregate\|Plan]] |
