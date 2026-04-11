@@ -88,3 +88,4 @@ pytest tests/codec/ tests/corpus/ -v  # regression check
 - [[roadmap|Implementation Roadmap]]
 - [[plans/phase-04-corpus-layer|Phase 4]]
 - [[plans/phase-06-serialization|Phase 6: Serialization]]
+- [[superpowers/plans/2026-04-08-phase-05-backend-layer|Phase 5 Execution Plan]] — agentic task checklist for this phase

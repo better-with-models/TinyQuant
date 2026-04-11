@@ -360,3 +360,4 @@ git commit -m "feat(tinyquant-core): add shared types and error enums"
 - [[plans/rust/phase-13-rotation-numerics|Phase 13]]
 - [[design/rust/type-mapping|Type Mapping]]
 - [[design/rust/error-model|Error Model]]
+- [[superpowers/plans/2026-04-10-phase-12-shared-types-and-errors|Phase 12 Execution Plan]] — agentic task checklist for this phase
