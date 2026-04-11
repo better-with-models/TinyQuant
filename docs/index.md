@@ -152,6 +152,7 @@ status: active
 | [[plans/rust/phase-14-codebook-quantize\|Phase 14: Codebook and Quantize Kernels]] | `tinyquant_core::codec::Codebook` value object + private `scalar_quantize` / `scalar_dequantize` kernels, Python-parity `train` + `quantize` across `bw ∈ {2, 4, 8}`, 10 000 × 64 training corpus + 10 000-value quantize corpus frozen under LFS — **complete** | 2026-04-10 |
 | [[design/rust/phase-14-implementation-notes\|Phase 14 Implementation Notes]] | Execution-log view of Phase 14: bit-width sweep scoped in during execution, proptest deferred on MSRV 1.81 (replaced by a deterministic `rand_chacha` scan), runtime `fs::read` fixture pattern, narrow `#[allow(clippy::cast_*)]` on `Codebook::train`, and the Python-literal tie-break gotcha in the round-trip test | 2026-04-10 |
 | [[design/rust/phase-15-implementation-notes\|Phase 15 Implementation Notes]] | Execution-log view of Phase 15: codec service, residual, and CompressedVector — Rust-canonical fixture strategy due to RNG divergence, clippy constraint patterns, and fidelity gate numbers | 2026-04-10 |
+| [[design/rust/phase-17-implementation-notes\|Phase 17 Implementation Notes]] | Execution-log view of Phase 17: `tinyquant-io` zero-copy views, Level-2 TQCV corpus file container, and mmap-based reader — TQCV magic-byte layout, `mmap-lock` feature flag, and `MmapView` lifetime safety model | 2026-04-11 |
 
 ## Specs
 
@@ -167,6 +168,13 @@ status: active
 | Page | Summary | Date |
 |------|---------|------|
 | *No comparison pages yet* | | |
+
+## Meta
+
+| Page | Summary | Date |
+|------|---------|------|
+| [[README\|Wiki README]] | Human-facing overview of the vault structure, Obsidian conventions, operating procedures, and the three-layer model | 2026-04-08 |
+| [[log\|Change Log]] | Append-only operational history for scaffolding, ingests, and maintenance work | 2026-04-08 |
 
 ## Raw sources available for ingestion
 
