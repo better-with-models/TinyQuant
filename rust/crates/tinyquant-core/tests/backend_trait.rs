@@ -59,25 +59,23 @@ fn search_result_ordering_descending() {
 
 #[test]
 fn search_result_nan_collapses_to_equal() {
-    // The Ord impl uses `other.score.total_cmp(&self.score)` for descending
-    // order.  IEEE 754 total order places NaN above all finite values, so
-    // `nan_entry.cmp(one_entry)` = Less, which in Rust's ascending sort puts
-    // `nan_entry` first — as if NaN were the highest score.
-    // This test documents the actual behaviour of the Ord impl in protocol.rs.
+    // The Ord impl uses `other.score.partial_cmp(&self.score).unwrap_or(Equal)`.
+    // NaN comparisons return None from partial_cmp, which collapses to Equal.
+    // A stable sort preserves insertion order for equal elements, so "one"
+    // (which was first in the input) stays first.
+    use std::sync::Arc;
     let mut v = [
-        SearchResult {
-            vector_id: Arc::from("nan"),
-            score: f32::NAN,
-        },
         SearchResult {
             vector_id: Arc::from("one"),
             score: 1.0,
         },
+        SearchResult {
+            vector_id: Arc::from("nan"),
+            score: f32::NAN,
+        },
     ];
-    v.sort();
-    // NaN sorts first (treated as the highest score by total_cmp).
-    assert_eq!(v[0].vector_id.as_ref(), "nan");
-    assert_eq!(v[1].vector_id.as_ref(), "one");
+    v.sort(); // stable — NaN collapses to Equal; "one" was first in input so it stays first
+    assert_eq!(v[0].vector_id.as_ref(), "one");
 }
 
 #[test]

@@ -8,6 +8,14 @@
 ///
 /// Returns `0.0` when either vector is the zero vector (denominator == 0).
 pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+    #[cfg_attr(debug_assertions, allow(clippy::panic))]
+    {
+        debug_assert!(!a.iter().any(|x| x.is_nan()), "NaN in query; backend bug");
+        debug_assert!(
+            !b.iter().any(|x| x.is_nan()),
+            "NaN in stored vector; backend bug"
+        );
+    }
     debug_assert_eq!(a.len(), b.len());
     let mut dot = 0.0_f32;
     let mut na = 0.0_f32;
@@ -18,7 +26,7 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
         nb += y * y;
     }
     let denom = (na * nb).sqrt();
-    if denom < f32::EPSILON {
+    if denom == 0.0 {
         0.0
     } else {
         dot / denom

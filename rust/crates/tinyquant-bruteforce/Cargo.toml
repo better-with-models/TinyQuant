@@ -19,3 +19,5 @@ rand        = { workspace = true }
 [features]
 default = []
 simd    = []
+dashmap = []
+std     = []

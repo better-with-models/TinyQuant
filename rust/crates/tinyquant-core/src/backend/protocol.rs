@@ -45,12 +45,14 @@ impl PartialOrd for SearchResult {
 impl Ord for SearchResult {
     /// Descending by score (highest score sorts first).
     ///
-    /// NaN maps to `Equal` so a stable sort preserves insertion order for
-    /// degenerate vectors rather than producing undefined behaviour.
+    /// NaN maps to `Equal` via `unwrap_or` so a stable sort preserves
+    /// insertion order for degenerate vectors rather than producing undefined
+    /// behaviour.
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        // `total_cmp` is stable and handles NaN: NaN < NaN is false, so
-        // NaN.total_cmp(NaN) == Equal.  We then reverse for descending order.
-        other.score.total_cmp(&self.score)
+        other
+            .score
+            .partial_cmp(&self.score)
+            .unwrap_or(core::cmp::Ordering::Equal)
     }
 }
 

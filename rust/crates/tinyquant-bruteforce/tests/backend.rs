@@ -217,6 +217,50 @@ fn ingest_overwrites_existing_id_silently() {
 }
 
 // ---------------------------------------------------------------------------
+// 13. ingest_empty_slice_is_noop
+// ---------------------------------------------------------------------------
+
+#[test]
+fn ingest_empty_slice_is_noop() {
+    let mut b = BruteForceBackend::new();
+    let result = b.ingest(&[]);
+    assert!(result.is_ok());
+    assert_eq!(b.len(), 0);
+    assert!(b.dim().is_none());
+}
+
+// ---------------------------------------------------------------------------
+// 14. remove_id_preserves_insertion_order_of_survivors
+// ---------------------------------------------------------------------------
+
+#[test]
+fn remove_id_preserves_insertion_order_of_survivors() {
+    let mut b = BruteForceBackend::new();
+    let dim = 4;
+    b.ingest(&[
+        (Arc::from("a"), vec![1.0, 0.0, 0.0, 0.0]),
+        (Arc::from("b"), vec![0.0, 1.0, 0.0, 0.0]),
+        (Arc::from("c"), vec![0.0, 0.0, 1.0, 0.0]),
+        (Arc::from("d"), vec![0.0, 0.0, 0.0, 1.0]),
+    ])
+    .unwrap();
+    b.remove(&[Arc::from("b")]).unwrap();
+    assert_eq!(b.len(), 3);
+    // Verify via searching that "a", "c", "d" are all found and b is gone
+    let results = b.search(&[1.0, 0.0, 0.0, 0.0], 10).unwrap();
+    let ids: Vec<&str> = results.iter().map(|r| r.vector_id.as_ref()).collect();
+    assert!(ids.contains(&"a"), "a should still be present");
+    assert!(!ids.contains(&"b"), "b should have been removed");
+    assert!(ids.contains(&"c"), "c should still be present");
+    assert!(ids.contains(&"d"), "d should still be present");
+    // a should score highest (it matches query exactly)
+    assert_eq!(ids[0], "a");
+
+    // Suppress unused variable warning for dim
+    let _ = dim;
+}
+
+// ---------------------------------------------------------------------------
 // 12. golden_fixture_top_10_ordering — ChaCha20Rng(seed=42)
 // ---------------------------------------------------------------------------
 

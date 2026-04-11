@@ -32,8 +32,11 @@ impl OwnedStore {
     }
 
     /// Remove a vector by id.  Silent no-op if the id is unknown.
+    ///
+    /// Uses `shift_remove` to preserve insertion order of surviving entries
+    /// (Python dict parity).
     pub fn remove(&mut self, id: &str) {
-        self.0.swap_remove(id);
+        self.0.shift_remove(id);
     }
 
     /// Iterate over `(VectorId, Arc<[f32]>)` pairs in insertion order.

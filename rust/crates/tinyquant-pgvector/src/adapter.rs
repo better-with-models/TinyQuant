@@ -31,7 +31,7 @@ pub struct PgvectorAdapter {
     dim: Option<usize>,
     /// Connection factory, only instantiated under `live-db`.
     #[cfg(feature = "live-db")]
-    factory: Box<dyn Fn() -> Result<postgres::Client, postgres::Error> + Send>,
+    factory: Box<dyn Fn() -> Result<postgres::Client, postgres::Error> + Send + Sync>,
 }
 
 impl PgvectorAdapter {
@@ -42,11 +42,13 @@ impl PgvectorAdapter {
     /// Returns `Err` if `table` fails the allowlist regex validation.
     #[cfg(feature = "live-db")]
     pub fn new(
-        table: impl Into<String>,
-        factory: impl Fn() -> Result<postgres::Client, postgres::Error> + Send + 'static,
+        factory: impl Fn() -> Result<postgres::Client, postgres::Error> + Send + Sync + 'static,
+        table: &str,
+        dim: u32,
     ) -> Result<Self, BackendError> {
-        let table = table.into();
+        let table = table.to_string();
         validate_table_name(&table)?;
+        let _ = dim;
         Ok(Self {
             table,
             dim: None,
@@ -103,13 +105,16 @@ impl PgvectorAdapter {
 
     /// Create an approximate nearest-neighbour index on the embedding column.
     ///
+    /// `lists` controls the number of `IVFFlat` lists.  If `0`, defaults to 100.
+    ///
     /// # Errors
     ///
     /// Returns `Err` when the `live-db` feature is disabled, or on any
     /// `postgres::Error`.
-    pub fn ensure_index(&self) -> Result<(), BackendError> {
+    pub fn ensure_index(&self, lists: u32) -> Result<(), BackendError> {
         #[cfg(not(feature = "live-db"))]
         {
+            let _ = lists;
             return Err(adapter_err(
                 "live-db feature required to connect to PostgreSQL",
             ));
@@ -117,11 +122,14 @@ impl PgvectorAdapter {
         #[cfg(feature = "live-db")]
         {
             use crate::errors::from_pg;
+            let effective_lists = if lists == 0 { 100 } else { lists };
             let mut client = (self.factory)().map_err(from_pg)?;
             let sql = format!(
                 "CREATE INDEX IF NOT EXISTS {table}_embedding_idx \
-                 ON {table} USING ivfflat (embedding vector_cosine_ops);",
-                table = self.table
+                 ON {table} USING ivfflat (embedding vector_cosine_ops) \
+                 WITH (lists = {lists});",
+                table = self.table,
+                lists = effective_lists
             );
             client.batch_execute(&sql).map_err(from_pg)
         }
