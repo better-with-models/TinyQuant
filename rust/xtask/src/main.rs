@@ -30,6 +30,10 @@
 //!   `python scripts/generate_rust_fixtures.py residual` to refresh
 //!   the 1 000 × 64 f32 original/reconstructed corpora and the
 //!   expected fp16 residual byte fixture.
+//! * `fixtures refresh-codec`    — Run
+//!   `python scripts/generate_rust_fixtures.py codec` to refresh the
+//!   end-to-end codec byte-parity fixtures (indices, residual, decompressed)
+//!   for bit-widths 2, 4, 8 against a 1 000 × 64 input corpus.
 //! * `fixtures refresh-all`      — Run all of the above in sequence.
 #![deny(warnings, clippy::all, clippy::pedantic)]
 
@@ -80,17 +84,19 @@ fn fixtures(sub: Option<&str>) {
         Some("refresh-codebook") => refresh_codebook(),
         Some("refresh-quantize") => refresh_quantize(),
         Some("refresh-residual") => refresh_residual(),
+        Some("refresh-codec") => refresh_codec(),
         Some("refresh-all") => {
             refresh_hashes();
             refresh_rotation();
             refresh_codebook();
             refresh_quantize();
             refresh_residual();
+            refresh_codec();
         }
         _ => {
             eprintln!(
                 "usage: cargo xtask fixtures <refresh-hashes|refresh-rotation|\
-                 refresh-codebook|refresh-quantize|refresh-residual|refresh-all>"
+                 refresh-codebook|refresh-quantize|refresh-residual|refresh-codec|refresh-all>"
             );
             process::exit(1);
         }
@@ -204,6 +210,74 @@ fn refresh_rotation() {
     }
 }
 
+fn refresh_codec() {
+    // Rust and Python use different RNG algorithms for the rotation matrix
+    // (ChaCha20 vs PCG64), so the binary fixtures are generated from Rust
+    // to lock in deterministic behaviour.  Python generates only the
+    // fidelity_manifest.json.
+    let training_rel = "crates/tinyquant-core/tests/fixtures/codebook/training_n10000_d64.f32.bin";
+    let out_rel = "crates/tinyquant-core/tests/fixtures/codec";
+
+    println!("xtask fixtures: generating codec binary fixtures via dump_codec_fixture");
+    let status = Command::new("cargo")
+        .args([
+            "run",
+            "--manifest-path",
+            "Cargo.toml",
+            "-p",
+            "tinyquant-core",
+            "--example",
+            "dump_codec_fixture",
+            "--features",
+            "std",
+            "--",
+            "11",    // input-seed
+            "42",    // codec-seed
+            "1000",  // rows
+            "64",    // cols
+            training_rel,
+            out_rel,
+        ])
+        .status()
+        .unwrap_or_else(|e| {
+            eprintln!("failed to spawn cargo: {e}");
+            process::exit(1);
+        });
+    if !status.success() {
+        process::exit(status.code().unwrap_or(1));
+    }
+
+    // Python generates only the fidelity manifest (quality metrics from
+    // the Python codec — separate algorithm, separate quality baseline).
+    let repo_root = repo_root();
+    println!(
+        "xtask fixtures: generating fidelity_manifest.json from {}",
+        repo_root.display()
+    );
+    let status = Command::new("python")
+        .args([
+            "scripts/generate_rust_fixtures.py",
+            "codec",
+            "--input-seed",
+            "11",
+            "--codec-seed",
+            "42",
+            "--rows",
+            "1000",
+            "--cols",
+            "64",
+        ])
+        .current_dir(&repo_root)
+        .status()
+        .unwrap_or_else(|e| {
+            eprintln!("failed to spawn python: {e}");
+            process::exit(1);
+        });
+    if !status.success() {
+        process::exit(status.code().unwrap_or(1));
+    }
+}
+
 fn repo_root() -> PathBuf {
     // xtask is invoked from `rust/`; the repository root is the parent.
     let cwd = std::env::current_dir().unwrap_or_else(|e| {
@@ -239,7 +313,7 @@ fn print_help() {
     println!("  test      Run all workspace tests");
     println!(
         "  fixtures  Regenerate test fixtures (refresh-hashes | refresh-rotation | \
-         refresh-codebook | refresh-quantize | refresh-all)"
+         refresh-codebook | refresh-quantize | refresh-residual | refresh-codec | refresh-all)"
     );
     println!("  help      Print this message (default)");
 }
