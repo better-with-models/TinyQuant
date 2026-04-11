@@ -23,13 +23,6 @@
 )]
 #![allow(clippy::module_name_repetitions, clippy::must_use_candidate)]
 
-// mmap-lock is a reserved placeholder; reject if enabled.
-#[cfg(feature = "mmap-lock")]
-compile_error!(
-    "mmap-lock is not yet implemented (Phase 17 reserved placeholder); \
-     see docs/plans/rust/phase-17-zero-copy-mmap.md"
-);
-
 pub mod codec_file;
 pub mod compressed_vector;
 pub mod errors;
