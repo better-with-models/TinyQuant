@@ -1,0 +1,105 @@
+{
+  "schema": 1,
+  "cases": [
+    {
+      "id": "case_01",
+      "bit_width": 4,
+      "dim": 768,
+      "residual": true,
+      "seed": 42,
+      "config_hash": "cc50f0a21077b1971aadb240e4209ff1acc3b9da32233100e481f03b5161fbed",
+      "expected_sha256": "b564564aad95b4ed5862b4b882fd6d87aa6efec5d55a02cbdcc018014693d4a7",
+      "expected_len": 1995
+    },
+    {
+      "id": "case_02",
+      "bit_width": 2,
+      "dim": 768,
+      "residual": false,
+      "seed": 42,
+      "config_hash": "1dba122fb7fad626db53a40d412aaf0aede0f13beef67e31636eecfb58398c77",
+      "expected_sha256": "e758a5c3ffed50692a1335db168a453fb16a6b27b9a251223cdda13df33012b0",
+      "expected_len": 263
+    },
+    {
+      "id": "case_03",
+      "bit_width": 8,
+      "dim": 768,
+      "residual": false,
+      "seed": 42,
+      "config_hash": "0e4488da726f224b7ad285503313073e848523f96f059fb9629f36a000d7038a",
+      "expected_sha256": "02e448be9fe74bb9fb4b77417f0ebfc7c3d51c812c5f7e6355b198b914ecacca",
+      "expected_len": 839
+    },
+    {
+      "id": "case_04",
+      "bit_width": 4,
+      "dim": 1,
+      "residual": false,
+      "seed": 42,
+      "config_hash": "394120bc9971dc3a8a2530e38a6979f5802c05ba6fbe576be54acae61ac9d9f6",
+      "expected_sha256": "e06b5e3255749da45b9d6cf8e41c5e949fa712384435e050dc4bdc7a0e5acfec",
+      "expected_len": 72
+    },
+    {
+      "id": "case_05",
+      "bit_width": 2,
+      "dim": 17,
+      "residual": true,
+      "seed": 42,
+      "config_hash": "e571264edb1ea96a9bcb4cba240eb9c314552be809c3a3dec0ea45bc53481425",
+      "expected_sha256": "8f19371a52ef0ddb17169406e19ba111283c42257a65ce175ae22d9dfa367f1b",
+      "expected_len": 114
+    },
+    {
+      "id": "case_06",
+      "bit_width": 4,
+      "dim": 15,
+      "residual": false,
+      "seed": 42,
+      "config_hash": "ea8ad21541457421834baff4c255e07d3d82ad621ffaf7876405f68781001f91",
+      "expected_sha256": "632d66e429e54d9b0190a58dad3c87be2dddd7849b32cb4b5d61282918162709",
+      "expected_len": 79
+    },
+    {
+      "id": "case_07",
+      "bit_width": 8,
+      "dim": 1536,
+      "residual": true,
+      "seed": 42,
+      "config_hash": "fe9235cfaa514988975328cfc80df40f6d55f185f95c9ed42d660910a5894fe5",
+      "expected_sha256": "dc15be245fa991c3d48eccb03a0070734294e37a357f8de161257b80ad57e840",
+      "expected_len": 4683
+    },
+    {
+      "id": "case_08",
+      "bit_width": 4,
+      "dim": 768,
+      "residual": false,
+      "seed": 42,
+      "config_hash": "5dd6891ac5a4488d9da568b1cf4fd2f083404c05596e091de52d4463b8e4692f",
+      "expected_sha256": "874257fea50bd924c992e5e5ef9050064f941fdbaf7dca1bd69c7cb79d980725",
+      "expected_len": 455
+    },
+    {
+      "id": "case_09",
+      "bit_width": 2,
+      "dim": 16,
+      "residual": false,
+      "seed": 42,
+      "config_hash": "80b414a10ac3529be64bf6464ddd49174ff3959b2dd99c2a424a28c38a9545bc",
+      "expected_sha256": "abc245cd76254dd5387bd823f38f74a82356d4766fadc612954fedd43d593d4b",
+      "expected_len": 75
+    },
+    {
+      "id": "case_10",
+      "bit_width": 4,
+      "dim": 16,
+      "residual": true,
+      "seed": 42,
+      "config_hash": "7b44b191eef13f005007846770f871f9940a91fba564dd9c65bda42fa1af1277",
+      "expected_sha256": "209103e798ed92c7267c3c2a4845b843a8683a6dc0d1498bb7b398e94747673a",
+      "expected_len": 115
+    }
+  ]
+}

@@ -115,6 +115,13 @@ pub enum CodecError {
         /// Length of the right operand.
         right: usize,
     },
+
+    /// The residual flag byte in a serialized payload was not 0x00 or 0x01.
+    #[error("invalid residual flag: expected 0x00 or 0x01, got {got:#04x}")]
+    InvalidResidualFlag {
+        /// The invalid flag byte found.
+        got: u8,
+    },
 }
 
 /// Errors produced by the corpus aggregate layer.

@@ -34,6 +34,9 @@
 //!   `python scripts/generate_rust_fixtures.py codec` to refresh the
 //!   end-to-end codec byte-parity fixtures (indices, residual, decompressed)
 //!   for bit-widths 2, 4, 8 against a 1 000 × 64 input corpus.
+//! * `fixtures refresh-serialization` — Run
+//!   `python scripts/generate_rust_fixtures.py serialization` to refresh
+//!   the 10-case `CompressedVector` byte-parity fixtures for `tinyquant-io`.
 //! * `fixtures refresh-all`      — Run all of the above in sequence.
 #![deny(warnings, clippy::all, clippy::pedantic)]
 
@@ -85,6 +88,7 @@ fn fixtures(sub: Option<&str>) {
         Some("refresh-quantize") => refresh_quantize(),
         Some("refresh-residual") => refresh_residual(),
         Some("refresh-codec") => refresh_codec(),
+        Some("refresh-serialization") => refresh_serialization(),
         Some("refresh-all") => {
             refresh_hashes();
             refresh_rotation();
@@ -92,11 +96,13 @@ fn fixtures(sub: Option<&str>) {
             refresh_quantize();
             refresh_residual();
             refresh_codec();
+            refresh_serialization();
         }
         _ => {
             eprintln!(
                 "usage: cargo xtask fixtures <refresh-hashes|refresh-rotation|\
-                 refresh-codebook|refresh-quantize|refresh-residual|refresh-codec|refresh-all>"
+                 refresh-codebook|refresh-quantize|refresh-residual|refresh-codec|\
+                 refresh-serialization|refresh-all>"
             );
             process::exit(1);
         }
@@ -306,6 +312,25 @@ fn refresh_codec() {
     }
 }
 
+fn refresh_serialization() {
+    let repo_root = repo_root();
+    println!(
+        "xtask fixtures: running generate_rust_fixtures.py serialization from {}",
+        repo_root.display()
+    );
+    let status = Command::new("python")
+        .args(["scripts/generate_rust_fixtures.py", "serialization"])
+        .current_dir(&repo_root)
+        .status()
+        .unwrap_or_else(|e| {
+            eprintln!("failed to spawn python: {e}");
+            process::exit(1);
+        });
+    if !status.success() {
+        process::exit(status.code().unwrap_or(1));
+    }
+}
+
 fn repo_root() -> PathBuf {
     // xtask is invoked from `rust/`; the repository root is the parent.
     let cwd = std::env::current_dir().unwrap_or_else(|e| {
@@ -341,7 +366,8 @@ fn print_help() {
     println!("  test      Run all workspace tests");
     println!(
         "  fixtures  Regenerate test fixtures (refresh-hashes | refresh-rotation | \
-         refresh-codebook | refresh-quantize | refresh-residual | refresh-codec | refresh-all)"
+         refresh-codebook | refresh-quantize | refresh-residual | refresh-codec | \
+         refresh-serialization | refresh-all)"
     );
     println!("  help      Print this message (default)");
 }
