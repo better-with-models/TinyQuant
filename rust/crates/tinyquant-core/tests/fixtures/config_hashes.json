@@ -1,0 +1,845 @@
+{
+  "schema": 1,
+  "entries": [
+    {
+      "bit_width": 2,
+      "seed": 0,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "335c7708f196aa2c9c06d9d111201297c14cc1cf51e10bb010352042724c9039"
+    },
+    {
+      "bit_width": 2,
+      "seed": 0,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "41048c1f3d065446793881d1b79d59e535dab967fca085d5006127f8c93d8b1a"
+    },
+    {
+      "bit_width": 2,
+      "seed": 0,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "dee584878c449cb4f5cdc3197b55f8af5ba2a111d7261b6e9564432558d6a83c"
+    },
+    {
+      "bit_width": 2,
+      "seed": 0,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "e38e9e23736338a2fb63ab65d088708c1ffb095ad7f816d2d7eb362fdc21714a"
+    },
+    {
+      "bit_width": 2,
+      "seed": 0,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "4d1d620cf2a06e3ad43bbd9360bb14fe10f64badc30df925920ccb1756eb069b"
+    },
+    {
+      "bit_width": 2,
+      "seed": 0,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "7b05967ddd11e7a5af76f0930123a9771eb80fbbb480b66486886f617f06a782"
+    },
+    {
+      "bit_width": 2,
+      "seed": 0,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "96de25bdd32bbf7c9d3f160dc9d7b725084ee9f1c7a599e28712b40045d25699"
+    },
+    {
+      "bit_width": 2,
+      "seed": 0,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "c11d4f46371aa1d704ebcb9f1f7fbe08344d98481f72d2161acab7802aeb4e31"
+    },
+    {
+      "bit_width": 2,
+      "seed": 1,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "3d95c4aa08362ae38d0fdae79fe5ac47cd1d3ae51ce2a42a074137df132314ea"
+    },
+    {
+      "bit_width": 2,
+      "seed": 1,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "4241d15bf3492b26798adb2bf1e54a6853abf9db587ecb331f3a67ad62e6fdcf"
+    },
+    {
+      "bit_width": 2,
+      "seed": 1,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "c470bab1945db6348f7dbd28db2f4fbbc41ed396105ed2646a4ed3e8da73d3eb"
+    },
+    {
+      "bit_width": 2,
+      "seed": 1,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "4703a44bc460143b425bb3ff934912eebd22acc49aee11f8dd750d404cf6b840"
+    },
+    {
+      "bit_width": 2,
+      "seed": 1,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "eb95a5e901a42935e4f06c40cdc2497b4c56e9847410e6754841108e3eb44e3f"
+    },
+    {
+      "bit_width": 2,
+      "seed": 1,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "29bb588e24b699bd78ada7b97a78341be3be97dae528a1df13fadcf3071b59a9"
+    },
+    {
+      "bit_width": 2,
+      "seed": 1,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "4b62c8bb879e7e500d7c3d3ccc0b4b93b0b842102790b495c1b01b9c2fb8f3ca"
+    },
+    {
+      "bit_width": 2,
+      "seed": 1,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "0c0ddd9893962a3a0b3f2957ca6157fd3e4fdbaa56b67992e4d0da7def4f9004"
+    },
+    {
+      "bit_width": 2,
+      "seed": 42,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "98a0e1f02f0ef3da191f71dcb630cb8831782eb064cab0d82479a5396c15e21d"
+    },
+    {
+      "bit_width": 2,
+      "seed": 42,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "1ed563582d92fec2f727bf99f65418c19535cce6d65bc8909e5bd993b7de74e1"
+    },
+    {
+      "bit_width": 2,
+      "seed": 42,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "e828e37691354e1b8551a9a4c1049e08ea40b378515a841432178a417c2d24b5"
+    },
+    {
+      "bit_width": 2,
+      "seed": 42,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "6b59ff97b6ef18f3e504aa76d7ee82556af420683e74fe2da333264df97c41e5"
+    },
+    {
+      "bit_width": 2,
+      "seed": 42,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "1dba122fb7fad626db53a40d412aaf0aede0f13beef67e31636eecfb58398c77"
+    },
+    {
+      "bit_width": 2,
+      "seed": 42,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "b9ce71fe2e5893d1a26f39bfa1059eadeeca346db66ecb007c6fd4a55ce76527"
+    },
+    {
+      "bit_width": 2,
+      "seed": 42,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "fb043c620c9f5070cbcfe7a3323f73fe41b74361908f348573595e65266533ea"
+    },
+    {
+      "bit_width": 2,
+      "seed": 42,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "fdfb6ac9b55faa80012621c57803ea3fb81f183b772a3a1f65991d86d8fcd38c"
+    },
+    {
+      "bit_width": 2,
+      "seed": 999,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "025d30cac77ced6f82387574b209f35043fc0c3a1d64b0ff688c8a8352d93620"
+    },
+    {
+      "bit_width": 2,
+      "seed": 999,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "0d107d886df38c06e0a3e0f9d94c93f044f1fb259fcb4ae9aaaa2500e88c0456"
+    },
+    {
+      "bit_width": 2,
+      "seed": 999,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "7e3dc1fed510a9cd76fdd135e283ec2d9e84a622a8ca8416f1373f7082ef4ab6"
+    },
+    {
+      "bit_width": 2,
+      "seed": 999,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "e41b8b6f39a1807114ca57cf815892fd05e3a2823470cc11b5e2eb9cca1df973"
+    },
+    {
+      "bit_width": 2,
+      "seed": 999,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "535d87a30544768cccb477340d6cf68657db8d39d2c8643469dc1416b6d3a51d"
+    },
+    {
+      "bit_width": 2,
+      "seed": 999,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "9c6cefc06be5afb3b56d2802e3234882fb063257be0f2d9269f6b38ea5696a14"
+    },
+    {
+      "bit_width": 2,
+      "seed": 999,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "156831ef4b9801ab87bd9f693f423a3fbbde2acf0d706a0c112560c9117db189"
+    },
+    {
+      "bit_width": 2,
+      "seed": 999,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "a16e78562399e80a6af9b3cbb35136fecb98bbb2e4757c89887fee98d66aefa6"
+    },
+    {
+      "bit_width": 2,
+      "seed": 18446744073709551615,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "07888938be9c6746cd098b1ae882a3d200407a6c8dc8512d4a7390be0d1ffe4b"
+    },
+    {
+      "bit_width": 2,
+      "seed": 18446744073709551615,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "2c09b78d8fd03206ab91be4f14be62b16591a7dddbbd119e3ae79e49ccd21e60"
+    },
+    {
+      "bit_width": 2,
+      "seed": 18446744073709551615,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "854f168e7487184457b2160d0655ccb15283681369b433f8bb0ba7f8da7cea60"
+    },
+    {
+      "bit_width": 2,
+      "seed": 18446744073709551615,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "75b85d826e902d1181b83b3ed59b4cfeb7e6fa0e35239980436c305994b5b2d1"
+    },
+    {
+      "bit_width": 2,
+      "seed": 18446744073709551615,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "5a686871ddf27cf6c917558eb33ccf4b1c48f31ce52789e80d3d9aaa7439f2eb"
+    },
+    {
+      "bit_width": 2,
+      "seed": 18446744073709551615,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "51a6cbf97ae265d11956198f623620a3a7eb5a652dc527cd4499e753c0c3ee06"
+    },
+    {
+      "bit_width": 2,
+      "seed": 18446744073709551615,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "559568788b928cb908538b6a2498c6f8c37eae8603203da3237e54e5b03b6b3f"
+    },
+    {
+      "bit_width": 2,
+      "seed": 18446744073709551615,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "ce4b600209c8373019f57b3cbe81f0352d4a9a49cedb015457573ed1fe50d35d"
+    },
+    {
+      "bit_width": 4,
+      "seed": 0,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "04536288c2435f2723c4c6bcb4415c65338990c21b88443e73c73625553cdc39"
+    },
+    {
+      "bit_width": 4,
+      "seed": 0,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "b417074f9b39f982544647aaa12d91c02e79547dd0325d919733ce2e1645ff5e"
+    },
+    {
+      "bit_width": 4,
+      "seed": 0,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "498ff3a8b5d6506ecea82fbfc5153033a84f083b09e4e5b4bf30abe1fcc583d0"
+    },
+    {
+      "bit_width": 4,
+      "seed": 0,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "35fd754a94af6b0ad8e41fcf243f31f47927c3bbe5d73198823a2c694724a25c"
+    },
+    {
+      "bit_width": 4,
+      "seed": 0,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "607b835db98b59aa33c7e461f969c7f9680a88874c3562a9db9abe9314cbec8d"
+    },
+    {
+      "bit_width": 4,
+      "seed": 0,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "ed9dea96b8f56681cd4c1cc2266376bb3bca702fd904f49f9fe98cddc80c7fd0"
+    },
+    {
+      "bit_width": 4,
+      "seed": 0,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "9d7a6b6170c5f3d81009e1df1612fb3e0f681bcf93bc4a418974edc8e15d70e6"
+    },
+    {
+      "bit_width": 4,
+      "seed": 0,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "78b0db41b00f101fd04d2ddd10d96dbf8e685334d2f35f8fd4f11fa77526ab2c"
+    },
+    {
+      "bit_width": 4,
+      "seed": 1,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "eac1d135acd4692311ade8ad68e0dc3e240f597f43ec5ea5986379cd61a8dc69"
+    },
+    {
+      "bit_width": 4,
+      "seed": 1,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "95448542cf5a71ec5b6e8c8a28b73e74465cf78fb2e1ea65fccbc0e31bb22a6d"
+    },
+    {
+      "bit_width": 4,
+      "seed": 1,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "809f105e6a41cad5fa0eb246f9940e4ae1becc9a14c4bff31e7c1f8f70fb253e"
+    },
+    {
+      "bit_width": 4,
+      "seed": 1,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "d4ff9dd43b6276712637bebce4fdc209593213df7e98ac30da0e63eb848d09b7"
+    },
+    {
+      "bit_width": 4,
+      "seed": 1,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "45c46c393d78acdbadf1d5645bcceac1ce8273bac6873aca330d9b5f69fecce4"
+    },
+    {
+      "bit_width": 4,
+      "seed": 1,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "93091e5d6f9f45e43d7b7c3e5537757137768e20eeca8fef5958da92544998e5"
+    },
+    {
+      "bit_width": 4,
+      "seed": 1,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "d3dda1b828821caa31369a53c2140e4b696f615528144b6e8723caf2c7b0d399"
+    },
+    {
+      "bit_width": 4,
+      "seed": 1,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "01c6dac3a34da801054a08c961639ba7cebc3f4e115fc9bd16c73964b6cfa307"
+    },
+    {
+      "bit_width": 4,
+      "seed": 42,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "394120bc9971dc3a8a2530e38a6979f5802c05ba6fbe576be54acae61ac9d9f6"
+    },
+    {
+      "bit_width": 4,
+      "seed": 42,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "4f5ee98f4bd6e193db014e00ac4e11e40f353b82c3b7d5a5d5b2314bd8bf2004"
+    },
+    {
+      "bit_width": 4,
+      "seed": 42,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "ad9e2db9147c16613a938cd6b9ec756858ce94bfa3fbc21af94f85a82be2bbd5"
+    },
+    {
+      "bit_width": 4,
+      "seed": 42,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "b8bbe8e5d74df52f2dcabb36ccd94a9e21acb33a786c14b126c1afc1b72ff09d"
+    },
+    {
+      "bit_width": 4,
+      "seed": 42,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "5dd6891ac5a4488d9da568b1cf4fd2f083404c05596e091de52d4463b8e4692f"
+    },
+    {
+      "bit_width": 4,
+      "seed": 42,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "cc50f0a21077b1971aadb240e4209ff1acc3b9da32233100e481f03b5161fbed"
+    },
+    {
+      "bit_width": 4,
+      "seed": 42,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "01b874818e2f7fdbf834cbf0c61ede92ce900bfad14bee4067c981a948dc6332"
+    },
+    {
+      "bit_width": 4,
+      "seed": 42,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "c9c84c60fb8cf751a0da034021befa3a73c5e863a3f4414b4ebd294f57777686"
+    },
+    {
+      "bit_width": 4,
+      "seed": 999,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "df816aa15cb4450bab039c0a2dc069b2019a380acc78dad288ffdbd77d053b25"
+    },
+    {
+      "bit_width": 4,
+      "seed": 999,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "ef565c5f04f3addc64205648de373d94da01ca310de458fa803c220fde8e3fb4"
+    },
+    {
+      "bit_width": 4,
+      "seed": 999,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "d76704d0e78a8b27b21e98058ca68885ffbfdf19b874f6a83336a0370dd5b50e"
+    },
+    {
+      "bit_width": 4,
+      "seed": 999,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "ae6d845eea359c9269b926549de8f31e635070e00cc24c09be78af437c60aa3d"
+    },
+    {
+      "bit_width": 4,
+      "seed": 999,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "1a690e47da5a292b89079b6995acd5995947559fd3998363f455a352742624ec"
+    },
+    {
+      "bit_width": 4,
+      "seed": 999,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "1c838ec6250f5966ac82f9c1ad607d16a38bc03ef6d4d8e8b4888c30aa0247ba"
+    },
+    {
+      "bit_width": 4,
+      "seed": 999,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "b9b07d19dcea3e6d37b4456b26dc99d1292f5875a2cae10b38ed34ea0057a541"
+    },
+    {
+      "bit_width": 4,
+      "seed": 999,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "c5a1c8cb8a7c4c2ff1ce2acacd44785fbc5c3ca22a95724f32110df0b2911057"
+    },
+    {
+      "bit_width": 4,
+      "seed": 18446744073709551615,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "3812eb74f47e1a6396fd0fd5921f4a69fa0e0f4dc7081482284009c9bb48252b"
+    },
+    {
+      "bit_width": 4,
+      "seed": 18446744073709551615,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "2d04dd9023caa44f8f52f987635a3c7e8193b71d441462a80d29f91ed38fd120"
+    },
+    {
+      "bit_width": 4,
+      "seed": 18446744073709551615,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "4d334965ff4118e9e628d7faa45ec0c03abe1e87db53be8fee4dec3ea7cc6c12"
+    },
+    {
+      "bit_width": 4,
+      "seed": 18446744073709551615,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "7ae0e9590d91efdd0068e68f7d795a88c8f1cfb6d9ff65c805c69ba52229ccd7"
+    },
+    {
+      "bit_width": 4,
+      "seed": 18446744073709551615,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "759a4e8a56005db9d46828be8042c3fb1a1b4bcfbb106fe34aa05a6f411d56c7"
+    },
+    {
+      "bit_width": 4,
+      "seed": 18446744073709551615,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "06ddf3323fbebd8e41454fe1dfe423e1929c872d8ad1e46c54b18cb1eaf4d15d"
+    },
+    {
+      "bit_width": 4,
+      "seed": 18446744073709551615,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "eb522c594c6a2d3be22fe915cb2901e7d37bd7dbbde8ac0df21cc6783fc55b72"
+    },
+    {
+      "bit_width": 4,
+      "seed": 18446744073709551615,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "426d1065889c1166eaff2d2173e1ac83006559cb344d7fd3bfb800b21c22601f"
+    },
+    {
+      "bit_width": 8,
+      "seed": 0,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "fd79c9b4b8c130b11f14cbbedc1e7bf7f5044c98efa4c608c5daa89f02691d04"
+    },
+    {
+      "bit_width": 8,
+      "seed": 0,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "7d38295f7b9d062a6d736a643102bfbd4794b70eceff0ace48f1c0cd618cea76"
+    },
+    {
+      "bit_width": 8,
+      "seed": 0,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "23e05445382afd0bd5e8b5a4459ef4e6a3df7fa8fa6ed4477dc7890cbac7d11c"
+    },
+    {
+      "bit_width": 8,
+      "seed": 0,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "2e8a7c68d6c71ab6ad70b09962fbc4b8889d68842d2b25b159f28cb5638b1bd7"
+    },
+    {
+      "bit_width": 8,
+      "seed": 0,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "b3207da9747970b269bb97302d900c73be671c8829b3206eccae33d9feda2019"
+    },
+    {
+      "bit_width": 8,
+      "seed": 0,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "e46ad724774d0650dad8be6f322d46774ad999dc1c5cb109b0b435ee909e6f71"
+    },
+    {
+      "bit_width": 8,
+      "seed": 0,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "9ab15da731007379210e885861cc53579423b7804e1211ad12b20aab691e3727"
+    },
+    {
+      "bit_width": 8,
+      "seed": 0,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "675877bc0d2e880260f2bf2935a539db78a431db93763327900f87fec409c1ad"
+    },
+    {
+      "bit_width": 8,
+      "seed": 1,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "696a3f8091dcdba63829dd54ec25abcbf0e090f64c9334c5ee03df072d3b46b2"
+    },
+    {
+      "bit_width": 8,
+      "seed": 1,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "3d1fe49599a0cd28e47af1b64cc0d6191456e01772bac9eb869483dda675aff9"
+    },
+    {
+      "bit_width": 8,
+      "seed": 1,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "13e52f9631fa51006cae01e10b4038459e2d2fd1aba901fedd4169c456e4786e"
+    },
+    {
+      "bit_width": 8,
+      "seed": 1,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "a284b257a73af3c43ea5df230fca47421e59a43d38db7a51e09856beaec67198"
+    },
+    {
+      "bit_width": 8,
+      "seed": 1,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "c3ade024b1864c33c95a46f813efe180a6ba6df4f6df5d430c2c7d2dacc15133"
+    },
+    {
+      "bit_width": 8,
+      "seed": 1,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "be36a5c94a0d1abdd0582cdadfc4383d14d3464edc9a1e8776298a8c9ec40432"
+    },
+    {
+      "bit_width": 8,
+      "seed": 1,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "0d177a0f66e1f7f4e7493202d7a267beb0849d17fee78304c9cbaf952706fc9e"
+    },
+    {
+      "bit_width": 8,
+      "seed": 1,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "a032200c8f594268438fe3f4e5c78ea652570f640d637e770889ce1dcc6205e1"
+    },
+    {
+      "bit_width": 8,
+      "seed": 42,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "1e5ab3cef663908b9248d1ea641cfa907af11018965f9f6d5e9bb70c15ca7228"
+    },
+    {
+      "bit_width": 8,
+      "seed": 42,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "d92a93c5b4c999f1a820b452984c0d38ef418641a2c67acf4c97c53804e62f64"
+    },
+    {
+      "bit_width": 8,
+      "seed": 42,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "ee7ab6aed41233e66bae759621b9588362476b1e4c0ea844a17151e840adce84"
+    },
+    {
+      "bit_width": 8,
+      "seed": 42,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "1b80ef4ce7935c7d2e56cece1cd357af77a2e42a3308e28d2b95005eb8e51ca1"
+    },
+    {
+      "bit_width": 8,
+      "seed": 42,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "0e4488da726f224b7ad285503313073e848523f96f059fb9629f36a000d7038a"
+    },
+    {
+      "bit_width": 8,
+      "seed": 42,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "5430445dbe2babfac5914640960ad5478e535dead583352b3b90439e4c703ab0"
+    },
+    {
+      "bit_width": 8,
+      "seed": 42,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "2b9888165666a10e3563dffaf8d681622a43402b08176da1a101a928af4d5897"
+    },
+    {
+      "bit_width": 8,
+      "seed": 42,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "fe9235cfaa514988975328cfc80df40f6d55f185f95c9ed42d660910a5894fe5"
+    },
+    {
+      "bit_width": 8,
+      "seed": 999,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "487c0300af59b87a820ca846f6f260c49f672a6e5350cf6b7f834850cabb9c55"
+    },
+    {
+      "bit_width": 8,
+      "seed": 999,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "de597e7e9653ab5de607116a8432d0516408b2b6e074b6ddc2447e05692c0099"
+    },
+    {
+      "bit_width": 8,
+      "seed": 999,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "2c262e298d552567c69912a4e85b762329fe55b73a52209783a8542a12391ccf"
+    },
+    {
+      "bit_width": 8,
+      "seed": 999,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "2b90ed3a3664a989efd1f8988a51d2546db9455408af72cb3f90c0b00d1879ef"
+    },
+    {
+      "bit_width": 8,
+      "seed": 999,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "7893506c9ccdd495c9b8e58e27c6951b14f3e5f836e7021e0f3647bc5e97fe96"
+    },
+    {
+      "bit_width": 8,
+      "seed": 999,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "54c1dfc51b7d197269b73fbcb287bd2eaeee1f150f81839165e42990fc2498c1"
+    },
+    {
+      "bit_width": 8,
+      "seed": 999,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "acff39f288eb523cd42d695560f38b05aab29e3ae249ca719dd2d4ad644b928d"
+    },
+    {
+      "bit_width": 8,
+      "seed": 999,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "f987393ee35c9183e71cf3c7584a002e6acb496447c649776d0c24806049b9c6"
+    },
+    {
+      "bit_width": 8,
+      "seed": 18446744073709551615,
+      "dimension": 1,
+      "residual_enabled": false,
+      "config_hash": "799f44d28a2f242231ba9428b62d35495a8ceeeaa753e0531482551f76f0c6ec"
+    },
+    {
+      "bit_width": 8,
+      "seed": 18446744073709551615,
+      "dimension": 1,
+      "residual_enabled": true,
+      "config_hash": "4f06eefac408e5236188569b172b5319f22181140cc757d453725d426ff4e5d9"
+    },
+    {
+      "bit_width": 8,
+      "seed": 18446744073709551615,
+      "dimension": 32,
+      "residual_enabled": false,
+      "config_hash": "c3790aebc7ffb805ced0db89795c1bc3702f9db9ee4be2ea677566e646f2663c"
+    },
+    {
+      "bit_width": 8,
+      "seed": 18446744073709551615,
+      "dimension": 32,
+      "residual_enabled": true,
+      "config_hash": "24495ddd4cde65ea2af3440437b2e9c3618fe1e13694d1ea720919094026813b"
+    },
+    {
+      "bit_width": 8,
+      "seed": 18446744073709551615,
+      "dimension": 768,
+      "residual_enabled": false,
+      "config_hash": "2cb8d6c3913eb73274204ff1022f75486c1b1f0643562407a071c6821b4c8fe4"
+    },
+    {
+      "bit_width": 8,
+      "seed": 18446744073709551615,
+      "dimension": 768,
+      "residual_enabled": true,
+      "config_hash": "c393d1955bd1576218b56d9400a9787be41243c1efbf81a5097e489b41f67d9d"
+    },
+    {
+      "bit_width": 8,
+      "seed": 18446744073709551615,
+      "dimension": 1536,
+      "residual_enabled": false,
+      "config_hash": "5f7f8f997ab27fe4f7f8b5e53d992b1a7298e41af4d054e97145d75ec7e91f90"
+    },
+    {
+      "bit_width": 8,
+      "seed": 18446744073709551615,
+      "dimension": 1536,
+      "residual_enabled": true,
+      "config_hash": "b1558bbdc4306ad520ef941181357eaaeeb86f869facd55421369bf7f2cc0510"
+    }
+  ]
+}
