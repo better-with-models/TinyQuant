@@ -433,3 +433,41 @@ source chain, `BackendError` 3 variants). Bumped MSRV 1.78 → 1.81 and
 thiserror 1 → 2 to enable `no_std` error derives via `core::error::Error`.
 28 `tinyquant-core` tests pass (smoke + types + errors); `no_std` build on
 `thumbv7em-none-eabihf` verified. Clippy and fmt clean.
+
+## [2026-04-10] implement | Phase 13 — Rotation Matrix and Numerical Foundations
+
+Added the `tinyquant-core::codec` module with `CodecConfig` (Python-parity
+SHA-256 `config_hash`), `ChaChaGaussianStream` (seedable ChaCha20 +
+Box-Muller f64 stream), `RotationMatrix` (faer QR + Haar sign correction,
+row-major `Arc<[f64]>`, f32↔f64 `apply_into` / `apply_inverse_into`), and
+`RotationCache` (8-entry spin-mutex LRU, mirrors Python
+`functools.lru_cache(maxsize=8)`). Wired `faer`, `rand_chacha`, `sha2`,
+`hex`, `spin`, `libm`, and `serde_json` (dev) into the core crate; added
+`scripts/generate_rust_fixtures.py` to emit `config_hashes.json` (120
+canonical triples) from the Python reference and an `examples/
+dump_rotation_fixture.rs` binary to freeze rotation f64 snapshots under
+`tests/fixtures/rotation/` (LFS-tracked). New xtask subcommands:
+`cargo xtask fixtures refresh-hashes | refresh-rotation | refresh-all`.
+
+Parity verified:
+- 13 `codec_config` tests, including a 120-triple sweep of
+  `(bit_width, seed, dimension, residual_enabled)` against the
+  Python-generated `config_hashes.json`.
+- 8 `rotation_matrix` tests (shape, orthogonality within `1e-12`,
+  deterministic build, round-trip `< 1e-5`, `LengthMismatch` rejects).
+- 3 `rotation_fixture_parity` tests verifying bit-for-bit equality
+  against the frozen `seed_42_dim_64` and `seed_42_dim_768` f64 dumps.
+- 8 `rotation_cache` tests (LRU eviction, MRU promotion, capacity=0
+  bypass).
+
+Workspace cargo check, clippy (`-D warnings` across the pedantic +
+nursery groups), `cargo xtask test`, `cargo build -p tinyquant-core
+--no-default-features`, and the embedded
+`--target thumbv7em-none-eabihf --no-default-features` build are all
+green. Fixture reproducibility confirmed by `md5sum` before and after a
+fresh `cargo xtask fixtures refresh-all`.
+
+Deferred by design (not in Phase 13):
+- legacy-Python (PCG64) vs Rust-canonical cosine parity — Phase 15+
+- pyo3 bridge that lets Python consumers opt into the canonical path —
+  Phase 15+
