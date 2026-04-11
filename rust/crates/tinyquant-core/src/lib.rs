@@ -22,6 +22,7 @@
 extern crate alloc;
 
 pub mod codec;
+pub mod corpus;
 pub mod errors;
 pub mod prelude;
 pub mod types;
