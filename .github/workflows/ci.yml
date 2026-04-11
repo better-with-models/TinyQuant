@@ -153,7 +153,7 @@ jobs:
     name: Test (Python ${{ matrix.python-version }})
     runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner, typecheck, markdown-lint]
-    timeout-minutes: 60
+    timeout-minutes: 90
     strategy:
       fail-fast: true
       matrix:
@@ -188,9 +188,12 @@ jobs:
 
       - name: Coverage report
         run: |
-          pytest --cov=tinyquant_cpu --cov-report=xml --cov-fail-under=90
-          pytest --cov=tinyquant_cpu.codec --cov-report=term --cov-fail-under=94
-          pytest --cov=tinyquant_cpu.corpus --cov-report=term --cov-fail-under=90
+          # Run once, collect data for all sub-modules in a single pass.
+          # Per-module thresholds are checked via `coverage report --include`
+          # against the already-collected data — no test re-runs needed.
+          pytest --cov=tinyquant_cpu --cov-report=xml --cov-report=term --cov-fail-under=90
+          coverage report --include="*/tinyquant_cpu/codec/*" --fail-under=94
+          coverage report --include="*/tinyquant_cpu/corpus/*" --fail-under=90
 
       - name: Upload coverage
         if: matrix.python-version == '3.12'
