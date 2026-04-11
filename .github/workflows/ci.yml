@@ -19,14 +19,34 @@ env:
 # Internal (push to main, PRs from org members/collaborators): self-hosted docker-runner
 # External PRs (CONTRIBUTOR / FIRST_TIME_CONTRIBUTOR / NONE): ubuntu-latest (GitHub-hosted)
 #
-# Expression: use docker-runner unless this is a PR from an untrusted author.
-# contains() checks the author_association against the trusted set; non-PR events
-# (push, tags) always satisfy the first clause and land on docker-runner.
+# A dedicated choose-runner job evaluates author_association in bash and
+# sets a 'runner' output that all subsequent jobs consume via needs.
 
 jobs:
+  choose-runner:
+    name: Choose Runner
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.pick.outputs.runner }}
+    steps:
+      - id: pick
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            ASSOC="${{ github.event.pull_request.author_association }}"
+            if [[ "$ASSOC" == "OWNER" || "$ASSOC" == "MEMBER" || "$ASSOC" == "COLLABORATOR" ]]; then
+              echo "runner=docker-runner" >> "$GITHUB_OUTPUT"
+            else
+              echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "runner=docker-runner" >> "$GITHUB_OUTPUT"
+          fi
+      - run: echo "Selected runner=${{ steps.pick.outputs.runner }}"
+
   lint:
     name: Lint & Format
-    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
+    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    needs: [choose-runner]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -52,7 +72,8 @@ jobs:
 
   markdown-lint:
     name: Markdown Lint
-    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
+    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    needs: [choose-runner]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -73,8 +94,8 @@ jobs:
 
   typecheck:
     name: Type Check
-    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
-    needs: [lint]
+    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    needs: [choose-runner, lint]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -97,8 +118,8 @@ jobs:
 
   test-pgvector:
     name: Integration – pgvector
-    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
-    needs: [typecheck]
+    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    needs: [choose-runner, typecheck]
     timeout-minutes: 10
     services:
       postgres:
@@ -131,8 +152,8 @@ jobs:
 
   test:
     name: Test (Python ${{ matrix.python-version }})
-    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
-    needs: [typecheck, markdown-lint]
+    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    needs: [choose-runner, typecheck, markdown-lint]
     timeout-minutes: 15
     strategy:
       fail-fast: true
@@ -182,8 +203,8 @@ jobs:
 
   build-artifact:
     name: Build Package
-    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
-    needs: [test]
+    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    needs: [choose-runner, test]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
