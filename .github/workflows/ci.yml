@@ -14,10 +14,18 @@ env:
   PYTHON_VERSION: "3.12"
   FORCE_COLOR: "1"
 
+# Runner selection policy
+# -----------------------
+# Internal (push to main, PRs from org members/collaborators): self-hosted docker-runner
+# External PRs (CONTRIBUTOR / FIRST_TIME_CONTRIBUTOR / NONE): ubuntu-latest (GitHub-hosted)
+#
+# The expression below evaluates to 'ubuntu-latest' only for untrusted PR authors,
+# protecting self-hosted runners from arbitrary code in fork pull requests.
+
 jobs:
   lint:
     name: Lint & Format
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -43,7 +51,7 @@ jobs:
 
   markdown-lint:
     name: Markdown Lint
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -64,7 +72,7 @@ jobs:
 
   typecheck:
     name: Type Check
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
     needs: [lint]
     timeout-minutes: 5
     steps:
@@ -88,7 +96,7 @@ jobs:
 
   test-pgvector:
     name: Integration – pgvector
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
     needs: [typecheck]
     timeout-minutes: 10
     services:
@@ -122,7 +130,7 @@ jobs:
 
   test:
     name: Test (Python ${{ matrix.python-version }})
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
     needs: [typecheck, markdown-lint]
     timeout-minutes: 15
     strategy:
@@ -173,7 +181,7 @@ jobs:
 
   build-artifact:
     name: Build Package
-    runs-on: ubuntu-latest
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
     needs: [test]
     timeout-minutes: 5
     steps:

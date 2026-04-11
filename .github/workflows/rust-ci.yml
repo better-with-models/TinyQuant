@@ -20,10 +20,18 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-D warnings"
 
+# Runner selection policy
+# -----------------------
+# Internal (push to main, PRs from org members/collaborators): self-hosted docker-runner
+# External PRs (CONTRIBUTOR / FIRST_TIME_CONTRIBUTOR / NONE): ubuntu-22.04 (GitHub-hosted)
+#
+# ubuntu-22.04 is used as the external fallback (not ubuntu-latest) to match
+# the historically pinned toolchain environment for the Rust build.
+
 jobs:
   fmt:
     name: Format check
-    runs-on: ubuntu-22.04
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-22.04' || 'docker-runner' }}
     defaults:
       run:
         working-directory: rust
@@ -43,7 +51,7 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: ubuntu-22.04
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-22.04' || 'docker-runner' }}
     needs: [fmt]
     defaults:
       run:
@@ -64,7 +72,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-22.04
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-22.04' || 'docker-runner' }}
     needs: [clippy]
     defaults:
       run:
@@ -96,7 +104,7 @@ jobs:
 
   no-std-check:
     name: no_std cross-compile (thumbv7em-none-eabihf)
-    runs-on: ubuntu-22.04
+    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-22.04' || 'docker-runner' }}
     needs: [clippy]
     defaults:
       run:
