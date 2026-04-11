@@ -9,8 +9,20 @@ repository.workspace   = true
 
 [dependencies]
 tinyquant-core = { workspace = true }
+regex          = { workspace = true }
+once_cell      = { workspace = true }
+# postgres is optional: only compiled when live-db feature is enabled.
+# postgres = "0.19" requires getrandom 0.4 which requires Rust edition 2024
+# (incompatible with the workspace MSRV of 1.81). Wire it in only when
+# explicitly opted-in via the live-db feature.
+postgres       = { workspace = true, optional = true }
+
+[dev-dependencies]
 
 [features]
-default  = []
-pgvector = []
-# postgres deps wired in Phase 19
+default         = []
+# Enable the real postgres::Client integration.  Requires Rust > 1.81 due to
+# transitive edition2024 dependency in getrandom 0.4.
+live-db         = ["dep:postgres"]
+# Integration tests via testcontainers (implies live-db).
+test-containers = ["live-db"]
