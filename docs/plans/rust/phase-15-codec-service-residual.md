@@ -7,7 +7,7 @@ tags:
   - codec
   - residual
 date-created: 2026-04-10
-status: draft
+status: complete
 category: planning
 ---
 
