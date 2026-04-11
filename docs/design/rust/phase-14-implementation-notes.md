@@ -188,6 +188,185 @@ After the final green run:
 `git status` empty against the committed fixture blobs, proving the
 Python + Rust fixture round trip is deterministic.
 
+## Lessons learned (surfaced during the PR cycle)
+
+These observations came *after* the initial draft of this page,
+during the PR review cycle against `rust-ci.yml`. Every one of them
+is a process lesson rather than a numerical lesson — the code
+itself was correct the first time — but they changed how much trust
+we should place in a "green locally" claim going forward.
+
+### L1. Pre-merge CI is the quality gate, not local tests
+
+Phase 13 landed bit-exact rotation-fixture parity tests and the
+implementation notes confidently asserted "Fixture reproducibility
+confirmed by `md5sum` before and after a fresh
+`cargo xtask fixtures refresh-all`" — but only on the author's
+Windows dev machine. The tests had **never** successfully run on
+CI. When the Phase 14 PR triggered the first honest rust-ci
+lookback, the full history was `0 / 3 successful runs`: every push
+to `main` touching `rust/**` since Phase 11 had been silently red.
+
+**What to do differently.** After pushing a branch, always confirm
+at least one successful run of the workflow that owns the new code,
+even when local tests are green. `gh run list --workflow <name>
+--branch main --limit 5` is the single command that would have
+flagged this in Phase 13. Treat any `completed failure` on `main`
+as a blocker for landing the next phase, not background noise.
+
+### L2. LFS hydration on `actions/checkout@v4` is off by default
+
+Phase 13's rotation fixtures were 32 KiB / 4.7 MiB of raw `f64`
+bytes tracked by Git LFS. On CI, `actions/checkout@v4` pulls the
+132-byte LFS pointer files unless `with: { lfs: true }` is set.
+The downstream test then reads a pointer, sees `132 != 32768`, and
+panics with a length assertion. Because the Phase 13 tests were
+never watched on CI, nobody noticed. Phase 14's codebook training
+corpus (2.5 MiB) hit the same bug with a noisier signature.
+
+**What to do differently.** Whenever a workflow tests code that
+reads LFS-tracked content, the checkout step **must** carry
+`with: { lfs: true }`. If the design doc already claims this
+(`docs/design/rust/ci-cd.md` does, at the time of writing), verify
+the YAML. The fix for rust-ci landed in commit `13e888d` as part
+of this PR.
+
+### L3. Design docs are not CI config
+
+`docs/design/rust/ci-cd.md` at line 239 says "Fixture files are in
+Git LFS; `actions/checkout` with `lfs: true` on every job." The
+actual `rust-ci.yml` did not follow this. The design intent was
+written down before the workflow was implemented, and no automated
+check verified that the YAML stayed in sync. This is a pattern we
+should assume holds for other design docs too.
+
+**What to do differently.** When a design doc makes a claim about
+tooling behavior ("every job has X", "every PR runs Y"), add a
+test or grep that would fail if the claim drifts from reality. At
+minimum, spot-check the claim against the YAML during each phase
+execution. A future sweep should grep `docs/design/rust/ci-cd.md`
+for testable claims and diff them against `.github/workflows/`.
+
+### L4. Cross-platform bit-exact parity requires determinism
+contracts *in code*, not CI workarounds
+
+The Phase 13 rotation pipeline uses `faer::Mat::qr()`, which calls
+faer's default parallel Householder reduction. At `dim=768`, Linux
+and Windows CI runners pick different parallel reduction orders,
+producing floating-point outputs that differ by ~90% of the f64
+words — not a 1-ULP edge case, a structural divergence. The
+`dim=64` matrix still matched bit-exact because it falls below
+faer's parallel kernel threshold.
+
+Phase 14 worked around this by pinning `RAYON_NUM_THREADS: "1"` on
+the rust-ci `Test` job (commit `40f9b87`). That keeps the committed
+fixture authoritative without regenerating it on Linux, but it is
+explicitly a workaround — a determinism contract belongs inside
+`RotationMatrix::build` via an explicit `faer::Parallelism::None`
+(or equivalent serial code path), not in the workflow env vars.
+
+**What to do differently.** Any future "Rust-canonical" fixture
+that is supposed to be bit-exact across platforms **must** be
+accompanied by a code-level determinism contract: explicit
+`Parallelism::None`, documented rayon-pool sizing, and a test that
+verifies the fixture matches under varying thread counts. The
+long-term fix for the current rotation builder is in the Phase
+14 § CI follow-ups below.
+
+### L5. `f32` literal tie-breaks in round-trip tests are a
+foot-gun
+
+While writing the codebook round-trip test
+(`quantize_then_dequantize_returns_nearest_entries`) I pre-computed
+expected entries as `(0..16).map(|i| i as f32 * 0.1)` and then
+compared to `0.9f32`. That comparison fails at index 9 because
+`9.0_f32 * 0.1_f32` rounds to `0.90000004`, not `0.9`. The first
+test run surfaced the mismatch cleanly
+(`[…, 0.90000004, …]` vs `[…, 0.9, …]`), and the fix was to
+compare to `entries[expected_idx]` rather than a hand-typed
+literal. No production code changed.
+
+**What to do differently.** When a test needs to assert that a
+dequantized value matches a specific codebook entry, always read
+the entry back out of the codebook under test rather than
+rewriting the arithmetic in the test source. Codec tests in Phase
+15+ should default to `assert_eq!(out[i], cb.entries()[j])` over
+`assert_eq!(out[i], 0.9)`.
+
+### L6. Test-framework MSRV creep is real
+
+`proptest = "1"` looked like a harmless dev-dependency add until
+its transitive dep tree pulled `getrandom 0.4.2` (via
+`tempfile → rustix`), which requires Cargo's `edition2024` feature
+stable only in Rust 1.85. The workspace MSRV is 1.81 and Phase 12
+already bumped from 1.78 once. We declined to bump again for a
+test-framework convenience and substituted a deterministic
+`rand_chacha::ChaCha20Rng::seed_from_u64(1337)` loop that shares
+the same runtime dep (no new crates in the graph).
+
+**What to do differently.** Before adding any dev-dependency, run
+`cargo tree -p <crate> --prefix depth --depth 3` to see what it
+brings in, and cross-check against `rust-toolchain.toml`. Prefer
+crates that declare a permissive MSRV or that can be pinned to an
+older minor if the graph bites. For property-style invariants, a
+deterministic seeded loop over an existing RNG crate is a valid
+substitute that sidesteps the issue entirely.
+
+### L7. Clippy profile gotchas worth remembering
+
+The crate denies `clippy::pedantic + nursery + unwrap_used +
+expect_used + panic + indexing_slicing + cognitive_complexity`,
+which caught five first-draft mistakes in the Phase 14 code:
+
+- `bool_to_int_using_if` — use `u32::from(!slice.is_empty())`, not
+  `if slice.is_empty() { 0 } else { 1 }`.
+- `explicit_iter_method` on `Box<[f32]>` — use `for &v in &*boxed`,
+  not `for &v in boxed.iter()`.
+- `missing_fields_in_debug` — hand-written `Debug` impls must cover
+  every field or use `.finish_non_exhaustive()`.
+- `redundant_pub_crate` — inside a `pub(crate)` module, inner items
+  must be `pub`, not `pub(crate)`.
+- `trivially_copy_pass_by_ref` — `f32`/`f64` helpers take values,
+  not references.
+
+Narrow-scope `#[allow(clippy::cast_precision_loss,
+clippy::cast_possible_truncation, clippy::cast_sign_loss)]` is
+preferred over loosening the crate-wide profile, and should sit on
+the single function that needs it (in Phase 14, only
+`Codebook::train` has the attribute).
+
+**What to do differently.** Phase 15+ code should re-read this
+list before the first clippy run — these are recurring patterns,
+not one-offs.
+
+## CI follow-ups queued after Phase 14
+
+These items landed on main as part of the Phase 14 PR but are
+**Phase 13 debt**, not Phase 14 scope. They should be cleared in a
+dedicated remediation PR before Phase 15 starts building on top of
+them:
+
+1. **Determinism contract in `RotationMatrix::build`.** Replace
+   `a.qr()` in
+   `rust/crates/tinyquant-core/src/codec/rotation_matrix.rs:78`
+   with an explicit `faer::Parallelism::None` (or equivalent serial
+   path) so the cross-platform bit-exact guarantee lives in code
+   rather than in the rust-ci workflow env. Once that lands, drop
+   the `RAYON_NUM_THREADS: "1"` override from
+   `.github/workflows/rust-ci.yml`.
+2. **Toolchain drift in rust-ci.yml.** All four jobs still declare
+   `toolchain: "1.78.0"` on the `dtolnay/rust-toolchain` action,
+   even though the workspace MSRV has been 1.81 since Phase 12.
+   This works because `rust-toolchain.toml` auto-installs 1.81 at
+   cargo-invocation time, but it wastes an install per job. Bump
+   the four occurrences to `"1.81.0"` and add a lint verifying the
+   two values stay in sync.
+3. **CI health check in the phase playbook.** Add a Phase-end
+   checklist item: after pushing a PR that touches `rust/**`, run
+   `gh run list --workflow rust-ci.yml --branch main --limit 5`
+   and confirm no `completed failure` entries remain on `main`.
+   This would have flagged the Phase 13 LFS issue months earlier.
+
 ## What Phase 15 inherits
 
 Phase 15 (Codec service + residual) can assume:

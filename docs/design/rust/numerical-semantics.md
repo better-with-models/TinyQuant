@@ -105,6 +105,27 @@ fixtures, and any downstream consumer that needs perfect Python
 parity for a new `(seed, dimension)` can call `xtask fixtures refresh`
 to capture a new f64 matrix from Python.
 
+> [!warning] Cross-platform faer QR nondeterminism (R19)
+> Phase 14's PR CI surfaced that `faer::Mat::qr()` at `dim=768` does
+> **not** produce bit-identical output across platforms under its
+> default parallel Householder kernel. The Windows-generated
+> `seed_42_dim_768.f64.bin` fixture disagreed with a Linux CI rerun
+> by ~90% of its f64 words, even though the `dim=64` fixture still
+> matched (that dimension falls below faer's parallel-kernel
+> threshold). Interim workaround: `rust-ci.yml` pins
+> `RAYON_NUM_THREADS: "1"` on the Test job. Long-term fix: thread
+> an explicit `faer::Parallelism::None` through
+> `RotationMatrix::build`
+> (`rust/crates/tinyquant-core/src/codec/rotation_matrix.rs:78`).
+>
+> Any future "Rust-canonical" fixture that claims bit-exact
+> cross-platform parity must ship with a regeneration test under
+> varying `RAYON_NUM_THREADS` values to prove the determinism
+> contract holds. See
+> [[design/rust/risks-and-mitigations#r19-faer-parallel-kernel-nondeterminism-across-platforms|Risks §R19]]
+> and [[design/rust/phase-14-implementation-notes|Phase 14
+> Implementation Notes]] §L4 for root-cause and remediation notes.
+
 ## Quantization — byte parity achievable
 
 Python:
