@@ -471,3 +471,68 @@ Deferred by design (not in Phase 13):
 - legacy-Python (PCG64) vs Rust-canonical cosine parity — Phase 15+
 - pyo3 bridge that lets Python consumers opt into the canonical path —
   Phase 15+
+
+## [2026-04-10] phase-14 | Codebook value object + scalar quantize kernels landed
+
+Shipped [[plans/rust/phase-14-codebook-quantize|Phase 14]] on a
+dedicated `phase-14-codebook-quantize` feature branch, bringing
+`tinyquant_core::codec::Codebook` online together with the private
+`scalar_quantize` / `scalar_dequantize` reference kernels that Phase 20
+will benchmark its SIMD path against. All training, quantize, and
+dequantize math is byte-identical to
+`src/tinyquant_cpu/codec/codebook.py` across every supported bit
+width.
+
+New Rust source modules (no_std, lint-clean under the crate's
+`clippy::pedantic + nursery + unwrap_used + indexing_slicing` profile):
+- `rust/crates/tinyquant-core/src/codec/codebook.rs` —
+  `Codebook { entries: Arc<[f32]>, bit_width }` with `new`, `train`
+  (f64 flatten + `f64::total_cmp` sort + linear-interpolated quantiles
+  + `as f32` cast + defensive re-sort + explicit
+  `InsufficientTrainingData` gate), `num_entries`, `bit_width`,
+  `entries`, `quantize_into`, `dequantize_into`, and convenience
+  `quantize` / `dequantize` allocators. `PartialEq` compares entry
+  bits, not allocation identity.
+- `rust/crates/tinyquant-core/src/codec/quantize.rs` — panic-free
+  `scalar_quantize` (linear scan matching
+  `np.searchsorted(side="left")` + strict-`<` tie-break on
+  `left_dist < right_dist`) and `scalar_dequantize` (gather with
+  `IndexOutOfRange` bounds check). Private to the crate, re-exposed
+  via `Codebook::{quantize_into, dequantize_into}`.
+
+New fixture tooling + LFS surface:
+- `scripts/generate_rust_fixtures.py` gained `codebook` and `quantize`
+  subcommands. The former writes the shared
+  `training_n10000_d64.f32.bin` corpus plus one
+  `expected_bw{2,4,8}_seed42.f32.bin` per bit width; the latter writes
+  the shared `values_n10000.f32.bin` corpus (`default_rng(7)`) plus
+  one `expected_bw{2,4,8}_seed42.u8.bin` of Python-computed indices.
+- `rust/xtask/src/main.rs` learned `fixtures refresh-codebook`,
+  `fixtures refresh-quantize`, and an extended `refresh-all` that now
+  chains hashes → rotation → codebook → quantize.
+- `.gitattributes` routes both new fixture dirs through Git LFS.
+
+New tests — 16 additions on top of the Phase 13 baseline:
+- 12 `codebook` tests: four construction invariants, the bw=2/4/8
+  training parity sweep against the Python fixtures, two round-trip
+  tests, the dequantize out-of-range rejection, `new_accepts_bw2_and_bw8_bounds`,
+  and a ChaCha-seeded randomized scan (256 batches × up to 512 values)
+  confirming indices stay in `[0, 16)`.
+- 4 `quantize` tests: bw=2/4/8 byte parity against Python on a
+  10 000-value corpus (30 000 indices total) plus a bw=4 dequantize
+  round-trip that every output value belongs to the codebook entry
+  set.
+
+Workspace `cargo xtask fmt`, `cargo xtask lint`, `cargo xtask test`,
+`cargo build -p tinyquant-core --no-default-features`, and
+`cargo build -p tinyquant-core --target thumbv7em-none-eabihf
+--no-default-features` are all green. `cargo xtask fixtures refresh-all`
+leaves `git status` clean against the committed fixtures. Proptest was
+*not* adopted because its transitive dependency tree now requires
+`edition2024` (Rust 1.85+) while the workspace MSRV is 1.81; the
+`rand_chacha`-driven deterministic scan is the drop-in replacement.
+
+Deferred by design (not in Phase 14):
+- Bit packing for on-disk index storage — Phase 16.
+- Residual correction and the `Codec` service — Phase 15.
+- SIMD quantize/dequantize kernels — Phase 20.
