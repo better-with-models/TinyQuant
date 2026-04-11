@@ -20,15 +20,40 @@ env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-D warnings"
 
+# Runner selection policy
+# -----------------------
+# Internal (push to main, non-fork PRs): self-hosted ["self-hosted","docker-runner"]
+# Fork PRs (from external contributors): GitHub-hosted ["ubuntu-22.04"]
+#
+# ubuntu-22.04 is the external fallback to match the historically pinned
+# toolchain environment for the Rust build.
+
 jobs:
+  choose-runner:
+    name: Choose Runner
+    runs-on: ubuntu-latest
+    outputs:
+      runner: ${{ steps.pick.outputs.runner }}
+    steps:
+      - id: pick
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" && \
+                "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
+            echo 'runner=["ubuntu-22.04"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
+          fi
+      - run: echo "Selected runner=${{ steps.pick.outputs.runner }}"
+
   fmt:
     name: Format check
-    runs-on: ubuntu-22.04
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
+    needs: [choose-runner]
     defaults:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -43,13 +68,13 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: ubuntu-22.04
-    needs: [fmt]
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
+    needs: [choose-runner, fmt]
     defaults:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -69,8 +94,8 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-22.04
-    needs: [clippy]
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
+    needs: [choose-runner, clippy]
     defaults:
       run:
         working-directory: rust
@@ -87,9 +112,11 @@ jobs:
     # the `dim=768` bit-exact fixture parity test is `#[ignore]`d
     # and replaced with an orthogonality check.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
+      - name: Pull LFS objects
+        run: git lfs pull
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.78.0"
@@ -105,13 +132,13 @@ jobs:
 
   no-std-check:
     name: no_std cross-compile (thumbv7em-none-eabihf)
-    runs-on: ubuntu-22.04
-    needs: [clippy]
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
+    needs: [choose-runner, clippy]
     defaults:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable

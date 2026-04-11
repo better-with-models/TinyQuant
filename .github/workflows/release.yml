@@ -12,10 +12,15 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
+# Runner selection policy
+# -----------------------
+# Release jobs always run on self-hosted docker-runner: only org members can
+# push tags, so there is no untrusted-contributor scenario here.
+
 jobs:
   verify-tag:
     name: Verify Tag
-    runs-on: ubuntu-latest
+    runs-on: docker-runner
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -33,7 +38,7 @@ jobs:
 
   calibration-tests:
     name: Calibration Tests
-    runs-on: ubuntu-latest
+    runs-on: docker-runner
     needs: [verify-tag]
     timeout-minutes: 30
     steps:
@@ -60,7 +65,7 @@ jobs:
 
   build:
     name: Build Distributions
-    runs-on: ubuntu-latest
+    runs-on: docker-runner
     needs: [calibration-tests]
     timeout-minutes: 5
     steps:
@@ -90,7 +95,7 @@ jobs:
 
   publish-testpypi:
     name: Publish to TestPyPI
-    runs-on: ubuntu-latest
+    runs-on: docker-runner
     needs: [build]
     environment: testpypi
     permissions:
@@ -131,7 +136,7 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    runs-on: ubuntu-latest
+    runs-on: docker-runner
     needs: [publish-testpypi]
     environment: pypi
     permissions:
@@ -149,7 +154,7 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    runs-on: ubuntu-latest
+    runs-on: docker-runner
     needs: [verify-tag, build]
     permissions:
       contents: write
