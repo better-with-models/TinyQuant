@@ -47,6 +47,10 @@ rust/crates/tinyquant-core/tests/fixtures/codebook/*.bin filter=lfs diff=lfs mer
 # `cargo xtask fixtures refresh-quantize`.
 rust/crates/tinyquant-core/tests/fixtures/quantize/*.bin filter=lfs diff=lfs merge=lfs -text
 
+# Store residual parity fixture snapshots in LFS. Regenerate via
+# `cargo xtask fixtures refresh-residual`.
+rust/crates/tinyquant-core/tests/fixtures/residual/*.bin filter=lfs diff=lfs merge=lfs -text
+
 # --------------------------------------------------------------------------
 # Git diff drivers — improve diffs for common formats
 # --------------------------------------------------------------------------

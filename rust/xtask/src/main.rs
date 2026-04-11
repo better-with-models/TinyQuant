@@ -26,6 +26,10 @@
 //!   `python scripts/generate_rust_fixtures.py quantize` to refresh
 //!   the 10 000-value quantize corpus and the expected per-bit-width
 //!   `u8` index files. Requires the codebook fixtures to be present.
+//! * `fixtures refresh-residual` — Run
+//!   `python scripts/generate_rust_fixtures.py residual` to refresh
+//!   the 1 000 × 64 f32 original/reconstructed corpora and the
+//!   expected fp16 residual byte fixture.
 //! * `fixtures refresh-all`      — Run all of the above in sequence.
 #![deny(warnings, clippy::all, clippy::pedantic)]
 
@@ -75,16 +79,18 @@ fn fixtures(sub: Option<&str>) {
         Some("refresh-rotation") => refresh_rotation(),
         Some("refresh-codebook") => refresh_codebook(),
         Some("refresh-quantize") => refresh_quantize(),
+        Some("refresh-residual") => refresh_residual(),
         Some("refresh-all") => {
             refresh_hashes();
             refresh_rotation();
             refresh_codebook();
             refresh_quantize();
+            refresh_residual();
         }
         _ => {
             eprintln!(
                 "usage: cargo xtask fixtures <refresh-hashes|refresh-rotation|\
-                 refresh-codebook|refresh-quantize|refresh-all>"
+                 refresh-codebook|refresh-quantize|refresh-residual|refresh-all>"
             );
             process::exit(1);
         }

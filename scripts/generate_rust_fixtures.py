@@ -16,6 +16,10 @@ Subcommands
 * ``quantize`` — Emit a 10 000-value f32 corpus (``seed=7``) and, for each
   supported bit width, the ``u8`` index output produced by
   ``Codebook.quantize`` against the matching frozen codebook.
+* ``residual`` — Emit a 1 000 × 64 f32 original corpus, a matching
+  reconstructed corpus, and the byte-for-byte fp16 residual produced by
+  ``(original − reconstructed).astype(np.float16)``. Phase 15 uses these
+  to prove byte parity on ``compute_residual``.
 * ``list``     — Print the 120 triples (debug helper).
 
 Rotation fixtures (``.f64.bin`` files) are NOT produced here: the canonical
@@ -31,6 +35,7 @@ Usage
 ``python scripts/generate_rust_fixtures.py hashes``
 ``python scripts/generate_rust_fixtures.py codebook --seed 42 --rows 10000 --cols 64``
 ``python scripts/generate_rust_fixtures.py quantize --seed 7 --count 10000 --codebook-seed 42``
+``python scripts/generate_rust_fixtures.py residual --seed 19 --rows 1000 --cols 64``
 
 Run from the repository root so imports of ``tinyquant_cpu`` resolve.
 """
@@ -52,6 +57,7 @@ _RESIDUALS: tuple[bool, ...] = (False, True)
 _FIXTURE_RELPATH = Path("rust/crates/tinyquant-core/tests/fixtures/config_hashes.json")
 _CODEBOOK_FIXTURE_DIR = Path("rust/crates/tinyquant-core/tests/fixtures/codebook")
 _QUANTIZE_FIXTURE_DIR = Path("rust/crates/tinyquant-core/tests/fixtures/quantize")
+_RESIDUAL_FIXTURE_DIR = Path("rust/crates/tinyquant-core/tests/fixtures/residual")
 _SUPPORTED_BIT_WIDTHS: tuple[int, ...] = (2, 4, 8)
 
 
@@ -199,6 +205,44 @@ def _cmd_quantize(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_residual(args: argparse.Namespace) -> int:
+    repo_root = _repo_root()
+
+    import numpy as np  # noqa: PLC0415
+
+    seed = int(args.seed)
+    n = int(args.rows)
+    d = int(args.cols)
+
+    out_dir = repo_root / _RESIDUAL_FIXTURE_DIR
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    rng = np.random.default_rng(seed)
+    original = rng.standard_normal((n * d,)).astype(np.float32)
+    reconstructed = rng.standard_normal((n * d,)).astype(np.float32)
+    diff = original - reconstructed
+    expected_residual = diff.astype(np.float16).tobytes()
+
+    (out_dir / f"original_n{n}_d{d}_seed{seed}.f32.bin").write_bytes(original.tobytes())
+    print(
+        f"wrote original corpus -> "
+        f"{(out_dir / f'original_n{n}_d{d}_seed{seed}.f32.bin').relative_to(repo_root)}"
+    )
+    (out_dir / f"reconstructed_n{n}_d{d}_seed{seed}.f32.bin").write_bytes(
+        reconstructed.tobytes()
+    )
+    print(
+        f"wrote reconstructed corpus -> "
+        f"{(out_dir / f'reconstructed_n{n}_d{d}_seed{seed}.f32.bin').relative_to(repo_root)}"
+    )
+    (out_dir / f"expected_residual_seed{seed}.bin").write_bytes(expected_residual)
+    print(
+        f"wrote expected residual -> "
+        f"{(out_dir / f'expected_residual_seed{seed}.bin').relative_to(repo_root)}"
+    )
+    return 0
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -223,6 +267,15 @@ def _build_parser() -> argparse.ArgumentParser:
     p_quantize.add_argument("--count", type=int, default=10_000)
     p_quantize.add_argument("--codebook-seed", type=int, default=42)
     p_quantize.set_defaults(func=_cmd_quantize)
+
+    p_residual = sub.add_parser(
+        "residual",
+        help="Write original + reconstructed f32 corpora and expected fp16 residual bytes",
+    )
+    p_residual.add_argument("--seed", type=int, default=19)
+    p_residual.add_argument("--rows", type=int, default=1_000)
+    p_residual.add_argument("--cols", type=int, default=64)
+    p_residual.set_defaults(func=_cmd_residual)
 
     p_list = sub.add_parser("list", help="Print the 120 canonical triples")
     p_list.set_defaults(func=_cmd_list)

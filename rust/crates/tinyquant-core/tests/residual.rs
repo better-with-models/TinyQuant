@@ -1,4 +1,19 @@
+use std::{fs, path::Path};
 use tinyquant_core::codec::residual::{apply_residual_into, compute_residual};
+
+fn fixture(name: &str) -> Vec<u8> {
+    let p = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/residual")
+        .join(name);
+    fs::read(&p).unwrap_or_else(|_| panic!("fixture missing: {}; run `cargo xtask fixtures refresh-residual`", p.display()))
+}
+
+fn as_f32(bytes: &[u8]) -> Vec<f32> {
+    bytes
+        .chunks_exact(4)
+        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect()
+}
 
 #[test]
 fn compute_and_apply_residual_round_trip_is_bounded() {
@@ -23,4 +38,15 @@ fn apply_residual_rejects_mismatched_length() {
         err,
         tinyquant_core::errors::CodecError::LengthMismatch { left: 6, right: 8 }
     ));
+}
+
+#[test]
+fn compute_residual_matches_python_fp16_bytes() {
+    let original = as_f32(&fixture("original_n1000_d64_seed19.f32.bin"));
+    let reconstructed = as_f32(&fixture("reconstructed_n1000_d64_seed19.f32.bin"));
+    let expected = fixture("expected_residual_seed19.bin");
+
+    let actual = compute_residual(&original, &reconstructed);
+    assert_eq!(actual.len(), expected.len(), "residual byte count mismatch");
+    assert_eq!(actual, expected, "byte parity vs numpy np.float16");
 }
