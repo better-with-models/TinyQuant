@@ -12,13 +12,21 @@
 //!
 //! Fixture subcommands:
 //!
-//! * `fixtures refresh-hashes` — Run
+//! * `fixtures refresh-hashes`   — Run
 //!   `python scripts/generate_rust_fixtures.py hashes` to refresh
 //!   `config_hashes.json` from the Python reference.
 //! * `fixtures refresh-rotation` — Invoke the
 //!   `dump_rotation_fixture` example binary for the canonical
 //!   `(seed, dim)` gold set and overwrite the `.f64.bin` files.
-//! * `fixtures refresh-all`    — Run both of the above in sequence.
+//! * `fixtures refresh-codebook` — Run
+//!   `python scripts/generate_rust_fixtures.py codebook` to refresh
+//!   the 10 000 × 64 training corpus and the Python-trained
+//!   `expected_bw{2,4,8}_seed42.f32.bin` codebook entries.
+//! * `fixtures refresh-quantize` — Run
+//!   `python scripts/generate_rust_fixtures.py quantize` to refresh
+//!   the 10 000-value quantize corpus and the expected per-bit-width
+//!   `u8` index files. Requires the codebook fixtures to be present.
+//! * `fixtures refresh-all`      — Run all of the above in sequence.
 #![deny(warnings, clippy::all, clippy::pedantic)]
 
 use std::path::{Path, PathBuf};
@@ -65,12 +73,19 @@ fn fixtures(sub: Option<&str>) {
     match sub {
         Some("refresh-hashes") => refresh_hashes(),
         Some("refresh-rotation") => refresh_rotation(),
+        Some("refresh-codebook") => refresh_codebook(),
+        Some("refresh-quantize") => refresh_quantize(),
         Some("refresh-all") => {
             refresh_hashes();
             refresh_rotation();
+            refresh_codebook();
+            refresh_quantize();
         }
         _ => {
-            eprintln!("usage: cargo xtask fixtures <refresh-hashes|refresh-rotation|refresh-all>");
+            eprintln!(
+                "usage: cargo xtask fixtures <refresh-hashes|refresh-rotation|\
+                 refresh-codebook|refresh-quantize|refresh-all>"
+            );
             process::exit(1);
         }
     }
@@ -85,6 +100,62 @@ fn refresh_hashes() {
     let status = Command::new("python")
         .arg("scripts/generate_rust_fixtures.py")
         .arg("hashes")
+        .current_dir(&repo_root)
+        .status()
+        .unwrap_or_else(|e| {
+            eprintln!("failed to spawn python: {e}");
+            process::exit(1);
+        });
+    if !status.success() {
+        process::exit(status.code().unwrap_or(1));
+    }
+}
+
+fn refresh_codebook() {
+    let repo_root = repo_root();
+    println!(
+        "xtask fixtures: running generate_rust_fixtures.py codebook from {}",
+        repo_root.display()
+    );
+    let status = Command::new("python")
+        .args([
+            "scripts/generate_rust_fixtures.py",
+            "codebook",
+            "--seed",
+            "42",
+            "--rows",
+            "10000",
+            "--cols",
+            "64",
+        ])
+        .current_dir(&repo_root)
+        .status()
+        .unwrap_or_else(|e| {
+            eprintln!("failed to spawn python: {e}");
+            process::exit(1);
+        });
+    if !status.success() {
+        process::exit(status.code().unwrap_or(1));
+    }
+}
+
+fn refresh_quantize() {
+    let repo_root = repo_root();
+    println!(
+        "xtask fixtures: running generate_rust_fixtures.py quantize from {}",
+        repo_root.display()
+    );
+    let status = Command::new("python")
+        .args([
+            "scripts/generate_rust_fixtures.py",
+            "quantize",
+            "--seed",
+            "7",
+            "--count",
+            "10000",
+            "--codebook-seed",
+            "42",
+        ])
         .current_dir(&repo_root)
         .status()
         .unwrap_or_else(|e| {
@@ -161,7 +232,8 @@ fn print_help() {
     println!("  lint      Run clippy with -D warnings");
     println!("  test      Run all workspace tests");
     println!(
-        "  fixtures  Regenerate test fixtures (refresh-hashes | refresh-rotation | refresh-all)"
+        "  fixtures  Regenerate test fixtures (refresh-hashes | refresh-rotation | \
+         refresh-codebook | refresh-quantize | refresh-all)"
     );
     println!("  help      Print this message (default)");
 }
