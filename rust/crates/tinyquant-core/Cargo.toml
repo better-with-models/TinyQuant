@@ -22,6 +22,8 @@ sha2        = { workspace = true }
 hex         = { workspace = true }
 spin        = { workspace = true }
 libm        = { workspace = true }
+# Phase 15: residual (fp16)
+half        = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
