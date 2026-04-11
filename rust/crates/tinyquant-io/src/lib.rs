@@ -6,6 +6,8 @@
 //!   to the Level-1 binary wire format.
 //! - [`compressed_vector::from_bytes`] — decode from the wire format.
 //! - [`errors::IoError`] — error type for all I/O operations.
+//! - [`zero_copy::CompressedVectorView`] — zero-copy view of a Level-1 record.
+//! - [`codec_file`] — Level-2 TQCV corpus file container.
 #![deny(
     warnings,
     missing_docs,
@@ -21,5 +23,20 @@
 )]
 #![allow(clippy::module_name_repetitions, clippy::must_use_candidate)]
 
+// mmap-lock is a reserved placeholder; reject if enabled.
+#[cfg(feature = "mmap-lock")]
+compile_error!(
+    "mmap-lock is not yet implemented (Phase 17 reserved placeholder); \
+     see docs/plans/rust/phase-17-zero-copy-mmap.md"
+);
+
+pub mod codec_file;
 pub mod compressed_vector;
 pub mod errors;
+pub mod zero_copy;
+
+#[cfg(feature = "mmap")]
+pub mod mmap;
+
+pub use compressed_vector::{from_bytes, to_bytes};
+pub use zero_copy::CompressedVectorView;

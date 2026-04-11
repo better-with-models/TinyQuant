@@ -10,12 +10,17 @@ repository.workspace   = true
 [dependencies]
 tinyquant-core = { workspace = true }
 thiserror      = { workspace = true }
+memmap2        = { workspace = true, optional = true }
+dhat           = { version = "=0.3.2", optional = true }
 
 [dev-dependencies]
 rand_chacha = { workspace = true }
 serde_json  = { workspace = true }
+tempfile    = "=3.14.0"
 
 [features]
-default = ["simd"]
-simd    = ["tinyquant-core/simd"]
-# mmap and rayon features added in Phase 17/21 when deps are wired
+default   = ["simd"]
+simd      = ["tinyquant-core/simd"]
+mmap      = ["dep:memmap2"]
+mmap-lock = []
+dhat-heap = ["dep:dhat"]

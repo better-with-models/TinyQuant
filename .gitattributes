@@ -59,6 +59,11 @@ rust/crates/tinyquant-core/tests/fixtures/codec/*.bin filter=lfs diff=lfs merge=
 # Regenerate via `cargo xtask fixtures refresh-serialization`.
 rust/crates/tinyquant-io/tests/fixtures/**/*.bin filter=lfs diff=lfs merge=lfs -text
 
+# Store Level-2 TQCV corpus file fixture snapshots in LFS. Regenerate via
+# `cargo xtask fixtures refresh-corpus-file`.
+rust/crates/tinyquant-io/tests/fixtures/codec_file/*.tqcv filter=lfs diff=lfs merge=lfs -text
+rust/crates/tinyquant-io/tests/fixtures/codec_file/*.bin filter=lfs diff=lfs merge=lfs -text
+
 # --------------------------------------------------------------------------
 # Git diff drivers — improve diffs for common formats
 # --------------------------------------------------------------------------

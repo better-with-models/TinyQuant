@@ -114,3 +114,77 @@ jobs:
           workspaces: rust -> target
       - name: no_std build
         run: cargo build -p tinyquant-core --no-default-features --target thumbv7em-none-eabihf
+
+  test-mmap:
+    name: Test (mmap feature)
+    runs-on: ubuntu-22.04
+    needs: [clippy]
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: test-mmap
+        run: cargo test -p tinyquant-io --features "mmap"
+
+  test-mmap-dhat:
+    name: Test (mmap + dhat-heap, single-threaded)
+    runs-on: ubuntu-22.04
+    needs: [clippy]
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: test-mmap-dhat
+        run: cargo test -p tinyquant-io --features "mmap dhat-heap" --test zero_copy -- --test-threads=1
+
+  test-mmap-windows:
+    name: Test (mmap, Windows)
+    runs-on: windows-2022
+    needs: [clippy]
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: test-mmap-windows
+        run: cargo test -p tinyquant-io --features "mmap" --test mmap_corpus
+
+  fixture-drift:
+    name: Fixture drift check
+    runs-on: ubuntu-22.04
+    needs: [test-mmap]
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: fixture-drift
+        run: git diff --exit-code crates/tinyquant-io/tests/fixtures/codec_file/
