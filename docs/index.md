@@ -19,10 +19,10 @@ status: active
 |------|---------|------|
 | [[tinyquant-library-research]] | Source summary for the TinyQuant library research seed: codec scope, algorithm shape, quality baseline, and API direction | 2026-04-08 |
 | [[tinyquant-better-router-integration]] | Source summary for the better-router and TurboSwede integration path, deployment order, and operational constraints | 2026-04-08 |
-| [[vector-quantization-paper-synthesis]] | Cross-paper synthesis of QJL, PolarQuant, and TurboQuant, including the main algorithmic themes relevant to TinyQuant | 2026-04-08 |
-| [[turbo-quant-deep-research-report]] | Deep research summary of TurboQuant's claims, deployment posture, and relationship to neighboring quantization methods | 2026-04-08 |
+| [[sources/vector-quantization-paper-synthesis\|vector-quantization-paper-synthesis]] | Cross-paper synthesis of QJL, PolarQuant, and TurboQuant, including the main algorithmic themes relevant to TinyQuant | 2026-04-08 |
+| [[sources/turbo-quant-deep-research-report\|turbo-quant-deep-research-report]] | Deep research summary of TurboQuant's claims, deployment posture, and relationship to neighboring quantization methods | 2026-04-08 |
 | [[turbo-quant-code-availability]] | Summary of official and community code availability across TurboQuant and related methods, with provenance implications for TinyQuant | 2026-04-08 |
-| [[turboquant-integration]] | System-integration summary for bringing TurboQuant-style compression into the better-router stack | 2026-04-08 |
+| [[sources/turboquant-integration\|turboquant-integration]] | System-integration summary for bringing TurboQuant-style compression into the better-router stack | 2026-04-08 |
 
 ## Entities
 
@@ -68,6 +68,23 @@ status: active
 | [[design/architecture/type-safety|Type Safety]] | mypy strict mode, full annotations, Protocol-based contracts, suppression justification policy | 2026-04-08 |
 | [[design/architecture/namespace-and-module-structure|Namespace and Module Structure]] | Package layout mapping bounded contexts to Python packages with explicit public APIs | 2026-04-08 |
 | [[storage-codec-architecture]] | Three-layer TinyQuant architecture: codec core, corpus container, and pluggable search backend boundary | 2026-04-08 |
+| [[design/rust/README\|Rust Port Design Overview]] | Authoritative design entry point for the Rust reimplementation: reading order, layer relationships, authority boundary | 2026-04-10 |
+| [[design/rust/goals-and-non-goals\|Rust Port Goals and Non-Goals]] | What "ultra-high performance" means for TinyQuant and where the port deliberately stops | 2026-04-10 |
+| [[design/rust/crate-topology\|Crate Topology and Module Structure]] | Cargo workspace layout, crate graph, per-crate responsibilities, and module organization | 2026-04-10 |
+| [[design/rust/type-mapping\|Type Mapping from Python]] | One-to-one mapping of every public Python symbol to its Rust counterpart | 2026-04-10 |
+| [[design/rust/numerical-semantics\|Numerical Semantics and Determinism]] | Rotation matrix, quantization, residual, fp16 — bit-for-bit parity plan | 2026-04-10 |
+| [[design/rust/memory-layout\|Memory Layout and Allocation Strategy]] | SoA vs AoS, alignment, owned vs borrowed buffers, arenas | 2026-04-10 |
+| [[design/rust/simd-strategy\|SIMD Strategy]] | Portable SIMD, runtime dispatch, x86 AVX2/AVX-512, aarch64 NEON | 2026-04-10 |
+| [[design/rust/parallelism\|Parallelism and Concurrency]] | Rayon, thread pools, Send/Sync contracts | 2026-04-10 |
+| [[design/rust/error-model\|Error Model]] | `thiserror`, error taxonomy, panic discipline | 2026-04-10 |
+| [[design/rust/serialization-format\|Serialization Format]] | Wire format parity with Python, endian, versioning, zero-copy reads | 2026-04-10 |
+| [[design/rust/ffi-and-bindings\|FFI and Bindings]] | C ABI, pyo3 bindings for drop-in replacement, WASM feature | 2026-04-10 |
+| [[design/rust/benchmark-harness\|Benchmark Harness and Performance Budgets]] | Criterion, flamegraph, regression gates | 2026-04-10 |
+| [[design/rust/testing-strategy\|Testing Strategy]] | Unit, property, snapshot, cross-language parity, fuzz | 2026-04-10 |
+| [[design/rust/ci-cd\|CI/CD for the Rust Crate]] | GitHub Actions matrix, clippy, miri, cargo-deny, OIDC release | 2026-04-10 |
+| [[design/rust/feature-flags\|Feature Flags and Optional Dependencies]] | `default`, `pgvector`, `pyo3`, `simd`, `std` feature flags | 2026-04-10 |
+| [[design/rust/release-strategy\|Release and Versioning]] | crates.io, PyPI via maturin, MSRV policy | 2026-04-10 |
+| [[design/rust/risks-and-mitigations\|Risks and Mitigations]] | LAPACK determinism, QR sign conventions, fp16 round-trips, cross-platform parity | 2026-04-10 |
 
 ## Class Specifications
 
@@ -153,6 +170,15 @@ status: active
 | [[design/rust/phase-14-implementation-notes\|Phase 14 Implementation Notes]] | Execution-log view of Phase 14: bit-width sweep scoped in during execution, proptest deferred on MSRV 1.81 (replaced by a deterministic `rand_chacha` scan), runtime `fs::read` fixture pattern, narrow `#[allow(clippy::cast_*)]` on `Codebook::train`, and the Python-literal tie-break gotcha in the round-trip test | 2026-04-10 |
 | [[design/rust/phase-15-implementation-notes\|Phase 15 Implementation Notes]] | Execution-log view of Phase 15: codec service, residual, and CompressedVector — Rust-canonical fixture strategy due to RNG divergence, clippy constraint patterns, and fidelity gate numbers | 2026-04-10 |
 | [[design/rust/phase-17-implementation-notes\|Phase 17 Implementation Notes]] | Execution-log view of Phase 17: `tinyquant-io` zero-copy views, Level-2 TQCV corpus file container, and mmap-based reader — TQCV magic-byte layout, `mmap-lock` feature flag, and `MmapView` lifetime safety model | 2026-04-11 |
+| [[design/rust/phase-18-implementation-notes\|Phase 18 Implementation Notes]] | Execution-log view of Phase 18: `Corpus` aggregate root, vector insertion, batch atomicity, three-policy decompression, domain events, and insertion-ordered vector map | 2026-04-11 |
+| [[plans/rust/phase-15-codec-service-residual\|Phase 15: Codec Service, Residual, and CompressedVector]] | `tinyquant-core::codec::Codec` service with compress/decompress, `compute_residual`, `CompressedVector` — Rust-canonical fixture strategy | 2026-04-10 |
+| [[plans/rust/phase-16-serialization-parity\|Phase 16: Serialization and Python Byte Parity]] | `tinyquant-io` serialization with Python byte-level parity, endian contract, version tag | 2026-04-10 |
+| [[plans/rust/phase-17-zero-copy-mmap\|Phase 17: Zero-copy Views and Mmap Corpus Files]] | `tinyquant-io` zero-copy views, Level-2 TQCV file container, mmap-based reader | 2026-04-10 |
+| [[plans/rust/phase-18-corpus-aggregate\|Phase 18: Corpus Aggregate and Domain Events]] | `tinyquant-core::corpus::Corpus` aggregate root with insertion, policy enforcement, domain events | 2026-04-10 |
+| [[plans/rust/phase-19-brute-force-pgvector\|Phase 19: Brute-force Backend and Pgvector Adapter]] | `tinyquant-bruteforce` exhaustive search backend and `tinyquant-pgvector` ACL adapter | 2026-04-10 |
+| [[plans/rust/phase-20-simd-kernels\|Phase 20: SIMD Kernels and Runtime Dispatch]] | AVX2/AVX-512/NEON SIMD kernels with is_x86_feature_detected! runtime dispatch | 2026-04-10 |
+| [[plans/rust/phase-21-rayon-batch-benches\|Phase 21: Rayon Batch Paths, Calibration, and Benchmarks]] | Rayon parallel batch paths, criterion benchmarks, performance regression gates | 2026-04-10 |
+| [[plans/rust/phase-22-pyo3-cabi-release\|Phase 22: Pyo3, C ABI, and Release]] | pyo3 bindings, C ABI via `tinyquant-sys`, standalone CLI binary, multi-arch release | 2026-04-10 |
 
 ## Specs
 
@@ -178,25 +204,25 @@ status: active
 
 ## Raw sources available for ingestion
 
-- `research/llm-wiki.md` — schema and operating model for the TinyQuant
+- [[research/llm-wiki]] — schema and operating model for the TinyQuant
   documentation system
-- ~~`research/vector-quantization-paper-synthesis.md`~~ — ingested 2026-04-08
-  -> [[vector-quantization-paper-synthesis]],
+- ~~[[research/vector-quantization-paper-synthesis]]~~ — ingested 2026-04-08
+  -> [[sources/vector-quantization-paper-synthesis\|vector-quantization-paper-synthesis]],
   [[random-preconditioning-without-normalization-overhead]],
   [[two-stage-quantization-and-residual-correction]], [[TurboQuant]],
   [[PolarQuant]], [[QJL]]
-- ~~`research/turbo-quant-deep-research-report.md`~~ — ingested 2026-04-08 ->
-  [[turbo-quant-deep-research-report]], [[TurboQuant]], [[TinyQuant]]
-- ~~`research/turbo-quant-deep-research-report2.md`~~ — ingested 2026-04-08 ->
+- ~~[[research/turbo-quant-deep-research-report]]~~ — ingested 2026-04-08 ->
+  [[sources/turbo-quant-deep-research-report\|turbo-quant-deep-research-report]], [[TurboQuant]], [[TinyQuant]]
+- ~~[[research/turbo-quant-deep-research-report2]]~~ — ingested 2026-04-08 ->
   [[turbo-quant-code-availability]], [[TurboQuant]], [[TinyQuant]]
-- ~~`research/turboquant-integration.md`~~ — ingested 2026-04-08 ->
-  [[turboquant-integration]], [[TinyQuant]],
+- ~~[[research/turboquant-integration]]~~ — ingested 2026-04-08 ->
+  [[sources/turboquant-integration\|turboquant-integration]], [[TinyQuant]],
   [[per-collection-compression-policy]], [[storage-codec-architecture]]
-- ~~`research/tinyquant-research/README.md`~~ — ingested 2026-04-08 ->
+- ~~[[research/tinyquant-research/README]]~~ — ingested 2026-04-08 ->
   [[tinyquant-library-research]], [[TinyQuant]],
   [[storage-codec-vs-search-backend-separation]],
   [[storage-codec-architecture]]
-- ~~`research/tinyquant-research/better-router-integration.md`~~ — ingested
+- ~~[[research/tinyquant-research/better-router-integration]]~~ — ingested
   2026-04-08 -> [[tinyquant-better-router-integration]],
   [[per-collection-compression-policy]],
   [[storage-codec-architecture]]
