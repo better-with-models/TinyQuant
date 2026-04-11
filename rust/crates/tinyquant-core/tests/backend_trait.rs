@@ -61,8 +61,8 @@ fn search_result_ordering_descending() {
 fn search_result_nan_collapses_to_equal() {
     // The Ord impl uses `other.score.partial_cmp(&self.score).unwrap_or(Equal)`.
     // NaN comparisons return None from partial_cmp, which collapses to Equal.
-    // A stable sort preserves insertion order for equal elements, so "one"
-    // (which was first in the input) stays first.
+    // The vector_id tiebreaker (ascending) then determines order:
+    // "nan" < "one" lexicographically, so "nan" sorts first.
     use std::sync::Arc;
     let mut v = [
         SearchResult {
@@ -74,8 +74,8 @@ fn search_result_nan_collapses_to_equal() {
             score: f32::NAN,
         },
     ];
-    v.sort(); // stable — NaN collapses to Equal; "one" was first in input so it stays first
-    assert_eq!(v[0].vector_id.as_ref(), "one");
+    v.sort(); // NaN collapses to Equal; tiebreaker: "nan" < "one" → "nan" sorts first
+    assert_eq!(v[0].vector_id.as_ref(), "nan");
 }
 
 #[test]
@@ -94,7 +94,7 @@ fn search_result_tie_breaks_preserve_insertion_order() {
             score: 0.5,
         },
     ];
-    // stable sort preserves insertion order for equal elements
+    // tiebreaker is vector_id ascending: "first" < "second" < "third"
     v.sort();
     assert_eq!(v[0].vector_id.as_ref(), "first");
     assert_eq!(v[1].vector_id.as_ref(), "second");

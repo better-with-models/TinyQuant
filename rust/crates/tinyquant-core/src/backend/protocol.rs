@@ -27,14 +27,23 @@ pub struct SearchResult {
     pub score: f32,
 }
 
-impl PartialEq for SearchResult {
-    fn eq(&self, other: &Self) -> bool {
-        // NaN == NaN for our purposes (stable sort stability)
-        self.score.total_cmp(&other.score).is_eq() && self.vector_id == other.vector_id
+impl Ord for SearchResult {
+    /// Descending by score (highest score sorts first).
+    ///
+    /// NaN maps to `Equal` via `unwrap_or` so a stable sort degrades
+    /// gracefully rather than producing undefined behaviour.  Vector id is
+    /// used as a tiebreaker (ascending) so that `Ord` agrees with `PartialEq`
+    /// — the contract requires `a == b` iff `a.cmp(b) == Equal`.
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+        // Descending by score; NaN collapses to Equal (stable sort preserves insertion order).
+        // Then tiebreak by vector_id ascending so Ord agrees with PartialEq.
+        other
+            .score
+            .partial_cmp(&self.score)
+            .unwrap_or(core::cmp::Ordering::Equal)
+            .then_with(|| self.vector_id.cmp(&other.vector_id))
     }
 }
-
-impl Eq for SearchResult {}
 
 impl PartialOrd for SearchResult {
     fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
@@ -42,19 +51,13 @@ impl PartialOrd for SearchResult {
     }
 }
 
-impl Ord for SearchResult {
-    /// Descending by score (highest score sorts first).
-    ///
-    /// NaN maps to `Equal` via `unwrap_or` so a stable sort preserves
-    /// insertion order for degenerate vectors rather than producing undefined
-    /// behaviour.
-    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        other
-            .score
-            .partial_cmp(&self.score)
-            .unwrap_or(core::cmp::Ordering::Equal)
+impl PartialEq for SearchResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == core::cmp::Ordering::Equal
     }
 }
+
+impl Eq for SearchResult {}
 
 /// The public contract every search backend must satisfy.
 ///

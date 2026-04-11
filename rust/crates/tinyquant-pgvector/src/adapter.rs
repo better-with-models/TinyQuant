@@ -48,12 +48,13 @@ impl PgvectorAdapter {
     ) -> Result<Self, BackendError> {
         let table = table.to_string();
         validate_table_name(&table)?;
-        let _ = dim;
-        Ok(Self {
+        let mut adapter = Self {
             table,
             dim: None,
             factory: Box::new(factory),
-        })
+        };
+        adapter.dim = Some(dim as usize);
+        Ok(adapter)
     }
 
     /// Create a new adapter for the given table (stub without `live-db`).
