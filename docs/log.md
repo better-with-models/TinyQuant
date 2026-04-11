@@ -51,9 +51,9 @@ policies for downstream systems.
 
 Ingested the broader TurboQuant-related research set from `docs/research/`:
 
-- Created source summaries for [[vector-quantization-paper-synthesis]],
-  [[turbo-quant-deep-research-report]],
-  [[turbo-quant-code-availability]], and [[turboquant-integration]]
+- Created source summaries for [[sources/vector-quantization-paper-synthesis\|vector-quantization-paper-synthesis]],
+  [[sources/turbo-quant-deep-research-report\|turbo-quant-deep-research-report]],
+  [[turbo-quant-code-availability]], and [[sources/turboquant-integration\|turboquant-integration]]
 - Added upstream method entity pages for [[TurboQuant]], [[PolarQuant]], and
   [[QJL]]
 - Added concept pages for
@@ -665,3 +665,77 @@ Process lesson summary (one-liner each, for scanability):
 No code or fixtures touched in this commit; only wiki prose. The
 non-`docs/` markdown surface continues to pass strict markdownlint,
 and Obsidian-flavored constructs stay confined to the vault.
+
+## [2026-04-11] lint | orphan-page audit — added missing incoming links for 4 pages
+
+Ran a full link-graph audit of the `docs/` vault. Found four pages
+with no incoming wikilinks from any other document:
+
+1. [[design/rust/phase-15-implementation-notes|Phase 15 Implementation
+   Notes]] — existed but was not listed in `index.md` or
+   `design/rust/README.md`, unlike the Phase 13 and 14 counterparts.
+2. [[superpowers/plans/2026-04-08-phase-05-backend-layer|Phase 5
+   Execution Plan]] — agentic task checklist with no path from the
+   wiki.
+3. [[superpowers/plans/2026-04-09-readme-gfm-refresh|README GFM
+   Refresh Plan]] — agentic task checklist with no path from the wiki.
+4. [[superpowers/plans/2026-04-10-phase-12-shared-types-and-errors|Phase
+   12 Execution Plan]] — agentic task checklist with no path from the
+   wiki.
+
+Changes made (links added, no content changed):
+
+- [[index|Wiki Index]] — added Phase 15 Implementation Notes row to
+  the Roadmap and Plans table; added three superpowers execution-plan
+  rows to the Specs table.
+- [[design/rust/README|Rust Port Design Overview]] — added item 19
+  (Phase 15 Implementation Notes) to the reading order.
+- [[plans/phase-05-backend-layer|Phase 5: Backend Layer]] — added
+  Phase 5 Execution Plan link to the See also section.
+- [[plans/rust/phase-12-shared-types-and-errors|Phase 12: Shared Types
+  and Error Enums]] — added Phase 12 Execution Plan link to the See
+  also section.
+
+All four pages are now reachable via at least one incoming wikilink.
+
+## [2026-04-11] audit | Holistic link audit — broken links, orphans, and index completeness
+
+Ran a full holistic audit of all wikilinks and markdown links across the
+`docs/` vault. Four categories of issues found and resolved:
+
+**Broken wikilinks:** Zero genuine broken wikilinks outside code fences.
+All 11 candidates from the raw scanner were false positives (bash `[[ ]]`
+conditionals and Cargo `[[bin]]` / `[[example]]` tokens inside fenced
+code blocks or inline backtick spans).
+
+**Orphaned pages:** Found 4 pages with no incoming links:
+
+1. `research/tinyquant-research/better-router-integration.md` — the
+   "Raw sources available" section in [[index]] used a backtick path
+   instead of a wikilink. Converted to
+   `~~[[research/tinyquant-research/better-router-integration]]~~`.
+
+2. `sources/turbo-quant-deep-research-report.md`,
+   `sources/turboquant-integration.md`, and
+   `sources/vector-quantization-paper-synthesis.md` — the bare stems
+   `[[turbo-quant-deep-research-report]]` etc. in [[index]], [[log]],
+   and [[entities/TinyQuant|TinyQuant]] all resolved to the `research/`
+   file with the same stem, leaving the `sources/` counterpart with zero
+   incoming links. Fixed by switching all three sites to full-path links:
+   `[[sources/turbo-quant-deep-research-report\|...]]` etc.
+
+**Index completeness:** Found 25 wiki pages not listed in [[index]]:
+
+- 16 individual `design/rust/` detail pages (goals-and-non-goals through
+  risks-and-mitigations) — the Design table had only the README; added
+  one row per page.
+- 8 `plans/rust/` phase plans 15–22 — Roadmap and Plans table ended at
+  Phase 14; added rows for Phases 15–22.
+
+**Wikilink text drift:** Spot-checked all `[[target|display]]` links for
+phase-number mismatches. The only discrepancies are zero-padding artefacts
+(`phase-01` filename vs "Phase 1" display text), which are cosmetically
+correct and not misleading.
+
+All pages now have zero orphans and zero broken wikilinks (scanner + manual
+review).

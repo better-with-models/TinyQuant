@@ -9,3 +9,6 @@
 
 # Keep app.json (shared vault settings like attachment folder path)
 !.obsidian/app.json
+
+# Obsidian Base (database) files — auto-created, user-specific
+*.base

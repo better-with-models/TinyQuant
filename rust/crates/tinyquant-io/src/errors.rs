@@ -37,6 +37,17 @@ pub enum IoError {
     #[error("input/output length mismatch")]
     LengthMismatch,
 
+    /// The file magic bytes are not `TQCV`.
+    #[error("bad magic bytes: expected TQCV, got {got:?}")]
+    BadMagic {
+        /// The actual magic bytes found in the file.
+        got: [u8; 4],
+    },
+
+    /// A header field value is outside its valid range.
+    #[error("invalid header field")]
+    InvalidHeader,
+
     /// An inner codec operation failed during decode.
     #[error("decode error: {0}")]
     Decode(#[from] tinyquant_core::errors::CodecError),
