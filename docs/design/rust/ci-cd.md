@@ -239,6 +239,27 @@ but does not block.
 - Fixture files are in Git LFS; `actions/checkout` with
   `lfs: true` on every job.
 
+> [!warning] Design-implementation drift caught in Phase 14
+> Between Phase 11 (when `rust-ci.yml` first landed) and Phase 14
+> (2026-04-10), this section's "`lfs: true` on every job" claim
+> was **not** actually reflected in `.github/workflows/rust-ci.yml`:
+> the fmt, clippy, test, and no_std-check jobs all invoked
+> `actions/checkout@v4` with no `with:` block, so LFS blobs were
+> downloaded as 132-byte pointer files and every rotation-fixture
+> parity test failed silently with a length assertion. Phase 13's
+> CI was red for this reason on every single push to `main`
+> (`gh run list --workflow rust-ci.yml --branch main`) and nobody
+> noticed because the Phase 13 work was trusted based on local
+> runs alone.
+>
+> Phase 14 fixed the drift in commit `13e888d` and surfaced the
+> lesson in
+> [[design/rust/phase-14-implementation-notes|Phase 14 Implementation
+> Notes]] §L1–L3. When revising this document going forward,
+> verify each testable claim against the actual YAML — a claim
+> that holds in prose but not in CI is worse than no claim at all,
+> because it reads like coverage that does not exist.
+
 Cache savings bring per-PR CI time from ~35 minutes (cold) to ~8
 minutes (warm).
 

@@ -590,3 +590,78 @@ phase work picks them up without having to hunt.
 No code or fixtures changed in this commit; only wiki prose. The
 non-`docs/` markdown surface continues to pass strict markdownlint,
 and Obsidian-flavored constructs stay confined to the vault.
+
+## [2026-04-10] retrospective | Phase 14 lessons learned — PR-cycle discoveries
+
+Phase 14 shipped cleanly on the first code-review pass, but the
+**PR CI cycle** surfaced three pre-existing bugs from Phase 13 that
+had been silently rotting on `main`. All three were fixed as part
+of PR #12 but belong to Phase 13 scope, so they are tracked
+separately as follow-up debt.
+
+Captured in docs/:
+
+- [[design/rust/phase-14-implementation-notes|Phase 14
+  Implementation Notes]] §Lessons learned — added seven lessons
+  (L1–L7) covering pre-merge CI as the real quality gate, LFS
+  hydration defaults, design-vs-implementation drift, cross-
+  platform `faer` QR determinism, `f32` literal tie-break gotchas
+  in round-trip tests, test-framework MSRV creep, and the
+  recurring clippy-profile pitfalls. Each lesson ends with a
+  "What to do differently" line so Phase 15+ can follow it
+  without re-reading the full retrospective. Also added a
+  `## CI follow-ups queued after Phase 14` section listing the
+  three Phase 13 remediation items that must clear before Phase
+  15 builds on top of them (determinism contract in
+  `RotationMatrix::build`, toolchain drift in `rust-ci.yml`, and
+  the phase-end CI health check).
+- [[design/rust/ci-cd|CI/CD]] §Caching — added a
+  `[!warning] Design-implementation drift caught in Phase 14`
+  callout explaining that this doc's "lfs: true on every job"
+  claim was not actually true in `rust-ci.yml` between Phase 11
+  and Phase 14, why nobody noticed, and how it was fixed (commit
+  `13e888d`).
+- [[design/rust/risks-and-mitigations|Risks and Mitigations]] —
+  added three new risk rows and their detailed mitigations:
+  - **R19** — `faer` parallel-kernel cross-platform
+    nondeterminism on Rust-canonical fixtures (root cause of the
+    `seed_42_dim_768` failure), short-term
+    `RAYON_NUM_THREADS: "1"` workaround, and the long-term
+    `Parallelism::None` fix that a Phase 13 remediation PR should
+    land.
+  - **R20** — Design-doc drift from actual YAML / Rust source.
+    Names the two concrete drifts Phase 14 caught (`ci-cd.md`
+    §Caching and `testing-strategy.md` §Property tests) and the
+    edit-time discipline needed to prevent recurrence.
+  - **R21** — Trusted-but-unobserved CI workflows. Introduces a
+    phase-exit checklist item
+    (`gh run list --workflow rust-ci.yml --branch main --limit 5`
+    must show zero failures) and a "no green-locally claims" rule
+    for implementation-notes pages.
+- [[design/rust/numerical-semantics|Numerical Semantics]] §Rotation
+  matrix — added a `[!warning] Cross-platform faer QR
+  nondeterminism (R19)` callout so anyone reading the rotation
+  parity plan in the future cannot miss the determinism-contract
+  requirement, plus pointers to the risks and implementation-notes
+  entries.
+
+Process lesson summary (one-liner each, for scanability):
+
+1. Pre-merge CI is the quality gate, not local tests.
+2. `actions/checkout@v4` defaults to `lfs: false` — must opt in.
+3. Design docs are not CI config; verify testable claims against
+   the YAML at edit time.
+4. Cross-platform bit-exact parity needs a determinism contract
+   in code, not a CI env-var workaround.
+5. Dequantized round-trip tests must compare against
+   `cb.entries()[k]`, not hand-typed `f32` literals.
+6. Test-framework MSRV creep is real — `cargo tree` any new
+   dev-dep before committing.
+7. The crate's clippy profile has recurring catches worth
+   memorising (`bool_to_int_using_if`, `explicit_iter_method`,
+   `missing_fields_in_debug`, `redundant_pub_crate`,
+   `trivially_copy_pass_by_ref`, `cast_*`).
+
+No code or fixtures touched in this commit; only wiki prose. The
+non-`docs/` markdown surface continues to pass strict markdownlint,
+and Obsidian-flavored constructs stay confined to the vault.

@@ -40,6 +40,9 @@ category: design
 | R16 | Feature-flag combinatorial explosion leaves untested combinations | Medium | Low | testing lead |
 | R17 | Parity test runtime balloons and blocks CI | Low | Medium | testing lead |
 | R18 | Python project's header-size comment discrepancy (70 vs 71 bytes) is a symptom of undocumented format drift | Medium | High | IO lead |
+| R19 | `faer` parallel kernels produce cross-platform-nondeterministic output on "Rust-canonical" fixtures | **High** | **High** (breaks bit-exact fixture parity across CI and dev machines) | codec lead |
+| R20 | Design docs in `docs/design/rust/` drift from the actual YAML / Rust source until a later phase trips over the gap | Medium | Medium | docs maintainer |
+| R21 | CI workflows that have never been successfully observed get trusted as healthy, hiding latent failures | Medium | Medium | CI lead |
 
 ## Detailed mitigations
 
@@ -366,6 +369,152 @@ returns 70. This is documented technical debt.
 3. The parity test for header size explicitly asserts 70 and
    exercises the serialized byte stream end-to-end, so any future
    drift is caught.
+
+### R19 — `faer` kernel nondeterminism across platforms and CPUs
+
+**Problem.** `faer::Mat::qr()` in faer 0.19 dispatches to a
+parallel Householder reduction at larger matrix sizes, *and* uses
+`pulp` for runtime SIMD ISA feature detection. On
+`seed=42, dim=768`, the Rust-canonical rotation fixture generated
+on Windows disagrees with the same fixture recomputed on Linux CI
+by ~90% of the f64 words (529 832 / 589 824). `dim=64` still
+matches because it falls below faer's parallel-kernel threshold.
+
+The first-draft assumption was "it must be rayon reduction order";
+Phase 14 initially pinned `RAYON_NUM_THREADS: "1"` on the rust-ci
+Test job, saw one green run, and declared victory. A
+**subsequent docs-only PR**, running the same workflow with the
+env var still honored, failed in the exact same place. The actual
+root cause is SIMD ISA variance: GitHub Actions' `ubuntu-22.04`
+runner pool provisions across host CPUs with different SIMD
+capabilities (AVX2 vs AVX-512), so pulp picks different kernels
+per host and the serial code path is not the same code path
+either.
+
+**Mitigation (current, landed 2026-04-10).**
+
+1. `seed_42_dim_768_matches_frozen_snapshot_bit_for_bit` is marked
+   `#[ignore = "cross-runner SIMD ISA nondeterminism at dim=768;
+   see R19"]` with a detailed comment inside
+   `rust/crates/tinyquant-core/tests/rotation_fixture_parity.rs`
+   pointing at this risk entry.
+2. A new test
+   `seed_42_dim_768_build_is_orthogonal_within_1e_12` builds the
+   matrix fresh on every run and checks `QᵀQ = I` within `1e-12`
+   on a sparse sample of index pairs. This is a mathematical
+   invariant that holds across SIMD kernels and thread counts, so
+   it is portable. The `dim=64` bit-exact + orthogonality tests
+   continue to pass because `dim=64` is below all of faer's
+   dispatch thresholds.
+3. The misleading `RAYON_NUM_THREADS: "1"` override was **dropped**
+   from `rust-ci.yml`. A detailed comment in its place explains
+   why the single-thread pinning is insufficient and what the
+   real fix looks like.
+
+**Remediation (long-term, tracked as Phase 13 debt).**
+
+1. Thread an explicit `faer::Parallelism::None` through
+   `RotationMatrix::build` at
+   `rust/crates/tinyquant-core/src/codec/rotation_matrix.rs:78`.
+2. Additionally force a scalar (non-SIMD) QR path so pulp's
+   runtime dispatch is bypassed. Either replace `a.qr()` with a
+   hand-rolled Householder QR, or pin pulp to a scalar-only
+   feature set at the workspace level.
+3. Regenerate `seed_42_dim_768.f64.bin` once from the serial
+   scalar kernel and commit the fresh fixture.
+4. Remove the `#[ignore]` on the bit-exact test and add a
+   regeneration-matrix test that runs the build under
+   `RAYON_NUM_THREADS=1`, `=2`, and `=$(nproc)` and asserts the
+   outputs are bit-identical.
+5. Any future Rust-canonical fixture that claims bit-exact
+   cross-platform parity must ship with the same
+   regeneration-matrix test and must be validated on at least two
+   CI runners with distinct host CPUs.
+
+**Process lesson.** A flakiness budget of "one green run" is not
+sufficient when the workaround depends on runner identity. If a
+"fix" for a nondeterminism bug produces only one green run before
+merging, run the workflow a second time on a fresh commit before
+trusting it. The Phase 14 PR got unlucky with exactly this pattern.
+
+**Concrete incident.** Discovered 2026-04-10 during the Phase 14
+PR CI run. First workaround landed as `40f9b87`
+(`RAYON_NUM_THREADS: "1"`) and was later proven insufficient by
+the lessons-learned docs PR. Final Phase 14 resolution
+(`#[ignore]` + orthogonality test + env var removed) is documented
+in [[design/rust/phase-14-implementation-notes|Phase 14
+Implementation Notes]] §L4.
+
+### R20 — Design-doc drift from actual YAML / Rust source
+
+**Problem.** Design docs in `docs/design/rust/` can claim a
+property that the implementation does not actually satisfy. The
+claim reads like real coverage, so later work trusts it. Phase 14
+caught two instances at once:
+
+1. `docs/design/rust/ci-cd.md` §Caching said "Fixture files are in
+   Git LFS; `actions/checkout` with `lfs: true` on every job." The
+   actual `rust-ci.yml` had no `lfs: true` anywhere, so the Phase
+   13 rotation fixture parity tests had been silently failing on
+   `main` since they landed.
+2. `docs/design/rust/testing-strategy.md` §Property tests showed a
+   polished `proptest!` block — but adding `proptest = "1"` to
+   `tinyquant-core` dev-deps broke the build on MSRV 1.81 because
+   its modern dep tree pulls `getrandom 0.4.2` through
+   `tempfile → rustix` → `edition2024`. The design doc never
+   exercised the dependency graph it implied.
+
+**Mitigation.**
+
+1. When a design doc makes a **testable** claim about tooling
+   behavior ("every job does X", "dep Y is installable"), add a
+   spot-check or grep during the phase that consumes the claim.
+2. During each phase execution, treat any discrepancy between
+   design and implementation as either a design bug (prose is
+   wrong — fix the doc) or an implementation bug (YAML/code is
+   wrong — fix the source), never "will be fixed later".
+3. When updating a design doc with a new claim, re-read the
+   implementation file it refers to in the same edit, and include
+   both in the commit so the drift window is zero.
+4. A future sweep should grep `docs/design/rust/ci-cd.md` and
+   `testing-strategy.md` for testable assertions and diff them
+   against `.github/workflows/` + `Cargo.toml` to find other
+   latent drifts.
+
+### R21 — Trusted-but-unobserved CI workflows
+
+**Problem.** A CI workflow can be added by one phase, never
+successfully run on `main`, and then be trusted as healthy by
+subsequent phases because nobody looks at its history. The
+`rust-ci.yml` workflow had `0 / 3` successful runs at the moment
+Phase 14's PR opened — every push to `main` touching `rust/**`
+since Phase 11 had been silently red, and the Phase 13 impl-notes
+page even claimed test parity was verified "by md5sum before and
+after a fresh `cargo xtask fixtures refresh-all`" (which was only
+ever run locally on the author's Windows machine).
+
+**Mitigation.**
+
+1. **Phase exit checklist (new).** Before marking any Rust phase
+   complete, run
+   `gh run list --workflow rust-ci.yml --branch main --limit 5`
+   and confirm every entry is `completed success`. A single
+   `failure` is a blocker that must be investigated, not background
+   noise.
+2. **No "green locally" claims in implementation notes.** Phase
+   docs should say "green on CI run N" with the run URL, not
+   "green locally". Local-only green is not a claim — it is a
+   pre-condition for opening the PR.
+3. **Branch protection.** Once the workflow is reliably green,
+   enable a required-status-check rule on `main` so new merges
+   cannot regress the baseline without explicit override.
+
+**Concrete incident.** Discovered 2026-04-10 during Phase 14 PR
+review; the Phase 13 CI had been red since it landed. Both
+contributing root causes (LFS hydration missing, cross-platform
+`faer` QR divergence at `dim=768`) are tracked under R19 and R20
+above, and the remediation commits are `13e888d` and `40f9b87` on
+the Phase 14 PR.
 
 ## Open questions tracked elsewhere
 
