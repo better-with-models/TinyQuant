@@ -55,6 +55,10 @@ rust/crates/tinyquant-core/tests/fixtures/residual/*.bin filter=lfs diff=lfs mer
 # `cargo xtask fixtures refresh-codec`.
 rust/crates/tinyquant-core/tests/fixtures/codec/*.bin filter=lfs diff=lfs merge=lfs -text
 
+# Store CompressedVector serialization byte-parity fixture snapshots in LFS.
+# Regenerate via `cargo xtask fixtures refresh-serialization`.
+rust/crates/tinyquant-io/tests/fixtures/**/*.bin filter=lfs diff=lfs merge=lfs -text
+
 # --------------------------------------------------------------------------
 # Git diff drivers — improve diffs for common formats
 # --------------------------------------------------------------------------

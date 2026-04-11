@@ -352,6 +352,15 @@ def _cmd_codec(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_serialization(_args: argparse.Namespace) -> int:
+    """Delegate to the dedicated serialization fixture generator."""
+    repo_root = _repo_root()
+    sys.path.insert(0, str(repo_root / "src"))
+    from tinyquant_cpu.tools.dump_serialization import main as _ser_main  # noqa: PLC0415
+
+    return int(_ser_main())
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -395,6 +404,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_codec.add_argument("--rows", type=int, default=1_000)
     p_codec.add_argument("--cols", type=int, default=64)
     p_codec.set_defaults(func=_cmd_codec)
+
+    p_serialization = sub.add_parser(
+        "serialization",
+        help="Write CompressedVector byte-parity fixtures for tinyquant-io tests",
+    )
+    p_serialization.set_defaults(func=_cmd_serialization)
 
     p_list = sub.add_parser("list", help="Print the 120 canonical triples")
     p_list.set_defaults(func=_cmd_list)
