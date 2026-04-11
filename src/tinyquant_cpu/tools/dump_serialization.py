@@ -15,6 +15,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -34,7 +35,7 @@ import numpy as np
 # | case_10  | 4         | 16   | True     | 42   |
 # ---------------------------------------------------------------------------
 
-_CASES: list[dict] = [
+_CASES: list[dict[str, Any]] = [
     {"id": "case_01", "bit_width": 4, "dim": 768, "residual": True, "seed": 42},
     {"id": "case_02", "bit_width": 2, "dim": 768, "residual": False, "seed": 42},
     {"id": "case_03", "bit_width": 8, "dim": 768, "residual": False, "seed": 42},
@@ -69,7 +70,7 @@ def _config_hash_for(bit_width: int, seed: int, dim: int, residual: bool) -> str
     return hashlib.sha256(canonical.encode(), usedforsecurity=False).hexdigest()
 
 
-def run_case(case: dict, out_dir: Path, repo_root: Path) -> dict:
+def run_case(case: dict[str, Any], out_dir: Path, repo_root: Path) -> dict[str, Any]:
     """Generate one fixture case directory and return its manifest entry."""
     from tinyquant_cpu.codec.compressed_vector import CompressedVector
 
@@ -133,7 +134,7 @@ def main() -> int:
 
     rel = out_dir.relative_to(repo_root)
     print(f"Generating {len(_CASES)} serialization fixtures -> {rel}")
-    manifest_entries: list[dict] = []
+    manifest_entries: list[dict[str, Any]] = []
     for case in _CASES:
         entry = run_case(case, out_dir, repo_root)
         manifest_entries.append(entry)
