@@ -25,3 +25,8 @@ libm        = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
+
+[[example]]
+name              = "dump_rotation_fixture"
+path              = "examples/dump_rotation_fixture.rs"
+required-features = ["std"]

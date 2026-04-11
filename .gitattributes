@@ -33,6 +33,11 @@
 # Store generated binary brand assets in LFS
 docs/assets/*.png filter=lfs diff=lfs merge=lfs -text
 
+# Store rotation-matrix fixture snapshots in LFS (raw f64 binary blobs
+# up to several MiB per entry). Regenerate via
+# `cargo xtask fixtures refresh-rotation`.
+rust/crates/tinyquant-core/tests/fixtures/rotation/*.bin filter=lfs diff=lfs merge=lfs -text
+
 # --------------------------------------------------------------------------
 # Git diff drivers — improve diffs for common formats
 # --------------------------------------------------------------------------
