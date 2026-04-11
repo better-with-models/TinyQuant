@@ -187,12 +187,12 @@ status: active
   [[PolarQuant]], [[QJL]]
 - ~~`research/turbo-quant-deep-research-report.md`~~ — ingested 2026-04-08 ->
   [[turbo-quant-deep-research-report]], [[TurboQuant]], [[TinyQuant]]
-- ~~`research/turbo-quant-deep-research-report2.md`~~ — ingested 2026-04-08 ->
+- ~~[[research/turbo-quant-deep-research-report2]]~~ — ingested 2026-04-08 ->
   [[turbo-quant-code-availability]], [[TurboQuant]], [[TinyQuant]]
-- ~~`research/turboquant-integration.md`~~ — ingested 2026-04-08 ->
+- ~~[[research/turboquant-integration]]~~ — ingested 2026-04-08 ->
   [[turboquant-integration]], [[TinyQuant]],
   [[per-collection-compression-policy]], [[storage-codec-architecture]]
-- ~~`research/tinyquant-research/README.md`~~ — ingested 2026-04-08 ->
+- ~~[[research/tinyquant-research/README]]~~ — ingested 2026-04-08 ->
   [[tinyquant-library-research]], [[TinyQuant]],
   [[storage-codec-vs-search-backend-separation]],
   [[storage-codec-architecture]]
