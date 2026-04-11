@@ -55,6 +55,7 @@ source-count: 0
 18. [[design/rust/phase-14-implementation-notes|Phase 14 Implementation Notes]] — execution-log view of the Phase 14 landing (`Codebook` + scalar quantize kernels): bit-width sweep, `rand_chacha` substitute for `proptest`, `fs::read` fixture pattern, and the `#[allow(clippy::cast_*)]` locality that made the quantile math lint-clean
 19. [[design/rust/phase-15-implementation-notes|Phase 15 Implementation Notes]] — execution-log view of the Phase 15 landing (`Codec` service, `compute_residual`, `CompressedVector`): Rust-canonical fixture strategy due to RNG divergence, clippy constraint patterns, and fidelity gate numbers
 20. [[design/rust/phase-17-implementation-notes|Phase 17 Implementation Notes]] — execution-log view of the Phase 17 landing (`tinyquant-io` zero-copy views, Level-2 TQCV corpus file container, mmap-based reader): TQCV magic-byte layout, `mmap-lock` feature flag design, and `MmapView` lifetime safety model
+21. [[design/rust/phase-18-implementation-notes|Phase 18 Implementation Notes]] — execution-log view of the Phase 18 landing (`Corpus` aggregate root, vector insertion, batch atomicity, three-policy decompression, domain events, insertion-ordered vector map)
 
 ## How the design layers relate
 

@@ -153,6 +153,7 @@ status: active
 | [[design/rust/phase-14-implementation-notes\|Phase 14 Implementation Notes]] | Execution-log view of Phase 14: bit-width sweep scoped in during execution, proptest deferred on MSRV 1.81 (replaced by a deterministic `rand_chacha` scan), runtime `fs::read` fixture pattern, narrow `#[allow(clippy::cast_*)]` on `Codebook::train`, and the Python-literal tie-break gotcha in the round-trip test | 2026-04-10 |
 | [[design/rust/phase-15-implementation-notes\|Phase 15 Implementation Notes]] | Execution-log view of Phase 15: codec service, residual, and CompressedVector — Rust-canonical fixture strategy due to RNG divergence, clippy constraint patterns, and fidelity gate numbers | 2026-04-10 |
 | [[design/rust/phase-17-implementation-notes\|Phase 17 Implementation Notes]] | Execution-log view of Phase 17: `tinyquant-io` zero-copy views, Level-2 TQCV corpus file container, and mmap-based reader — TQCV magic-byte layout, `mmap-lock` feature flag, and `MmapView` lifetime safety model | 2026-04-11 |
+| [[design/rust/phase-18-implementation-notes\|Phase 18 Implementation Notes]] | Execution-log view of Phase 18: `Corpus` aggregate root, vector insertion, batch atomicity, three-policy decompression, domain events, and insertion-ordered vector map | 2026-04-11 |
 
 ## Specs
 
@@ -180,7 +181,7 @@ status: active
 
 - `research/llm-wiki.md` — schema and operating model for the TinyQuant
   documentation system
-- ~~`research/vector-quantization-paper-synthesis.md`~~ — ingested 2026-04-08
+- ~~[[research/vector-quantization-paper-synthesis]]~~ — ingested 2026-04-08
   -> [[vector-quantization-paper-synthesis]],
   [[random-preconditioning-without-normalization-overhead]],
   [[two-stage-quantization-and-residual-correction]], [[TurboQuant]],
