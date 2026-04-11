@@ -665,3 +665,35 @@ Process lesson summary (one-liner each, for scanability):
 No code or fixtures touched in this commit; only wiki prose. The
 non-`docs/` markdown surface continues to pass strict markdownlint,
 and Obsidian-flavored constructs stay confined to the vault.
+
+## [2026-04-11] lint | orphan-page audit — added missing incoming links for 4 pages
+
+Ran a full link-graph audit of the `docs/` vault. Found four pages
+with no incoming wikilinks from any other document:
+
+1. [[design/rust/phase-15-implementation-notes|Phase 15 Implementation
+   Notes]] — existed but was not listed in `index.md` or
+   `design/rust/README.md`, unlike the Phase 13 and 14 counterparts.
+2. [[superpowers/plans/2026-04-08-phase-05-backend-layer|Phase 5
+   Execution Plan]] — agentic task checklist with no path from the
+   wiki.
+3. [[superpowers/plans/2026-04-09-readme-gfm-refresh|README GFM
+   Refresh Plan]] — agentic task checklist with no path from the wiki.
+4. [[superpowers/plans/2026-04-10-phase-12-shared-types-and-errors|Phase
+   12 Execution Plan]] — agentic task checklist with no path from the
+   wiki.
+
+Changes made (links added, no content changed):
+
+- [[index|Wiki Index]] — added Phase 15 Implementation Notes row to
+  the Roadmap and Plans table; added three superpowers execution-plan
+  rows to the Specs table.
+- [[design/rust/README|Rust Port Design Overview]] — added item 19
+  (Phase 15 Implementation Notes) to the reading order.
+- [[plans/phase-05-backend-layer|Phase 5: Backend Layer]] — added
+  Phase 5 Execution Plan link to the See also section.
+- [[plans/rust/phase-12-shared-types-and-errors|Phase 12: Shared Types
+  and Error Enums]] — added Phase 12 Execution Plan link to the See
+  also section.
+
+All four pages are now reachable via at least one incoming wikilink.

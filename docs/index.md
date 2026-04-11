@@ -151,12 +151,16 @@ status: active
 | [[design/rust/phase-13-implementation-notes\|Phase 13 Implementation Notes]] | Execution-log view of Phase 13: what landed, deviations from the plan, gotchas (Python bool parity, faer stack, clippy lints), locked-in invariants, and carryover into Phase 14+ | 2026-04-10 |
 | [[plans/rust/phase-14-codebook-quantize\|Phase 14: Codebook and Quantize Kernels]] | `tinyquant_core::codec::Codebook` value object + private `scalar_quantize` / `scalar_dequantize` kernels, Python-parity `train` + `quantize` across `bw ∈ {2, 4, 8}`, 10 000 × 64 training corpus + 10 000-value quantize corpus frozen under LFS — **complete** | 2026-04-10 |
 | [[design/rust/phase-14-implementation-notes\|Phase 14 Implementation Notes]] | Execution-log view of Phase 14: bit-width sweep scoped in during execution, proptest deferred on MSRV 1.81 (replaced by a deterministic `rand_chacha` scan), runtime `fs::read` fixture pattern, narrow `#[allow(clippy::cast_*)]` on `Codebook::train`, and the Python-literal tie-break gotcha in the round-trip test | 2026-04-10 |
+| [[design/rust/phase-15-implementation-notes\|Phase 15 Implementation Notes]] | Execution-log view of Phase 15: codec service, residual, and CompressedVector — Rust-canonical fixture strategy due to RNG divergence, clippy constraint patterns, and fidelity gate numbers | 2026-04-10 |
 
 ## Specs
 
 | Page | Summary | Date |
 |------|---------|------|
 | [[specs/plans/2026-04-09-github-actions-node24-upgrade\|GitHub Actions Node 24 Upgrade]] | Plan: bump artifact actions to `@v5`, replace `softprops/action-gh-release` with `gh release create`, reconcile CI/CD wiki | 2026-04-09 |
+| [[superpowers/plans/2026-04-08-phase-05-backend-layer\|Phase 5 Execution Plan]] | Agentic task checklist for Phase 5: SearchBackend protocol, SearchResult value object, and BruteForceBackend reference implementation | 2026-04-08 |
+| [[superpowers/plans/2026-04-09-readme-gfm-refresh\|README GFM Refresh Plan]] | Agentic task checklist for the GitHub-flavored Markdown README refresh: rich visual vocabulary, canonical tagline, and cross-file prose alignment rule | 2026-04-09 |
+| [[superpowers/plans/2026-04-10-phase-12-shared-types-and-errors\|Phase 12 Execution Plan]] | Agentic task checklist for Phase 12: shared types and error enums in tinyquant-core, MSRV 1.81, thiserror v2 under no_std | 2026-04-10 |
 
 ## Comparisons
 
