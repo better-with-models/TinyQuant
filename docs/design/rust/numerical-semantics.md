@@ -106,23 +106,37 @@ parity for a new `(seed, dimension)` can call `xtask fixtures refresh`
 to capture a new f64 matrix from Python.
 
 > [!warning] Cross-platform faer QR nondeterminism (R19)
-> Phase 14's PR CI surfaced that `faer::Mat::qr()` at `dim=768` does
-> **not** produce bit-identical output across platforms under its
-> default parallel Householder kernel. The Windows-generated
-> `seed_42_dim_768.f64.bin` fixture disagreed with a Linux CI rerun
-> by ~90% of its f64 words, even though the `dim=64` fixture still
-> matched (that dimension falls below faer's parallel-kernel
-> threshold). Interim workaround: `rust-ci.yml` pins
-> `RAYON_NUM_THREADS: "1"` on the Test job. Long-term fix: thread
-> an explicit `faer::Parallelism::None` through
-> `RotationMatrix::build`
-> (`rust/crates/tinyquant-core/src/codec/rotation_matrix.rs:78`).
+> Phase 14's PR CI surfaced that `faer::Mat::qr()` at `dim=768`
+> does **not** produce bit-identical output across CI runners.
+> The Windows-generated `seed_42_dim_768.f64.bin` fixture disagrees
+> with Linux CI runs by ~90% of its f64 words even under
+> `RAYON_NUM_THREADS=1`, because `pulp` picks different SIMD
+> kernels (AVX2 vs AVX-512) per host CPU at runtime. The `dim=64`
+> fixture still matches because it falls below all of faer's
+> dispatch thresholds.
+>
+> **Current state (Phase 14).** The bit-exact test is
+> `#[ignore]`d with an inline comment pointing at R19, and a new
+> `seed_42_dim_768_build_is_orthogonal_within_1e_12` test checks
+> the mathematical invariant (`QᵀQ = I`) instead of a byte-for-byte
+> fingerprint. Orthogonality is portable across SIMD kernels and
+> thread counts.
+>
+> **Long-term fix.** Thread an explicit `faer::Parallelism::None`
+> through `RotationMatrix::build`
+> (`rust/crates/tinyquant-core/src/codec/rotation_matrix.rs:78`)
+> **and** force a scalar (non-SIMD) QR path so pulp's runtime
+> dispatch is bypassed. Once that lands, regenerate the fixture
+> once from the serial scalar kernel and re-enable the bit-exact
+> test with a regeneration-matrix test that varies
+> `RAYON_NUM_THREADS` across `{1, 2, nproc}`.
 >
 > Any future "Rust-canonical" fixture that claims bit-exact
-> cross-platform parity must ship with a regeneration test under
-> varying `RAYON_NUM_THREADS` values to prove the determinism
-> contract holds. See
-> [[design/rust/risks-and-mitigations#r19-faer-parallel-kernel-nondeterminism-across-platforms|Risks §R19]]
+> cross-platform parity must ship with the determinism contract
+> in code and must be validated on at least two CI runners with
+> distinct host CPUs. A workflow env var is not a substitute —
+> see
+> [[design/rust/risks-and-mitigations#r19-faer-kernel-nondeterminism-across-platforms-and-cpus|Risks §R19]]
 > and [[design/rust/phase-14-implementation-notes|Phase 14
 > Implementation Notes]] §L4 for root-cause and remediation notes.
 

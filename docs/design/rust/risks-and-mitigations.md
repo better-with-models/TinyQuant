@@ -370,42 +370,80 @@ returns 70. This is documented technical debt.
    exercises the serialized byte stream end-to-end, so any future
    drift is caught.
 
-### R19 — `faer` parallel kernel nondeterminism across platforms
+### R19 — `faer` kernel nondeterminism across platforms and CPUs
 
 **Problem.** `faer::Mat::qr()` in faer 0.19 dispatches to a
-parallel Householder reduction at larger matrix sizes. The parallel
-reduction order depends on the rayon thread pool layout, which
-differs between Linux CI runners and Windows developer machines.
-On `seed=42, dim=768`, the Rust-canonical rotation fixture generated
-on Windows disagreed with the same fixture recomputed on Linux CI
+parallel Householder reduction at larger matrix sizes, *and* uses
+`pulp` for runtime SIMD ISA feature detection. On
+`seed=42, dim=768`, the Rust-canonical rotation fixture generated
+on Windows disagrees with the same fixture recomputed on Linux CI
 by ~90% of the f64 words (529 832 / 589 824). `dim=64` still
-matched because it falls below faer's parallel-kernel threshold.
+matches because it falls below faer's parallel-kernel threshold.
 
-**Mitigation.**
+The first-draft assumption was "it must be rayon reduction order";
+Phase 14 initially pinned `RAYON_NUM_THREADS: "1"` on the rust-ci
+Test job, saw one green run, and declared victory. A
+**subsequent docs-only PR**, running the same workflow with the
+env var still honored, failed in the exact same place. The actual
+root cause is SIMD ISA variance: GitHub Actions' `ubuntu-22.04`
+runner pool provisions across host CPUs with different SIMD
+capabilities (AVX2 vs AVX-512), so pulp picks different kernels
+per host and the serial code path is not the same code path
+either.
 
-1. **Short-term (Phase 14).** `rust-ci.yml` pins
-   `RAYON_NUM_THREADS: "1"` on the Test job so every platform walks
-   the same serial reduction order. Local verification on Windows
-   confirmed single-threaded output md5-matches the default
-   multi-threaded output, so the committed fixture stays
-   authoritative without regeneration.
-2. **Long-term (Phase 13 remediation PR, not yet landed).** Thread
-   an explicit `faer::Parallelism::None` (or equivalent serial
-   path) through `RotationMatrix::build` at
+**Mitigation (current, landed 2026-04-10).**
+
+1. `seed_42_dim_768_matches_frozen_snapshot_bit_for_bit` is marked
+   `#[ignore = "cross-runner SIMD ISA nondeterminism at dim=768;
+   see R19"]` with a detailed comment inside
+   `rust/crates/tinyquant-core/tests/rotation_fixture_parity.rs`
+   pointing at this risk entry.
+2. A new test
+   `seed_42_dim_768_build_is_orthogonal_within_1e_12` builds the
+   matrix fresh on every run and checks `QᵀQ = I` within `1e-12`
+   on a sparse sample of index pairs. This is a mathematical
+   invariant that holds across SIMD kernels and thread counts, so
+   it is portable. The `dim=64` bit-exact + orthogonality tests
+   continue to pass because `dim=64` is below all of faer's
+   dispatch thresholds.
+3. The misleading `RAYON_NUM_THREADS: "1"` override was **dropped**
+   from `rust-ci.yml`. A detailed comment in its place explains
+   why the single-thread pinning is insufficient and what the
+   real fix looks like.
+
+**Remediation (long-term, tracked as Phase 13 debt).**
+
+1. Thread an explicit `faer::Parallelism::None` through
+   `RotationMatrix::build` at
    `rust/crates/tinyquant-core/src/codec/rotation_matrix.rs:78`.
-   Once that lands, drop the `RAYON_NUM_THREADS` override from the
-   workflow and document the serial path in
-   [[design/rust/numerical-semantics|Numerical Semantics]] §R1.
-3. **Verification.** Any future Rust-canonical fixture that claims
-   bit-exact cross-platform parity must ship with a regeneration
-   test under varying thread counts (`RAYON_NUM_THREADS=1`, `=2`,
-   `=$(nproc)`) to prove the determinism contract holds.
+2. Additionally force a scalar (non-SIMD) QR path so pulp's
+   runtime dispatch is bypassed. Either replace `a.qr()` with a
+   hand-rolled Householder QR, or pin pulp to a scalar-only
+   feature set at the workspace level.
+3. Regenerate `seed_42_dim_768.f64.bin` once from the serial
+   scalar kernel and commit the fresh fixture.
+4. Remove the `#[ignore]` on the bit-exact test and add a
+   regeneration-matrix test that runs the build under
+   `RAYON_NUM_THREADS=1`, `=2`, and `=$(nproc)` and asserts the
+   outputs are bit-identical.
+5. Any future Rust-canonical fixture that claims bit-exact
+   cross-platform parity must ship with the same
+   regeneration-matrix test and must be validated on at least two
+   CI runners with distinct host CPUs.
+
+**Process lesson.** A flakiness budget of "one green run" is not
+sufficient when the workaround depends on runner identity. If a
+"fix" for a nondeterminism bug produces only one green run before
+merging, run the workflow a second time on a fresh commit before
+trusting it. The Phase 14 PR got unlucky with exactly this pattern.
 
 **Concrete incident.** Discovered 2026-04-10 during the Phase 14
-PR CI run. Root cause analysis and the interim workaround are
-documented in
-[[design/rust/phase-14-implementation-notes|Phase 14 Implementation
-Notes]] §L4 and §CI follow-ups.
+PR CI run. First workaround landed as `40f9b87`
+(`RAYON_NUM_THREADS: "1"`) and was later proven insufficient by
+the lessons-learned docs PR. Final Phase 14 resolution
+(`#[ignore]` + orthogonality test + env var removed) is documented
+in [[design/rust/phase-14-implementation-notes|Phase 14
+Implementation Notes]] §L4.
 
 ### R20 — Design-doc drift from actual YAML / Rust source
 

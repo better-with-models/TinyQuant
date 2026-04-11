@@ -247,31 +247,69 @@ minimum, spot-check the claim against the YAML during each phase
 execution. A future sweep should grep `docs/design/rust/ci-cd.md`
 for testable claims and diff them against `.github/workflows/`.
 
-### L4. Cross-platform bit-exact parity requires determinism
-contracts *in code*, not CI workarounds
+### L4. Cross-platform bit-exact parity is harder than it looks — and workflow env vars are a false cure
 
 The Phase 13 rotation pipeline uses `faer::Mat::qr()`, which calls
-faer's default parallel Householder reduction. At `dim=768`, Linux
-and Windows CI runners pick different parallel reduction orders,
-producing floating-point outputs that differ by ~90% of the f64
-words — not a 1-ULP edge case, a structural divergence. The
-`dim=64` matrix still matched bit-exact because it falls below
-faer's parallel kernel threshold.
+faer's default parallel Householder reduction. At `dim=768`, CI
+runners produce f64 outputs that differ from the Windows-generated
+fixture by ~90% of the f64 words — not a 1-ULP edge case, a
+structural divergence. The `dim=64` matrix still matches bit-exact
+because it falls below faer's parallel kernel threshold.
 
-Phase 14 worked around this by pinning `RAYON_NUM_THREADS: "1"` on
-the rust-ci `Test` job (commit `40f9b87`). That keeps the committed
-fixture authoritative without regenerating it on Linux, but it is
-explicitly a workaround — a determinism contract belongs inside
-`RotationMatrix::build` via an explicit `faer::Parallelism::None`
-(or equivalent serial code path), not in the workflow env vars.
+**First-draft workaround (insufficient).** The Phase 14 PR pinned
+`RAYON_NUM_THREADS: "1"` on the rust-ci `Test` job (commit
+`40f9b87`), theorising that serialising the reduction order would
+eliminate the nondeterminism. The Phase 14 Test job then passed
+and the workaround looked correct — but a subsequent docs-only PR
+(the one that ultimately landed this retrospective) hit the same
+workflow with the env var honored at runtime, and the bit-exact
+test failed again in exactly the same place.
 
-**What to do differently.** Any future "Rust-canonical" fixture
-that is supposed to be bit-exact across platforms **must** be
-accompanied by a code-level determinism contract: explicit
-`Parallelism::None`, documented rayon-pool sizing, and a test that
-verifies the fixture matches under varying thread counts. The
-long-term fix for the current rotation builder is in the Phase
-14 § CI follow-ups below.
+**Actual root cause.** GitHub Actions' `ubuntu-22.04` runner pool
+is provisioned across host CPUs with different SIMD ISAs (AVX2 vs
+AVX-512, at least). `faer` uses `pulp`, which picks the widest
+supported SIMD kernel at **runtime** per process. Two different
+runner hosts run two different code paths through the same QR
+routine, producing two different f64 outputs even with
+single-threaded execution. The Phase 14 PR got lucky and landed on
+a runner whose SIMD kernel matched the fixture author's Windows
+dev machine. The docs PR did not.
+
+**Final Phase 14 resolution.** Drop the misleading
+`RAYON_NUM_THREADS: "1"` override, mark
+`seed_42_dim_768_matches_frozen_snapshot_bit_for_bit` as
+`#[ignore = "cross-runner SIMD ISA nondeterminism at dim=768; see R19"]`
+with a detailed comment, and add a new
+`seed_42_dim_768_build_is_orthogonal_within_1e_12` test that checks
+a *mathematical* invariant (`QᵀQ = I`) instead of a byte-for-byte
+fingerprint. Mathematical orthogonality holds across SIMD kernels
+and rayon thread counts, so the new test is portable. Coverage is
+preserved in the sense that matters — a broken QR would still fail
+the orthogonality check — while the fixture drift is honestly
+acknowledged as Phase 13 debt.
+
+**What to do differently.**
+
+1. Never claim "bit-exact cross-platform parity" without an
+   accompanying determinism contract **inside the code**:
+   `Parallelism::None`, a forced scalar (non-SIMD) kernel, and a
+   regeneration test under `RAYON_NUM_THREADS=1`, `=2`,
+   `=$(nproc)`, *and* at least two different host CPUs. A workflow
+   env var is not a substitute.
+2. If the test is green on the first run after adding a
+   workaround, run it again. A flakiness budget of "0" hides this
+   class of bug. If the "fix" depends on runner identity, it's a
+   lie.
+3. For numerical tests that genuinely cannot be made platform-
+   portable, prefer mathematical-invariant assertions
+   (orthogonality, norm preservation, cosine similarity bounds)
+   over fingerprint assertions (`to_bits()` equality). The
+   invariant is the real thing you cared about; the fingerprint
+   was a proxy.
+4. The long-term fix for the current rotation builder is in the
+   Phase 14 §CI follow-ups below: a scalar deterministic
+   `RotationMatrix::build` path that can refresh the fixture once
+   and then hold the bit-exact line forever.
 
 ### L5. `f32` literal tie-breaks in round-trip tests are a
 foot-gun
