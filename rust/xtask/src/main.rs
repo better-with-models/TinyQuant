@@ -37,6 +37,9 @@
 //! * `fixtures refresh-serialization` — Run
 //!   `python scripts/generate_rust_fixtures.py serialization` to refresh
 //!   the 10-case `CompressedVector` byte-parity fixtures for `tinyquant-io`.
+//! * `fixtures refresh-corpus-file` — Run the `gen_corpus_fixture` example to
+//!   regenerate `golden_100.tqcv` and `golden_100_indices.bin` in
+//!   `crates/tinyquant-io/tests/fixtures/codec_file/`.
 //! * `fixtures refresh-all`      — Run all of the above in sequence.
 #![deny(warnings, clippy::all, clippy::pedantic)]
 
@@ -89,6 +92,7 @@ fn fixtures(sub: Option<&str>) {
         Some("refresh-residual") => refresh_residual(),
         Some("refresh-codec") => refresh_codec(),
         Some("refresh-serialization") => refresh_serialization(),
+        Some("refresh-corpus-file") => refresh_corpus_file(),
         Some("refresh-all") => {
             refresh_hashes();
             refresh_rotation();
@@ -97,12 +101,13 @@ fn fixtures(sub: Option<&str>) {
             refresh_residual();
             refresh_codec();
             refresh_serialization();
+            refresh_corpus_file();
         }
         _ => {
             eprintln!(
                 "usage: cargo xtask fixtures <refresh-hashes|refresh-rotation|\
                  refresh-codebook|refresh-quantize|refresh-residual|refresh-codec|\
-                 refresh-serialization|refresh-all>"
+                 refresh-serialization|refresh-corpus-file|refresh-all>"
             );
             process::exit(1);
         }
@@ -312,6 +317,28 @@ fn refresh_codec() {
     }
 }
 
+fn refresh_corpus_file() {
+    println!("xtask fixtures: generating golden corpus file fixtures");
+    let status = Command::new("cargo")
+        .args([
+            "run",
+            "--manifest-path",
+            "Cargo.toml",
+            "-p",
+            "tinyquant-io",
+            "--example",
+            "gen_corpus_fixture",
+        ])
+        .status()
+        .unwrap_or_else(|e| {
+            eprintln!("failed to spawn cargo: {e}");
+            process::exit(1);
+        });
+    if !status.success() {
+        process::exit(status.code().unwrap_or(1));
+    }
+}
+
 fn refresh_serialization() {
     let repo_root = repo_root();
     println!(
@@ -367,7 +394,7 @@ fn print_help() {
     println!(
         "  fixtures  Regenerate test fixtures (refresh-hashes | refresh-rotation | \
          refresh-codebook | refresh-quantize | refresh-residual | refresh-codec | \
-         refresh-serialization | refresh-all)"
+         refresh-serialization | refresh-corpus-file | refresh-all)"
     );
     println!("  help      Print this message (default)");
 }
