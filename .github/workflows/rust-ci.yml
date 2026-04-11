@@ -22,13 +22,11 @@ env:
 
 # Runner selection policy
 # -----------------------
-# Internal (push to main, PRs from org members/collaborators): self-hosted docker-runner
-# External PRs (CONTRIBUTOR / FIRST_TIME_CONTRIBUTOR / NONE): ubuntu-22.04 (GitHub-hosted)
+# Internal (push to main, non-fork PRs): self-hosted ["self-hosted","docker-runner"]
+# Fork PRs (from external contributors): GitHub-hosted ["ubuntu-22.04"]
 #
-# A dedicated choose-runner job evaluates author_association in bash and
-# sets a 'runner' output that all subsequent jobs consume via needs.
-# ubuntu-22.04 is used as the external fallback to match the historically
-# pinned toolchain environment for the Rust build.
+# ubuntu-22.04 is the external fallback to match the historically pinned
+# toolchain environment for the Rust build.
 
 jobs:
   choose-runner:
@@ -39,21 +37,17 @@ jobs:
     steps:
       - id: pick
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            ASSOC="${{ github.event.pull_request.author_association }}"
-            if [[ "$ASSOC" == "OWNER" || "$ASSOC" == "MEMBER" || "$ASSOC" == "COLLABORATOR" ]]; then
-              echo "runner=docker-runner" >> "$GITHUB_OUTPUT"
-            else
-              echo "runner=ubuntu-22.04" >> "$GITHUB_OUTPUT"
-            fi
+          if [[ "${{ github.event_name }}" == "pull_request" && \
+                "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
+            echo 'runner=["ubuntu-22.04"]' >> "$GITHUB_OUTPUT"
           else
-            echo "runner=docker-runner" >> "$GITHUB_OUTPUT"
+            echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
           fi
       - run: echo "Selected runner=${{ steps.pick.outputs.runner }}"
 
   fmt:
     name: Format check
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner]
     defaults:
       run:
@@ -74,7 +68,7 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner, fmt]
     defaults:
       run:
@@ -95,7 +89,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner, clippy]
     defaults:
       run:
@@ -127,7 +121,7 @@ jobs:
 
   no-std-check:
     name: no_std cross-compile (thumbv7em-none-eabihf)
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner, clippy]
     defaults:
       run:

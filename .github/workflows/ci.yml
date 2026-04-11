@@ -16,11 +16,14 @@ env:
 
 # Runner selection policy
 # -----------------------
-# Internal (push to main, PRs from org members/collaborators): self-hosted docker-runner
-# External PRs (CONTRIBUTOR / FIRST_TIME_CONTRIBUTOR / NONE): ubuntu-latest (GitHub-hosted)
+# Internal (push to main, non-fork PRs): self-hosted ["self-hosted","docker-runner"]
+# Fork PRs (from external contributors): GitHub-hosted ["ubuntu-latest"]
 #
-# A dedicated choose-runner job evaluates author_association in bash and
-# sets a 'runner' output that all subsequent jobs consume via needs.
+# GitHub's event-payload author_association is evaluated at webhook fire time
+# and is unreliable for org-membership checks. The fork flag is authoritative:
+# only org members can push to the repo directly; external contributors must
+# fork first. The choose-runner job outputs a JSON runner label array that
+# downstream jobs consume via fromJSON().
 
 jobs:
   choose-runner:
@@ -31,21 +34,17 @@ jobs:
     steps:
       - id: pick
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            ASSOC="${{ github.event.pull_request.author_association }}"
-            if [[ "$ASSOC" == "OWNER" || "$ASSOC" == "MEMBER" || "$ASSOC" == "COLLABORATOR" ]]; then
-              echo "runner=docker-runner" >> "$GITHUB_OUTPUT"
-            else
-              echo "runner=ubuntu-latest" >> "$GITHUB_OUTPUT"
-            fi
+          if [[ "${{ github.event_name }}" == "pull_request" && \
+                "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
+            echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
           else
-            echo "runner=docker-runner" >> "$GITHUB_OUTPUT"
+            echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
           fi
       - run: echo "Selected runner=${{ steps.pick.outputs.runner }}"
 
   lint:
     name: Lint & Format
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner]
     timeout-minutes: 5
     steps:
@@ -72,7 +71,7 @@ jobs:
 
   markdown-lint:
     name: Markdown Lint
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner]
     timeout-minutes: 5
     steps:
@@ -94,7 +93,7 @@ jobs:
 
   typecheck:
     name: Type Check
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner, lint]
     timeout-minutes: 5
     steps:
@@ -118,7 +117,7 @@ jobs:
 
   test-pgvector:
     name: Integration – pgvector
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner, typecheck]
     timeout-minutes: 10
     services:
@@ -152,7 +151,7 @@ jobs:
 
   test:
     name: Test (Python ${{ matrix.python-version }})
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner, typecheck, markdown-lint]
     timeout-minutes: 15
     strategy:
@@ -203,7 +202,7 @@ jobs:
 
   build-artifact:
     name: Build Package
-    runs-on: ${{ needs.choose-runner.outputs.runner }}
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner, test]
     timeout-minutes: 5
     steps:
