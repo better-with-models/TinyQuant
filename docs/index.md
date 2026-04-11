@@ -146,6 +146,9 @@ status: active
 | [[plans/phase-09-pgvector-adapter|Phase 9: Pgvector Adapter]] | PgvectorAdapter ACL + ~6 integration tests | 2026-04-08 |
 | [[plans/phase-10-calibration-release|Phase 10: Calibration & Release]] | Calibration tests, CHANGELOG, README, v0.1.0 tag | 2026-04-08 |
 | [[plans/rust/phase-11-rust-workspace-scaffold\|Phase 11: Rust Workspace Scaffold]] | Cargo workspace scaffold: 10 members, toolchain pin 1.78.0, lint wall, smoke tests, rust-ci.yml | 2026-04-10 |
+| [[plans/rust/phase-12-shared-types-and-errors\|Phase 12: Shared Types and Errors]] | `tinyquant-core::types` aliases and `tinyquant-core::errors` enums, MSRV 1.78→1.81, thiserror v2 under no_std — **complete** | 2026-04-10 |
+| [[plans/rust/phase-13-rotation-numerics\|Phase 13: Rotation Matrix and Numerics]] | `codec::CodecConfig`, `ChaChaGaussianStream`, `RotationMatrix`, `RotationCache`, Python-parity `config_hash`, Rust-canonical rotation fixtures under LFS — **complete** | 2026-04-10 |
+| [[design/rust/phase-13-implementation-notes\|Phase 13 Implementation Notes]] | Execution-log view of Phase 13: what landed, deviations from the plan, gotchas (Python bool parity, faer stack, clippy lints), locked-in invariants, and carryover into Phase 14+ | 2026-04-10 |
 
 ## Specs
 

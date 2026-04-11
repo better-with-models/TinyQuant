@@ -70,7 +70,17 @@ byte stream.
    path: rotated vectors agree to 1e-5 absolute and downstream
    cosine similarities agree to 1e-5.
 
-**Status.** Designed; fixtures to be captured in phase 13.
+**Status.** Landed in Phase 13 (2026-04-10) as a **Rust-canonical**
+snapshot strategy, not a Python-generated one: the canonical
+`ChaChaGaussianStream` + `faer::qr` + Haar sign correction pipeline is
+frozen into `rust/crates/tinyquant-core/tests/fixtures/rotation/*.f64.bin`
+(LFS-tracked) and every build re-diffs against the snapshot in
+`tests/rotation_fixture_parity.rs`. Because NumPy PCG64 and the Rust
+canonical stream can never agree byte-for-byte, the "effect-level
+parity for the legacy NumPy path" sub-point has been explicitly
+deferred to Phase 15+ (legacy-vs-canonical cosine parity harness).
+See [[design/rust/phase-13-implementation-notes|Phase 13 Implementation Notes]]
+for the full reasoning and the carryover list.
 
 ### R2 — QR sign conventions
 

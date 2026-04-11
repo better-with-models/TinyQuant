@@ -51,6 +51,7 @@ source-count: 0
 14. [[design/rust/feature-flags|Feature Flags and Optional Dependencies]] — `default`, `pgvector`, `pyo3`, `simd`, `std`
 15. [[design/rust/release-strategy|Release and Versioning]] — crates.io, PyPI via maturin, MSRV policy
 16. [[design/rust/risks-and-mitigations|Risks and Mitigations]] — LAPACK determinism, QR sign conventions, fp16 round-trips
+17. [[design/rust/phase-13-implementation-notes|Phase 13 Implementation Notes]] — execution-log view of the Phase 13 landing (rotation matrix and numerics): deviations from the plan, gotchas, and locked-in invariants
 
 ## How the design layers relate
 
