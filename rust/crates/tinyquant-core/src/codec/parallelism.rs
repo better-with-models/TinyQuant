@@ -20,7 +20,7 @@ impl Parallelism {
         F: Fn(usize) + Sync + Send,
     {
         match self {
-            Self::Serial => (0..count).for_each(|i| body(i)),
+            Self::Serial => (0..count).for_each(body),
             Self::Custom(driver) => driver(count, &body),
         }
     }

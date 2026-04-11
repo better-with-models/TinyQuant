@@ -46,10 +46,14 @@ impl CompressedVector {
         if !SUPPORTED_BIT_WIDTHS.contains(&bit_width) {
             return Err(CodecError::UnsupportedBitWidth { got: bit_width });
         }
-        if indices.len() as u32 != dimension {
+        // Dimensions are bounded by u32 in CodecConfig; casting is safe in practice
+        // and checked by the mismatch error path below.
+        #[allow(clippy::cast_possible_truncation)]
+        let got_dim = indices.len() as u32;
+        if got_dim != dimension {
             return Err(CodecError::DimensionMismatch {
                 expected: dimension,
-                got: indices.len() as u32,
+                got: got_dim,
             });
         }
         if let Some(r) = residual.as_ref() {
@@ -87,7 +91,7 @@ impl CompressedVector {
     /// The `config_hash` of the [`CodecConfig`](crate::codec::CodecConfig) used to compress this vector.
     #[inline]
     #[must_use]
-    pub fn config_hash(&self) -> &ConfigHash {
+    pub const fn config_hash(&self) -> &ConfigHash {
         &self.config_hash
     }
 
@@ -108,6 +112,8 @@ impl CompressedVector {
     /// `true` when a residual buffer is present.
     #[inline]
     #[must_use]
+    // Option::is_some() is not const-stable in MSRV 1.81.
+    #[allow(clippy::missing_const_for_fn)]
     pub fn has_residual(&self) -> bool {
         self.residual.is_some()
     }

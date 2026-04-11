@@ -41,9 +41,12 @@ pub fn apply_residual_into(values: &mut [f32], residual: &[u8]) -> Result<(), Co
             right: expected,
         });
     }
-    for (i, chunk) in residual.chunks_exact(2).enumerate() {
+    // chunks_exact(2) guarantees 2-byte chunks; zip with values guarantees
+    // in-bounds access since residual.len() == values.len() * 2 (checked above).
+    #[allow(clippy::indexing_slicing)]
+    for (v, chunk) in values.iter_mut().zip(residual.chunks_exact(2)) {
         let bits = u16::from_le_bytes([chunk[0], chunk[1]]);
-        values[i] += f16::from_bits(bits).to_f32();
+        *v += f16::from_bits(bits).to_f32();
     }
     Ok(())
 }

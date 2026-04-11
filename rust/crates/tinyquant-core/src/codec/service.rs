@@ -43,9 +43,12 @@ impl Codec {
     ) -> Result<CompressedVector, CodecError> {
         let dim = config.dimension() as usize;
         if vector.len() != dim {
+            // Dimension is bounded by u32 (from CodecConfig); cast is safe in practice.
+            #[allow(clippy::cast_possible_truncation)]
+            let got = vector.len() as u32;
             return Err(CodecError::DimensionMismatch {
                 expected: config.dimension(),
-                got: vector.len() as u32,
+                got,
             });
         }
         if codebook.bit_width() != config.bit_width() {
@@ -130,9 +133,11 @@ impl Codec {
             });
         }
         if output.len() != config.dimension() as usize {
+            #[allow(clippy::cast_possible_truncation)]
+            let got = output.len() as u32;
             return Err(CodecError::DimensionMismatch {
                 expected: config.dimension(),
-                got: output.len() as u32,
+                got,
             });
         }
 
@@ -181,9 +186,11 @@ impl Codec {
         _parallelism: Parallelism,
     ) -> Result<Vec<CompressedVector>, CodecError> {
         if cols != config.dimension() as usize {
+            #[allow(clippy::cast_possible_truncation)]
+            let got = cols as u32;
             return Err(CodecError::DimensionMismatch {
                 expected: config.dimension(),
-                got: cols as u32,
+                got,
             });
         }
         if vectors.len() != rows * cols {
@@ -193,6 +200,8 @@ impl Codec {
             });
         }
         let mut out = Vec::with_capacity(rows);
+        // Safety: vectors.len() == rows * cols (checked above); start..start+cols is in-bounds.
+        #[allow(clippy::indexing_slicing)]
         for row in 0..rows {
             let start = row * cols;
             out.push(self.compress(&vectors[start..start + cols], config, codebook)?);
@@ -221,6 +230,8 @@ impl Codec {
                 right: needed,
             });
         }
+        // Safety: output.len() == compressed.len() * cols (checked above); slices are in-bounds.
+        #[allow(clippy::indexing_slicing)]
         for (row, cv) in compressed.iter().enumerate() {
             let start = row * cols;
             self.decompress_into(cv, config, codebook, &mut output[start..start + cols])?;

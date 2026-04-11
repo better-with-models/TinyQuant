@@ -179,6 +179,34 @@ fn refresh_quantize() {
     }
 }
 
+fn refresh_residual() {
+    let repo_root = repo_root();
+    println!(
+        "xtask fixtures: running generate_rust_fixtures.py residual from {}",
+        repo_root.display()
+    );
+    let status = Command::new("python")
+        .args([
+            "scripts/generate_rust_fixtures.py",
+            "residual",
+            "--seed",
+            "19",
+            "--rows",
+            "1000",
+            "--cols",
+            "64",
+        ])
+        .current_dir(&repo_root)
+        .status()
+        .unwrap_or_else(|e| {
+            eprintln!("failed to spawn python: {e}");
+            process::exit(1);
+        });
+    if !status.success() {
+        process::exit(status.code().unwrap_or(1));
+    }
+}
+
 fn refresh_rotation() {
     for (seed, dim) in ROTATION_GOLD_SET {
         let rel_path = format!("{ROTATION_FIXTURE_DIR}/seed_{seed}_dim_{dim}.f64.bin");
@@ -231,10 +259,10 @@ fn refresh_codec() {
             "--features",
             "std",
             "--",
-            "11",    // input-seed
-            "42",    // codec-seed
-            "1000",  // rows
-            "64",    // cols
+            "11",   // input-seed
+            "42",   // codec-seed
+            "1000", // rows
+            "64",   // cols
             training_rel,
             out_rel,
         ])
