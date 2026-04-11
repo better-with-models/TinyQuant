@@ -20,5 +20,8 @@ pub mod service;
 
 pub use codebook::Codebook;
 pub use codec_config::{CodecConfig, SUPPORTED_BIT_WIDTHS};
+pub use compressed_vector::CompressedVector;
+pub use parallelism::Parallelism;
 pub use rotation_cache::{RotationCache, DEFAULT_CAPACITY as ROTATION_CACHE_DEFAULT_CAPACITY};
 pub use rotation_matrix::RotationMatrix;
+pub use service::{compress, decompress, Codec};
