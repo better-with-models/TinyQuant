@@ -60,7 +60,12 @@ jobs:
         with:
           workspaces: rust -> target
       - name: clippy
-        run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+        # --all-features is intentionally NOT used here because
+        # tinyquant-pgvector's `live-db` feature activates `postgres 0.19`
+        # which transitively requires getrandom 0.4 (edition2024, Rust > 1.81).
+        # The live-db / test-containers features are tested separately in
+        # environments with Docker and a live PostgreSQL server.
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
   test:
     name: Test
@@ -92,7 +97,11 @@ jobs:
         with:
           workspaces: rust -> target
       - name: test
-        run: cargo test --workspace --all-features
+        # --all-features omitted: tinyquant-pgvector's live-db feature activates
+        # postgres 0.19 which requires getrandom 0.4 (edition2024, Rust > 1.81).
+        run: cargo test --workspace
+      - name: test (bruteforce)
+        run: cargo test -p tinyquant-bruteforce
 
   no-std-check:
     name: no_std cross-compile (thumbv7em-none-eabihf)
