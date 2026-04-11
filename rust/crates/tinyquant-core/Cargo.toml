@@ -29,6 +29,8 @@ half        = { workspace = true }
 serde_json = { workspace = true }
 # Phase 14: codebook / quantize fixture parity tests
 bytemuck   = { workspace = true }
+# Phase 20: SIMD parity tests need std rand (dev-only, not in the no_std build).
+rand       = { workspace = true, features = ["std", "std_rng"] }
 
 [[example]]
 name              = "dump_rotation_fixture"

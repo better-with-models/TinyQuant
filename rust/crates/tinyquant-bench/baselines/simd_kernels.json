@@ -1,0 +1,27 @@
+{
+  "_comment": "Phase 20 placeholder baseline for simd_kernels.rs. Populated via `cargo bench -p tinyquant-bench --features simd --bench simd_kernels`. Criterion writes per-benchmark timings under target/criterion/ when runs happen on dedicated hardware; this file records the 'framework-first' baseline established when AVX2/NEON wrappers delegate to scalar. Phase 22 intrinsic work updates these numbers.",
+  "dim": 1536,
+  "bench": "tinyquant-bench/benches/simd_kernels.rs",
+  "metrics": {
+    "simd/quantize/dim_1536_bw4": {
+      "unit": "ns",
+      "median": null,
+      "captured_on": null
+    },
+    "simd/dequantize/dim_1536_bw4": {
+      "unit": "ns",
+      "median": null,
+      "captured_on": null
+    },
+    "simd/cosine/dim_1536": {
+      "unit": "ns",
+      "median": null,
+      "captured_on": null
+    },
+    "simd/residual_encode/dim_1536": {
+      "unit": "ns",
+      "median": null,
+      "captured_on": null
+    }
+  }
+}

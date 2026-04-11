@@ -1,8 +1,10 @@
-//! Scalar cosine similarity kernel.
+//! Cosine similarity kernel used by `BruteForceBackend`.
 //!
-//! This is the reference implementation used by `BruteForceBackend`.
-//! A SIMD-accelerated replacement ships in Phase 20 behind the `simd`
-//! feature flag; for now the feature flag is accepted but has no effect.
+//! The scalar reference implementation below is the parity baseline.
+//! When the crate is built with `feature = "simd"`, the wrapper routes
+//! through `tinyquant_core::codec::simd_api::cosine`, which consults
+//! the runtime ISA dispatch cache. SIMD and scalar paths must produce
+//! byte-identical output (Phase 20 determinism contract).
 
 /// Compute the cosine similarity between two vectors of the same length.
 ///
@@ -17,6 +19,22 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
         );
     }
     debug_assert_eq!(a.len(), b.len());
+
+    #[cfg(feature = "simd")]
+    {
+        tinyquant_core::codec::simd_api::cosine(a, b)
+    }
+    #[cfg(not(feature = "simd"))]
+    {
+        scalar_cosine(a, b)
+    }
+}
+
+/// Scalar reference kernel kept public-in-module so the SIMD-off build
+/// and the unit tests below can call it without going through a cfg
+/// thicket.
+#[cfg_attr(feature = "simd", allow(dead_code))]
+fn scalar_cosine(a: &[f32], b: &[f32]) -> f32 {
     let mut dot = 0.0_f32;
     let mut na = 0.0_f32;
     let mut nb = 0.0_f32;

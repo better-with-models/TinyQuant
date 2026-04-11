@@ -20,7 +20,7 @@ use core::cmp::Ordering;
 use core::fmt;
 
 use crate::codec::codec_config::CodecConfig;
-use crate::codec::quantize::{scalar_dequantize, scalar_quantize};
+use crate::codec::kernels::scalar as scalar_kernel;
 use crate::errors::CodecError;
 
 /// Immutable lookup table mapping quantized `u8` indices to `f32` values.
@@ -229,7 +229,31 @@ impl Codebook {
     ///
     /// * [`CodecError::LengthMismatch`] — `values.len() != indices.len()`.
     pub fn quantize_into(&self, values: &[f32], indices: &mut [u8]) -> Result<(), CodecError> {
-        scalar_quantize(&self.entries, values, indices)
+        let entries = &self.entries;
+        #[cfg(feature = "simd")]
+        {
+            match crate::codec::dispatch::current() {
+                #[cfg(target_arch = "x86_64")]
+                crate::codec::dispatch::DispatchKind::Avx2 => {
+                    // SAFETY: `dispatch::current()` verified AVX2+FMA are
+                    // available on this CPU before returning `Avx2`.
+                    return unsafe {
+                        crate::codec::kernels::avx2::quantize_into(entries, values, indices)
+                    };
+                }
+                #[cfg(target_arch = "aarch64")]
+                crate::codec::dispatch::DispatchKind::Neon => {
+                    // SAFETY: NEON is mandatory on ARMv8 aarch64, so the
+                    // feature is always available whenever this arm is
+                    // reachable.
+                    return unsafe {
+                        crate::codec::kernels::neon::quantize_into(entries, values, indices)
+                    };
+                }
+                crate::codec::dispatch::DispatchKind::Scalar => {}
+            }
+        }
+        scalar_kernel::quantize_into(entries, values, indices)
     }
 
     /// Dequantize `indices` into `values` by gathering the corresponding
@@ -241,7 +265,31 @@ impl Codebook {
     /// * [`CodecError::IndexOutOfRange`] — any index is
     ///   `>= num_entries()`.
     pub fn dequantize_into(&self, indices: &[u8], values: &mut [f32]) -> Result<(), CodecError> {
-        scalar_dequantize(&self.entries, indices, values)
+        let entries = &self.entries;
+        #[cfg(feature = "simd")]
+        {
+            match crate::codec::dispatch::current() {
+                #[cfg(target_arch = "x86_64")]
+                crate::codec::dispatch::DispatchKind::Avx2 => {
+                    // SAFETY: `dispatch::current()` verified AVX2+FMA are
+                    // available on this CPU before returning `Avx2`.
+                    return unsafe {
+                        crate::codec::kernels::avx2::dequantize_into(entries, indices, values)
+                    };
+                }
+                #[cfg(target_arch = "aarch64")]
+                crate::codec::dispatch::DispatchKind::Neon => {
+                    // SAFETY: NEON is mandatory on ARMv8 aarch64, so the
+                    // feature is always available whenever this arm is
+                    // reachable.
+                    return unsafe {
+                        crate::codec::kernels::neon::dequantize_into(entries, indices, values)
+                    };
+                }
+                crate::codec::dispatch::DispatchKind::Scalar => {}
+            }
+        }
+        scalar_kernel::dequantize_into(entries, indices, values)
     }
 
     /// Convenience: allocate and return the quantized indices.
