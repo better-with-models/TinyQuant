@@ -15,3 +15,13 @@ simd    = ["std"]
 [dependencies]
 # Phase 12: error enums (no_std-capable via thiserror v2 + default-features = false)
 thiserror = { workspace = true }
+# Phase 13: codec / rotation / cache
+faer        = { workspace = true }
+rand_chacha = { workspace = true }
+sha2        = { workspace = true }
+hex         = { workspace = true }
+spin        = { workspace = true }
+libm        = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
