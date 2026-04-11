@@ -49,7 +49,7 @@ _CASES: list[dict] = [
 
 
 def _repo_root() -> Path:
-    """Return the repository root (two levels above this file's src/tinyquant_cpu/tools/)."""
+    """Return the repository root (three levels above this file's directory)."""
     return Path(__file__).resolve().parents[3]
 
 
@@ -71,7 +71,7 @@ def _config_hash_for(bit_width: int, seed: int, dim: int, residual: bool) -> str
 
 def run_case(case: dict, out_dir: Path, repo_root: Path) -> dict:
     """Generate one fixture case directory and return its manifest entry."""
-    from tinyquant_cpu.codec.compressed_vector import CompressedVector  # noqa: PLC0415
+    from tinyquant_cpu.codec.compressed_vector import CompressedVector
 
     bit_width: int = case["bit_width"]
     dim: int = case["dim"]
@@ -131,7 +131,8 @@ def main() -> int:
     out_dir = _serialization_fixture_dir(repo_root)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print(f"Generating {len(_CASES)} serialization fixtures -> {out_dir.relative_to(repo_root)}")
+    rel = out_dir.relative_to(repo_root)
+    print(f"Generating {len(_CASES)} serialization fixtures -> {rel}")
     manifest_entries: list[dict] = []
     for case in _CASES:
         entry = run_case(case, out_dir, repo_root)
