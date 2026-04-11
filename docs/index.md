@@ -179,7 +179,7 @@ status: active
 
 ## Raw sources available for ingestion
 
-- `research/llm-wiki.md` — schema and operating model for the TinyQuant
+- [[research/llm-wiki]] — schema and operating model for the TinyQuant
   documentation system
 - ~~[[research/vector-quantization-paper-synthesis]]~~ — ingested 2026-04-08
   -> [[vector-quantization-paper-synthesis]],
