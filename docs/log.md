@@ -536,3 +536,57 @@ Deferred by design (not in Phase 14):
 - Bit packing for on-disk index storage — Phase 16.
 - Residual correction and the `Codec` service — Phase 15.
 - SIMD quantize/dequantize kernels — Phase 20.
+
+## [2026-04-10] maintain | Propagate Phase 14 findings across the wiki
+
+Doc-only sweep that carries the Phase 14 execution observations into
+the pages that are read *before* the implementation notes, so future
+phase work picks them up without having to hunt.
+
+- [[design/rust/README|Rust Port Design Overview]] — appended
+  [[design/rust/phase-14-implementation-notes|Phase 14 Implementation
+  Notes]] to the reading order.
+- [[index|Wiki index]] — added rows for the Phase 14 plan and the
+  Phase 14 implementation-notes page.
+- [[design/rust/type-mapping|Type Mapping]] §Codebook — updated the
+  sketched `Codebook::train` signature to match what landed
+  (`(&[f32], &CodecConfig)`, no row/col params) and rewrote the
+  "Numerical parity notes" bullets to point at the actual frozen
+  fixtures across `bw ∈ {2, 4, 8}` rather than a hypothetical
+  "1 000 random seeds" scheme.
+- [[design/rust/numerical-semantics|Numerical Semantics]]
+  §Quantization + §Codebook training — replaced the "256 random
+  inputs at each supported bit width" claim with a pointer at the
+  committed `expected_bw{2,4,8}_seed42.{f32,u8}.bin` fixtures, noted
+  the `libm::floor` / `f32::total_cmp` details that make the path
+  `no_std`-safe, and documented the `scalar_quantize` delegation
+  contract.
+- [[design/rust/testing-strategy|Testing Strategy]] — added a
+  `[!warning]` callout documenting that `proptest` is currently
+  blocked by MSRV 1.81 and showing the
+  `rand_chacha::ChaCha20Rng::seed_from_u64(...)` substitute pattern
+  (with the exact Phase 14 `codebook.rs` test as a template). The
+  callout also names the re-entry condition (workspace MSRV
+  crossing 1.85 or a proptest release compatible with 1.81) so the
+  decision can be reviewed deliberately.
+- [[design/rust/risks-and-mitigations|Risks and Mitigations]] §R12
+  — corrected the MSRV check job from `cargo +1.78.0` to
+  `cargo +1.81.0` and added a "Concrete incidents so far"
+  subsection naming the Phase 14 proptest incident, its root cause
+  (`getrandom 0.4.2` / `rustix` / `edition2024`), the chosen
+  interim pattern, and the re-entry path.
+- [[classes/codebook|Codebook]] — added a "Rust port" section that
+  tabulates the Python-to-Rust field and method mapping, calls out
+  the `Arc<[f32]>` storage + `PartialEq`-by-bits contract, and
+  links to the Phase 14 implementation notes and type-mapping
+  entry.
+- [[qa/unit-tests/test-codebook|Codebook unit tests]] — added a
+  "Rust integration tests" section listing every Phase 14 test with
+  its assertion, explaining that they run alongside (not instead
+  of) the existing Python unit tests and function as the
+  byte-parity gate. Notes the LFS fixture layout and the xtask
+  refresh command.
+
+No code or fixtures changed in this commit; only wiki prose. The
+non-`docs/` markdown surface continues to pass strict markdownlint,
+and Obsidian-flavored constructs stay confined to the vault.

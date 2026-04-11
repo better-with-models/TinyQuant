@@ -52,6 +52,7 @@ source-count: 0
 15. [[design/rust/release-strategy|Release and Versioning]] — crates.io, PyPI via maturin, MSRV policy
 16. [[design/rust/risks-and-mitigations|Risks and Mitigations]] — LAPACK determinism, QR sign conventions, fp16 round-trips
 17. [[design/rust/phase-13-implementation-notes|Phase 13 Implementation Notes]] — execution-log view of the Phase 13 landing (rotation matrix and numerics): deviations from the plan, gotchas, and locked-in invariants
+18. [[design/rust/phase-14-implementation-notes|Phase 14 Implementation Notes]] — execution-log view of the Phase 14 landing (`Codebook` + scalar quantize kernels): bit-width sweep, `rand_chacha` substitute for `proptest`, `fs::read` fixture pattern, and the `#[allow(clippy::cast_*)]` locality that made the quantile math lint-clean
 
 ## How the design layers relate
 

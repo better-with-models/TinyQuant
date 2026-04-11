@@ -261,10 +261,29 @@ path on CI runners that don't have AVX2 enabled.
 
 **Problem.** A dep bumps its MSRV past ours, forcing us to bump.
 
-**Mitigation.** `cargo +1.78.0 check` job catches this immediately.
+**Mitigation.** A `cargo +1.81.0 check` job catches this immediately.
 When a dep forces an MSRV bump, we pin the dep to the previous
 version until we're ready to bump ours, or we bump ours in a minor
 release with a clear changelog entry.
+
+**Concrete incidents so far**
+
+- **Phase 14 — `proptest` blocked on MSRV 1.81 (2026-04-10).** Adding
+  `proptest = "1"` to `tinyquant-core/[dev-dependencies]` pulled
+  `getrandom 0.4.2` transitively (via modern `tempfile` →
+  `rustix`), which requires Cargo's `edition2024` feature — stable
+  only from Rust 1.85. The workspace is pinned to 1.81 by
+  `rust-toolchain.toml` and Phase 12 already bumped us once
+  (1.78 → 1.81), so we declined to bump again. Interim pattern:
+  deterministic `rand_chacha::ChaCha20Rng::seed_from_u64(N)` loops
+  substitute for the proptest property invariants; see
+  [[design/rust/testing-strategy#property-tests-proptest|Testing
+  Strategy]] for the template. Re-entry path: revisit when the
+  workspace MSRV crosses 1.85, or when a proptest release builds
+  cleanly on 1.81 again. Phase 14 shipped with one such loop
+  (`quantize_indices_always_in_codebook_across_random_inputs`) and
+  a 30 000-byte fixture parity gate that catches the same class of
+  bug at a different layer.
 
 ### R13 — cbindgen header churn
 
