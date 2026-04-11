@@ -22,12 +22,8 @@ fn as_f32(bytes: &[u8]) -> Vec<f32> {
 }
 
 fn run_case(bw: u8) {
-    let training = as_f32(&fx(
-        "tests/fixtures/codebook/training_n10000_d64.f32.bin",
-    ));
-    let input = as_f32(&fx(
-        "tests/fixtures/codec/input_n1000_d64_seed11.f32.bin",
-    ));
+    let training = as_f32(&fx("tests/fixtures/codebook/training_n10000_d64.f32.bin"));
+    let input = as_f32(&fx("tests/fixtures/codec/input_n1000_d64_seed11.f32.bin"));
     let expected_indices = fx(&format!(
         "tests/fixtures/codec/expected_indices_bw{bw}_seed42.u8.bin"
     ));
@@ -120,12 +116,8 @@ fn codec_fidelity_pearson_rho_meets_gate() {
         serde_json::from_slice(&manifest_bytes).expect("valid fidelity_manifest.json");
     let thresholds = manifest["thresholds"].as_object().unwrap();
 
-    let training = as_f32(&fx(
-        "tests/fixtures/codebook/training_n10000_d64.f32.bin",
-    ));
-    let input = as_f32(&fx(
-        "tests/fixtures/codec/input_n1000_d64_seed11.f32.bin",
-    ));
+    let training = as_f32(&fx("tests/fixtures/codebook/training_n10000_d64.f32.bin"));
+    let input = as_f32(&fx("tests/fixtures/codec/input_n1000_d64_seed11.f32.bin"));
 
     let rows = 1000_usize;
     let cols = 64_usize;

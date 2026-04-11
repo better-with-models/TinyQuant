@@ -28,8 +28,8 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::thread;
 
-use rand_chacha::ChaCha20Rng;
 use rand_chacha::rand_core::{RngCore, SeedableRng};
+use rand_chacha::ChaCha20Rng;
 use tinyquant_core::codec::{Codebook, Codec, CodecConfig};
 
 const WORKER_STACK_BYTES: usize = 64 * 1024 * 1024;
@@ -93,7 +93,10 @@ fn run() -> ExitCode {
     let training_bytes = match fs::read(&training_path) {
         Ok(b) => b,
         Err(err) => {
-            eprintln!("failed to read training corpus {}: {err}", training_path.display());
+            eprintln!(
+                "failed to read training corpus {}: {err}",
+                training_path.display()
+            );
             return ExitCode::from(2);
         }
     };

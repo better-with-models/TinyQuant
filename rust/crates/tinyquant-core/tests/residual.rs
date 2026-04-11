@@ -5,7 +5,12 @@ fn fixture(name: &str) -> Vec<u8> {
     let p = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/residual")
         .join(name);
-    fs::read(&p).unwrap_or_else(|_| panic!("fixture missing: {}; run `cargo xtask fixtures refresh-residual`", p.display()))
+    fs::read(&p).unwrap_or_else(|_| {
+        panic!(
+            "fixture missing: {}; run `cargo xtask fixtures refresh-residual`",
+            p.display()
+        )
+    })
 }
 
 fn as_f32(bytes: &[u8]) -> Vec<f32> {
