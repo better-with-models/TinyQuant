@@ -223,6 +223,56 @@ persisted in `proptest-regressions/*.txt`, which is committed. When a
 proptest failure is diagnosed and fixed, the minimized regression
 case stays as a permanent unit test.
 
+> [!warning] `proptest` is currently blocked by MSRV 1.81 (Phase 14)
+> Phase 14 attempted to add `proptest = "1"` to
+> `tinyquant-core/[dev-dependencies]` and hit a hard build failure:
+> the modern proptest transitive dep tree pulls `getrandom 0.4.2`,
+> which requires Cargo's `edition2024` feature (stable only from Rust
+> 1.85). The workspace MSRV is pinned to 1.81 by `rust-toolchain.toml`
+> and the `rust-version` field in `rust/Cargo.toml`, and Phase 12
+> already bumped us once (1.78 → 1.81). We do not want to move it
+> again just to add a test-framework dependency.
+>
+> **Interim pattern** (used by Phase 14's
+> `quantize_indices_always_in_codebook_across_random_inputs` test):
+> replace the `proptest!` block with a deterministic loop seeded from
+> `rand_chacha::ChaCha20Rng::seed_from_u64(N)` — `rand_chacha` is
+> already a `tinyquant-core` runtime dep, so the substitute adds
+> nothing to the graph. Draw batch sizes and input values from the
+> stream, call the function under test in a plain Rust `for` loop,
+> and assert the invariant with `assert!`. The failure mode is less
+> ergonomic than proptest (no automatic shrinking) but it still
+> reproduces deterministically because the seed is fixed.
+>
+> ```rust
+> // tinyquant-core/tests/codebook.rs (excerpt)
+> use rand_chacha::rand_core::{RngCore, SeedableRng};
+> use rand_chacha::ChaCha20Rng;
+>
+> #[test]
+> fn quantize_indices_always_in_codebook_across_random_inputs() {
+>     let entries: Vec<f32> = (0..16).map(|i| i as f32).collect();
+>     let cb = Codebook::new(entries.into_boxed_slice(), 4).unwrap();
+>     let mut rng = ChaCha20Rng::seed_from_u64(1337);
+>     for _ in 0..256 {
+>         let len = 1 + (rng.next_u32() as usize % 512);
+>         let values: Vec<f32> = (0..len)
+>             .map(|_| next_finite_f32(&mut rng))
+>             .collect();
+>         let mut idx = vec![0u8; len];
+>         cb.quantize_into(&values, &mut idx).unwrap();
+>         assert!(idx.iter().all(|&i| i < 16));
+>     }
+> }
+> ```
+>
+> **Re-entry path.** Revisit this decision when the workspace MSRV
+> eventually bumps past 1.85, or when `proptest` publishes a release
+> whose dep tree builds cleanly on stable 1.81 again. At that point
+> the deterministic loops should be *expanded* with a proptest
+> wrapper rather than replaced, so the existing coverage stays as a
+> permanent regression floor.
+
 ## Snapshot parity tests
 
 These assert that the Rust implementation produces byte-identical

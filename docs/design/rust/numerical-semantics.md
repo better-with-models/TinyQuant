@@ -124,8 +124,24 @@ tie-breaking (`left_dist < right_dist` — strict less-than — favors the
 right neighbor on equality, same as NumPy), the output is bit
 identical.
 
-Parity gate: for 10 000 random vectors and 10 000 random codebook
-pairs, `rust.quantize(v, c).as_ref() == python.quantize(v, c).tobytes()`.
+Phase 14 confirmed this in code: `tinyquant_core::codec::quantize`
+holds a `pub(crate)` `scalar_quantize` kernel that walks `entries` with
+`iter::position(|e| !(e < v))` (equivalent to
+`np.searchsorted(side="left")`), clips to `[0, n-1]`, and compares
+`left_dist < right_dist` with a strict `<`. `Codebook::quantize_into`
+and `Codebook::dequantize_into` delegate to that kernel, so the Phase
+20 SIMD path has a single panic-free reference to diff against.
+
+Parity gate: 10 000 random f32 values from
+`numpy.random.default_rng(7).standard_normal(10_000).astype(float32)`
+produce 10 000 bytes of expected indices per bit width. The
+`expected_bw{2,4,8}_seed42.u8.bin` fixtures capture those 30 000
+bytes total, and `tests/quantize.rs` asserts
+`cb.quantize_into(values) == fixture_bytes` bit-for-bit on every
+supported bit width. See [[design/rust/phase-14-implementation-notes|
+Phase 14 Implementation Notes]] for the lint-wall workarounds that
+kept the kernel panic-free under the crate's
+`clippy::pedantic + nursery + unwrap_used + indexing_slicing` profile.
 
 ## Dequantization — trivial parity
 
@@ -154,23 +170,39 @@ frac = h - i
 value = flat_sorted[i] + frac * (flat_sorted[i+1] - flat_sorted[i])
 ```
 
-Rust implementation in `tinyquant-core::codec::codebook`:
+Rust implementation in `tinyquant-core::codec::codebook` — Phase 14
+confirmed byte parity on the full training path:
 
-1. Sort the flattened f64 buffer in-place (`slice::sort_by` with
+1. Sort the flattened f64 buffer in-place (`Vec<f64>::sort_by` with
    `f64::total_cmp` to match NumPy's behavior on NaNs — the gold
    fixtures contain no NaNs, but `total_cmp` is the right default).
 2. For each `q_k = k / (num_entries - 1)`, compute `h`, `i`, `frac` as
-   above.
+   above (`libm::floor` instead of `std::f64::floor` so the module
+   stays `no_std`-compatible).
 3. Interpolate in f64, then cast to f32 via `as f32` (which uses
    round-to-nearest-even).
-4. Sort the resulting f32 array (no-op if quantiles are monotone).
+4. Sort the resulting f32 array with `f32::total_cmp` as a defensive
+   no-op. Any tie then fails with
+   `CodecError::InsufficientTrainingData { expected }` *before* the
+   value reaches `Codebook::new`, so the insufficient-data story is
+   surfaced with the most informative error.
+5. Hand the entries off to `Codebook::new` so the invariant checks
+   run a second time through the single source-of-truth constructor.
 
 Because both NumPy and our code use IEEE-754 f64 arithmetic with the
 same sequence of operations, the output is bit identical *for inputs
 that do not suffer catastrophic cancellation* — which applies to all
-embedding-scale data. A parity test across 256 random inputs at each
-supported bit width confirms this; we will switch to a pre-baked
-fixture if a corner case is ever found.
+embedding-scale data. Phase 14 locked this in by freezing three
+fixture files, one per bit width, at
+`rust/crates/tinyquant-core/tests/fixtures/codebook/expected_bw{2,4,8}_seed42.f32.bin`,
+plus the shared 10 000 × 64 training corpus from
+`numpy.random.default_rng(42).standard_normal`. The
+`train_matches_python_fixture_bw{2,4,8}_seed42_n10000_d64`
+integration tests compare bit-for-bit using `f32::to_bits`, which
+would catch a 1-ULP drift if any future dep bump introduced one.
+Refresh goes through `cargo xtask fixtures refresh-codebook`, which
+must be followed by `refresh-quantize` because the quantize indices
+are pinned to the matching codebook bytes.
 
 ## Residual — fp16 parity
 

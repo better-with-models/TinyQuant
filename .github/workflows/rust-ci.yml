@@ -29,6 +29,8 @@ jobs:
         working-directory: rust
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.78.0"
@@ -48,6 +50,8 @@ jobs:
         working-directory: rust
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.78.0"
@@ -65,8 +69,22 @@ jobs:
     defaults:
       run:
         working-directory: rust
+    env:
+      # Force deterministic faer execution so the frozen rotation
+      # fixture snapshots (Phase 13) compare bit-exact across
+      # platforms. Phase 14 surfaced that faer's default parallel QR
+      # at `dim=768` picks a different reduction order on Linux than
+      # on the Windows developer machine that generated the fixture;
+      # `RAYON_NUM_THREADS=1` forces the same sequential reduction
+      # order everywhere. Re-evaluate if a later phase ships a
+      # Parallelism-aware rotation builder. See
+      # `docs/design/rust/phase-14-implementation-notes.md` §CI
+      # follow-ups.
+      RAYON_NUM_THREADS: "1"
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.78.0"
@@ -85,6 +103,8 @@ jobs:
         working-directory: rust
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.78.0"

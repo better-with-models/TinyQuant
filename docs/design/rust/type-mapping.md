@@ -271,14 +271,20 @@ impl Codebook {
     /// Train from representative vectors using uniform quantile
     /// estimation, matching `numpy.quantile(flat, linspace(0, 1, k))`.
     ///
+    /// Phase 14 update: the landed signature takes a flat `&[f32]`
+    /// slice and ignores row/column structure — `Codebook.train` on
+    /// the Python side likewise flattens before quantile-ing, so the
+    /// `(rows, cols)` parameters originally sketched here would add
+    /// no information. Length checks happen implicitly via the
+    /// quantile arithmetic.
+    ///
     /// # Errors
     ///
-    /// `CodecError::InsufficientTrainingData` if there are fewer
-    /// distinct values than `2^bit_width`.
+    /// `CodecError::InsufficientTrainingData` if `vectors` is empty
+    /// or produces fewer distinct quantile representatives than
+    /// `2^bit_width`.
     pub fn train(
         vectors: &[f32],
-        rows: usize,
-        cols: usize,
         config: &CodecConfig,
     ) -> Result<Self, CodecError> { /* … */ }
 
@@ -323,15 +329,30 @@ impl Codebook {
 
 1. Python's training uses `np.quantile(flat.astype(float64),
    np.linspace(0, 1, k)).astype(float32)` then sorts. Rust replicates
-   this exactly: promote to f64, compute the linspace, use `faer`'s
-   quantile (or a hand-written equivalent of NumPy's
-   linear-interpolation quantile which matches NumPy's default
-   `method="linear"`), cast to f32, sort ascending. A parity test
-   generates 1 000 random seeds and compares byte-for-byte against
-   Python.
-2. `quantize_into` uses `searchsorted` + nearest-neighbor
-   comparison. The Rust version implements branchless nearest-neighbor
-   using `simd::cmp::SimdPartialOrd` on wide lanes.
+   this as a hand-written quantile (no `faer` dependency on the
+   training path): promote to f64, sort with `f64::total_cmp`,
+   compute `h = (k/(n-1)) * (len-1)`, `i = floor(h)`,
+   `frac = h - i`, linearly interpolate
+   `lo + frac * (hi - lo)` in f64, cast to f32 with
+   round-to-nearest-even, then defensively resort by
+   `f32::total_cmp`. Phase 14 froze the parity assertion as three
+   fixture files — `expected_bw{2,4,8}_seed42.f32.bin` generated
+   from `np.random.default_rng(42).standard_normal((10_000, 64))`
+   — that Rust compares bit-for-bit against via `.to_bits()`. See
+   [[design/rust/phase-14-implementation-notes|Phase 14
+   Implementation Notes]] for the lint-wall workarounds.
+2. `quantize_into` uses a linear `position(|e| e >= v)` scan that
+   replicates `np.searchsorted(entries, v, side="left")`, followed
+   by the clip-and-compare tie-break from the Python reference.
+   Ties favor the right neighbor because the Python code uses
+   strict `<` on `left_dist < right_dist`. The scalar path is the
+   reference kernel Phase 20's SIMD implementation will diff
+   against — `tinyquant_core::codec::quantize::scalar_quantize` and
+   `scalar_dequantize` live inside a `pub(crate)` module for that
+   reason. Byte parity is proved by the three
+   `expected_bw{2,4,8}_seed42.u8.bin` quantize fixtures against a
+   10 000-value `default_rng(7).standard_normal` input corpus
+   (30 000 indices total).
 
 ### RotationMatrix
 

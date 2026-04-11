@@ -471,3 +471,122 @@ Deferred by design (not in Phase 13):
 - legacy-Python (PCG64) vs Rust-canonical cosine parity — Phase 15+
 - pyo3 bridge that lets Python consumers opt into the canonical path —
   Phase 15+
+
+## [2026-04-10] phase-14 | Codebook value object + scalar quantize kernels landed
+
+Shipped [[plans/rust/phase-14-codebook-quantize|Phase 14]] on a
+dedicated `phase-14-codebook-quantize` feature branch, bringing
+`tinyquant_core::codec::Codebook` online together with the private
+`scalar_quantize` / `scalar_dequantize` reference kernels that Phase 20
+will benchmark its SIMD path against. All training, quantize, and
+dequantize math is byte-identical to
+`src/tinyquant_cpu/codec/codebook.py` across every supported bit
+width.
+
+New Rust source modules (no_std, lint-clean under the crate's
+`clippy::pedantic + nursery + unwrap_used + indexing_slicing` profile):
+- `rust/crates/tinyquant-core/src/codec/codebook.rs` —
+  `Codebook { entries: Arc<[f32]>, bit_width }` with `new`, `train`
+  (f64 flatten + `f64::total_cmp` sort + linear-interpolated quantiles
+  + `as f32` cast + defensive re-sort + explicit
+  `InsufficientTrainingData` gate), `num_entries`, `bit_width`,
+  `entries`, `quantize_into`, `dequantize_into`, and convenience
+  `quantize` / `dequantize` allocators. `PartialEq` compares entry
+  bits, not allocation identity.
+- `rust/crates/tinyquant-core/src/codec/quantize.rs` — panic-free
+  `scalar_quantize` (linear scan matching
+  `np.searchsorted(side="left")` + strict-`<` tie-break on
+  `left_dist < right_dist`) and `scalar_dequantize` (gather with
+  `IndexOutOfRange` bounds check). Private to the crate, re-exposed
+  via `Codebook::{quantize_into, dequantize_into}`.
+
+New fixture tooling + LFS surface:
+- `scripts/generate_rust_fixtures.py` gained `codebook` and `quantize`
+  subcommands. The former writes the shared
+  `training_n10000_d64.f32.bin` corpus plus one
+  `expected_bw{2,4,8}_seed42.f32.bin` per bit width; the latter writes
+  the shared `values_n10000.f32.bin` corpus (`default_rng(7)`) plus
+  one `expected_bw{2,4,8}_seed42.u8.bin` of Python-computed indices.
+- `rust/xtask/src/main.rs` learned `fixtures refresh-codebook`,
+  `fixtures refresh-quantize`, and an extended `refresh-all` that now
+  chains hashes → rotation → codebook → quantize.
+- `.gitattributes` routes both new fixture dirs through Git LFS.
+
+New tests — 16 additions on top of the Phase 13 baseline:
+- 12 `codebook` tests: four construction invariants, the bw=2/4/8
+  training parity sweep against the Python fixtures, two round-trip
+  tests, the dequantize out-of-range rejection, `new_accepts_bw2_and_bw8_bounds`,
+  and a ChaCha-seeded randomized scan (256 batches × up to 512 values)
+  confirming indices stay in `[0, 16)`.
+- 4 `quantize` tests: bw=2/4/8 byte parity against Python on a
+  10 000-value corpus (30 000 indices total) plus a bw=4 dequantize
+  round-trip that every output value belongs to the codebook entry
+  set.
+
+Workspace `cargo xtask fmt`, `cargo xtask lint`, `cargo xtask test`,
+`cargo build -p tinyquant-core --no-default-features`, and
+`cargo build -p tinyquant-core --target thumbv7em-none-eabihf
+--no-default-features` are all green. `cargo xtask fixtures refresh-all`
+leaves `git status` clean against the committed fixtures. Proptest was
+*not* adopted because its transitive dependency tree now requires
+`edition2024` (Rust 1.85+) while the workspace MSRV is 1.81; the
+`rand_chacha`-driven deterministic scan is the drop-in replacement.
+
+Deferred by design (not in Phase 14):
+- Bit packing for on-disk index storage — Phase 16.
+- Residual correction and the `Codec` service — Phase 15.
+- SIMD quantize/dequantize kernels — Phase 20.
+
+## [2026-04-10] maintain | Propagate Phase 14 findings across the wiki
+
+Doc-only sweep that carries the Phase 14 execution observations into
+the pages that are read *before* the implementation notes, so future
+phase work picks them up without having to hunt.
+
+- [[design/rust/README|Rust Port Design Overview]] — appended
+  [[design/rust/phase-14-implementation-notes|Phase 14 Implementation
+  Notes]] to the reading order.
+- [[index|Wiki index]] — added rows for the Phase 14 plan and the
+  Phase 14 implementation-notes page.
+- [[design/rust/type-mapping|Type Mapping]] §Codebook — updated the
+  sketched `Codebook::train` signature to match what landed
+  (`(&[f32], &CodecConfig)`, no row/col params) and rewrote the
+  "Numerical parity notes" bullets to point at the actual frozen
+  fixtures across `bw ∈ {2, 4, 8}` rather than a hypothetical
+  "1 000 random seeds" scheme.
+- [[design/rust/numerical-semantics|Numerical Semantics]]
+  §Quantization + §Codebook training — replaced the "256 random
+  inputs at each supported bit width" claim with a pointer at the
+  committed `expected_bw{2,4,8}_seed42.{f32,u8}.bin` fixtures, noted
+  the `libm::floor` / `f32::total_cmp` details that make the path
+  `no_std`-safe, and documented the `scalar_quantize` delegation
+  contract.
+- [[design/rust/testing-strategy|Testing Strategy]] — added a
+  `[!warning]` callout documenting that `proptest` is currently
+  blocked by MSRV 1.81 and showing the
+  `rand_chacha::ChaCha20Rng::seed_from_u64(...)` substitute pattern
+  (with the exact Phase 14 `codebook.rs` test as a template). The
+  callout also names the re-entry condition (workspace MSRV
+  crossing 1.85 or a proptest release compatible with 1.81) so the
+  decision can be reviewed deliberately.
+- [[design/rust/risks-and-mitigations|Risks and Mitigations]] §R12
+  — corrected the MSRV check job from `cargo +1.78.0` to
+  `cargo +1.81.0` and added a "Concrete incidents so far"
+  subsection naming the Phase 14 proptest incident, its root cause
+  (`getrandom 0.4.2` / `rustix` / `edition2024`), the chosen
+  interim pattern, and the re-entry path.
+- [[classes/codebook|Codebook]] — added a "Rust port" section that
+  tabulates the Python-to-Rust field and method mapping, calls out
+  the `Arc<[f32]>` storage + `PartialEq`-by-bits contract, and
+  links to the Phase 14 implementation notes and type-mapping
+  entry.
+- [[qa/unit-tests/test-codebook|Codebook unit tests]] — added a
+  "Rust integration tests" section listing every Phase 14 test with
+  its assertion, explaining that they run alongside (not instead
+  of) the existing Python unit tests and function as the
+  byte-parity gate. Notes the LFS fixture layout and the xtask
+  refresh command.
+
+No code or fixtures changed in this commit; only wiki prose. The
+non-`docs/` markdown surface continues to pass strict markdownlint,
+and Obsidian-flavored constructs stay confined to the vault.

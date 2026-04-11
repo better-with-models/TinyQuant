@@ -25,6 +25,8 @@ libm        = { workspace = true }
 
 [dev-dependencies]
 serde_json = { workspace = true }
+# Phase 14: codebook / quantize fixture parity tests
+bytemuck   = { workspace = true }
 
 [[example]]
 name              = "dump_rotation_fixture"

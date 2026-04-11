@@ -149,6 +149,8 @@ status: active
 | [[plans/rust/phase-12-shared-types-and-errors\|Phase 12: Shared Types and Errors]] | `tinyquant-core::types` aliases and `tinyquant-core::errors` enums, MSRV 1.78→1.81, thiserror v2 under no_std — **complete** | 2026-04-10 |
 | [[plans/rust/phase-13-rotation-numerics\|Phase 13: Rotation Matrix and Numerics]] | `codec::CodecConfig`, `ChaChaGaussianStream`, `RotationMatrix`, `RotationCache`, Python-parity `config_hash`, Rust-canonical rotation fixtures under LFS — **complete** | 2026-04-10 |
 | [[design/rust/phase-13-implementation-notes\|Phase 13 Implementation Notes]] | Execution-log view of Phase 13: what landed, deviations from the plan, gotchas (Python bool parity, faer stack, clippy lints), locked-in invariants, and carryover into Phase 14+ | 2026-04-10 |
+| [[plans/rust/phase-14-codebook-quantize\|Phase 14: Codebook and Quantize Kernels]] | `tinyquant_core::codec::Codebook` value object + private `scalar_quantize` / `scalar_dequantize` kernels, Python-parity `train` + `quantize` across `bw ∈ {2, 4, 8}`, 10 000 × 64 training corpus + 10 000-value quantize corpus frozen under LFS — **complete** | 2026-04-10 |
+| [[design/rust/phase-14-implementation-notes\|Phase 14 Implementation Notes]] | Execution-log view of Phase 14: bit-width sweep scoped in during execution, proptest deferred on MSRV 1.81 (replaced by a deterministic `rand_chacha` scan), runtime `fs::read` fixture pattern, narrow `#[allow(clippy::cast_*)]` on `Codebook::train`, and the Python-literal tie-break gotcha in the round-trip test | 2026-04-10 |
 
 ## Specs
 
