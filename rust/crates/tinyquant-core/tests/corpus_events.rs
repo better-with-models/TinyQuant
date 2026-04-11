@@ -185,10 +185,7 @@ fn drain_events_empties_buffer_mem_take_semantics() {
         BTreeMap::new(),
     );
 
-    // Created event is buffered.
-    assert_eq!(corpus.pending_events().len(), 1);
-
-    // First drain returns [Created].
+    // First drain returns [Created] — confirms exactly one event was buffered at construction.
     let first = corpus.drain_events();
     assert_eq!(first.len(), 1);
 

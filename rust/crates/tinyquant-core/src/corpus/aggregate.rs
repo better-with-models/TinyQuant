@@ -185,15 +185,6 @@ impl Corpus {
         &self.metadata
     }
 
-    /// Peek at pending events without draining.
-    ///
-    /// Intended for testing and introspection.  Prefer [`drain_events`](Self::drain_events)
-    /// in production code.
-    #[must_use]
-    pub fn pending_events(&self) -> &[CorpusEvent] {
-        &self.pending_events
-    }
-
     // ── Mutation ──────────────────────────────────────────────────────────────
 
     /// Drain and return all pending domain events.

@@ -103,7 +103,7 @@ fn corpus_create_insert_decompress_flow() {
     let recovered = corpus.decompress(&Arc::from("v1")).unwrap();
     assert_eq!(recovered.len(), DIM as usize);
     // No event emitted by single decompress.
-    assert!(corpus.pending_events().is_empty());
+    assert!(corpus.drain_events().is_empty());
 }
 
 #[test]
@@ -126,7 +126,7 @@ fn insert_wrong_dim_raises_dimension_mismatch() {
     );
     // Corpus unchanged.
     assert_eq!(corpus.vector_count(), 0);
-    assert!(corpus.pending_events().is_empty());
+    assert!(corpus.drain_events().is_empty());
 }
 
 #[test]
@@ -146,7 +146,7 @@ fn insert_duplicate_id_raises_duplicate_vector_error() {
     // Still only one vector.
     assert_eq!(corpus.vector_count(), 1);
     // No new events.
-    assert!(corpus.pending_events().is_empty());
+    assert!(corpus.drain_events().is_empty());
 }
 
 // ── insert_batch atomicity ────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ fn insert_batch_rolls_back_on_dimension_mismatch() {
     // Corpus is unchanged — atomicity guarantee.
     assert_eq!(corpus.vector_count(), 0);
     // No events emitted.
-    assert!(corpus.pending_events().is_empty());
+    assert!(corpus.drain_events().is_empty());
 }
 
 #[test]
@@ -309,7 +309,7 @@ fn remove_is_silent_no_event() {
     assert!(entry.is_some());
     assert_eq!(corpus.vector_count(), 0);
     // No events emitted.
-    assert!(corpus.pending_events().is_empty());
+    assert!(corpus.drain_events().is_empty());
 }
 
 #[test]
