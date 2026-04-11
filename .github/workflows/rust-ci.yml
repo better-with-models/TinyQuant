@@ -25,13 +25,14 @@ env:
 # Internal (push to main, PRs from org members/collaborators): self-hosted docker-runner
 # External PRs (CONTRIBUTOR / FIRST_TIME_CONTRIBUTOR / NONE): ubuntu-22.04 (GitHub-hosted)
 #
+# Expression: use docker-runner unless this is a PR from an untrusted author.
 # ubuntu-22.04 is used as the external fallback (not ubuntu-latest) to match
 # the historically pinned toolchain environment for the Rust build.
 
 jobs:
   fmt:
     name: Format check
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-22.04' || 'docker-runner' }}
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-22.04' }}
     defaults:
       run:
         working-directory: rust
@@ -51,7 +52,7 @@ jobs:
 
   clippy:
     name: Clippy
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-22.04' || 'docker-runner' }}
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-22.04' }}
     needs: [fmt]
     defaults:
       run:
@@ -72,7 +73,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-22.04' || 'docker-runner' }}
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-22.04' }}
     needs: [clippy]
     defaults:
       run:
@@ -104,7 +105,7 @@ jobs:
 
   no-std-check:
     name: no_std cross-compile (thumbv7em-none-eabihf)
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-22.04' || 'docker-runner' }}
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-22.04' }}
     needs: [clippy]
     defaults:
       run:

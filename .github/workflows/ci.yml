@@ -19,13 +19,14 @@ env:
 # Internal (push to main, PRs from org members/collaborators): self-hosted docker-runner
 # External PRs (CONTRIBUTOR / FIRST_TIME_CONTRIBUTOR / NONE): ubuntu-latest (GitHub-hosted)
 #
-# The expression below evaluates to 'ubuntu-latest' only for untrusted PR authors,
-# protecting self-hosted runners from arbitrary code in fork pull requests.
+# Expression: use docker-runner unless this is a PR from an untrusted author.
+# contains() checks the author_association against the trusted set; non-PR events
+# (push, tags) always satisfy the first clause and land on docker-runner.
 
 jobs:
   lint:
     name: Lint & Format
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -51,7 +52,7 @@ jobs:
 
   markdown-lint:
     name: Markdown Lint
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -72,7 +73,7 @@ jobs:
 
   typecheck:
     name: Type Check
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
     needs: [lint]
     timeout-minutes: 5
     steps:
@@ -96,7 +97,7 @@ jobs:
 
   test-pgvector:
     name: Integration – pgvector
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
     needs: [typecheck]
     timeout-minutes: 10
     services:
@@ -130,7 +131,7 @@ jobs:
 
   test:
     name: Test (Python ${{ matrix.python-version }})
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
     needs: [typecheck, markdown-lint]
     timeout-minutes: 15
     strategy:
@@ -181,7 +182,7 @@ jobs:
 
   build-artifact:
     name: Build Package
-    runs-on: ${{ (github.event_name == 'pull_request' && github.event.pull_request.author_association != 'OWNER' && github.event.pull_request.author_association != 'MEMBER' && github.event.pull_request.author_association != 'COLLABORATOR') && 'ubuntu-latest' || 'docker-runner' }}
+    runs-on: ${{ (github.event_name != 'pull_request' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.pull_request.author_association)) && 'docker-runner' || 'ubuntu-latest' }}
     needs: [test]
     timeout-minutes: 5
     steps:
