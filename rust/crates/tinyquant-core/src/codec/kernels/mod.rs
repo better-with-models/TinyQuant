@@ -18,3 +18,6 @@ pub mod avx2;
 
 #[cfg(all(feature = "simd", target_arch = "aarch64"))]
 pub mod neon;
+
+#[cfg(all(feature = "simd", feature = "avx512", target_arch = "x86_64"))]
+pub mod avx512;

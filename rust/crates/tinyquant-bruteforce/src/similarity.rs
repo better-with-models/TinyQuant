@@ -22,7 +22,7 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
 
     #[cfg(feature = "simd")]
     {
-        tinyquant_core::codec::simd_api::cosine(a, b)
+        crate::similarity_simd::cosine_dispatched(a, b)
     }
     #[cfg(not(feature = "simd"))]
     {

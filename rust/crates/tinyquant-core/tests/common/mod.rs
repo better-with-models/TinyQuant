@@ -35,6 +35,33 @@ pub fn make_values(len: usize, seed: u64) -> Vec<f32> {
     (0..len).map(|_| rng.gen_range(-12.0_f32..12.0)).collect()
 }
 
+/// Load the Phase 14 training corpus (`codebook_10k_d64`) from the LFS
+/// fixture. Panics with a helpful message if the fixture is missing.
+pub fn load_training_corpus() -> Vec<f32> {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/codebook/training_n10000_d64.f32.bin");
+    let bytes = std::fs::read(&path).expect(
+        "Phase 14 training fixture must exist; run `cargo xtask fixtures refresh-codebook`",
+    );
+    bytes
+        .chunks_exact(4)
+        .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
+        .collect()
+}
+
+/// Parity guard used by the `simd_parity_under_every_dispatch` binary.
+///
+/// Assumes the caller has already installed the desired [`DispatchKind`]
+/// via `dispatch::force` before invoking this helper — the guard itself
+/// does not mutate the dispatch cache.
+pub fn assert_all_kernels_match_scalar() {
+    // Delegate to the existing parity suite. `run_parity` asserts the
+    // current dispatch kind matches its argument, so pass whatever the
+    // cache reports now.
+    let kind = tinyquant_core::codec::dispatch::current();
+    run_parity(kind);
+}
+
 pub fn run_parity(kind: DispatchKind) {
     assert_eq!(tinyquant_core::codec::dispatch::current(), kind);
 

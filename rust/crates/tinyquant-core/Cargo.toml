@@ -11,6 +11,10 @@ repository.workspace   = true
 default = []
 std     = []
 simd    = ["std"]
+# Phase 22 placeholder: enables the AVX-512 kernel module (currently
+# stub-delegates to scalar). Keeping the feature gate wired now lets
+# downstream crates opt-in without churning Cargo metadata later.
+avx512  = ["simd"]
 
 [dependencies]
 # Phase 12: error enums (no_std-capable via thiserror v2 + default-features = false)

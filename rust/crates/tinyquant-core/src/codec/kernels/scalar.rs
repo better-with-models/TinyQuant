@@ -54,14 +54,25 @@ pub fn dequantize_into(
 /// Compute cosine similarity between two equal-length `f32` slices.
 ///
 /// Returns `0.0` when either vector is the zero vector (denominator
-/// equals zero). Callers that need NaN detection should check their
-/// inputs upstream — this function is `no_std`-compatible and therefore
-/// deliberately omits the debug-only NaN assertions that live in
+/// equals zero) **or** when either input contains a NaN. The NaN early
+/// return makes the Phase 20 parity contract trivially satisfiable by
+/// every dispatched path — SIMD kernels that sum NaN through FMA would
+/// otherwise propagate NaN into the numerator and produce a divergent
+/// bit pattern vs the scalar reference.
+///
+/// This function is `no_std`-compatible and deliberately omits the
+/// debug-only panics that live in
 /// `tinyquant-bruteforce::similarity::cosine_similarity`.
 #[cfg_attr(not(feature = "simd"), allow(dead_code))]
 #[inline]
 pub fn cosine(a: &[f32], b: &[f32]) -> f32 {
     debug_assert_eq!(a.len(), b.len());
+    // Phase 20 NaN semantics: "if either input vector contains any NaN,
+    // return 0.0." Do the scan up front so the main accumulator loop
+    // can remain branch-free and dispatch-parity-friendly.
+    if a.iter().any(|x| x.is_nan()) || b.iter().any(|x| x.is_nan()) {
+        return 0.0;
+    }
     let mut dot: f32 = 0.0;
     let mut na: f32 = 0.0;
     let mut nb: f32 = 0.0;

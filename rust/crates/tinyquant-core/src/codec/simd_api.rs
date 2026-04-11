@@ -13,6 +13,13 @@
 //! therefore benefits from the `OnceLock` kernel-selection cache. The
 //! returned values are byte-for-byte identical to the scalar
 //! reference — SIMD never changes output, only speed.
+//!
+//! This file is deliberately marked `#![allow(unsafe_code)]` at the
+//! module level. Every `unsafe { ... }` block here is paired with a
+//! `// SAFETY:` comment that cites the runtime feature check executed
+//! by [`crate::codec::dispatch::current`] — the allow is scoped to
+//! this file so the rest of `tinyquant-core` remains unsafe-free.
+#![allow(unsafe_code)]
 
 use crate::codec::dispatch::{current, DispatchKind};
 use crate::codec::kernels;

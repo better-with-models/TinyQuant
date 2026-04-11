@@ -11,6 +11,14 @@
 //! §Codebook training. Changing anything here requires regenerating
 //! the frozen fixtures under `tests/fixtures/codebook/` and
 //! `tests/fixtures/quantize/` via `cargo xtask fixtures refresh-all`.
+//!
+//! Under `feature = "simd"` the quantize / dequantize methods route
+//! through [`crate::codec::simd_api`], which is the single source of
+//! truth for dispatch selection. No `unsafe` intrinsics are invoked
+//! directly from this file, but the file-level `#![allow(unsafe_code)]`
+//! is retained so that future SIMD specialisation (Phase 22) can add
+//! direct intrinsic paths here without re-plumbing the lint surface.
+#![allow(unsafe_code)]
 
 use alloc::boxed::Box;
 use alloc::sync::Arc;
@@ -20,6 +28,7 @@ use core::cmp::Ordering;
 use core::fmt;
 
 use crate::codec::codec_config::CodecConfig;
+#[cfg(not(feature = "simd"))]
 use crate::codec::kernels::scalar as scalar_kernel;
 use crate::errors::CodecError;
 
@@ -225,6 +234,11 @@ impl Codebook {
     /// each value. Ties favor the right (higher-valued) neighbor, matching
     /// Python's strict `<` tie-break.
     ///
+    /// Under `feature = "simd"` this delegates to
+    /// [`crate::codec::simd_api::quantize_into`], which is the single
+    /// source of truth for dispatch selection. Without the feature,
+    /// it calls the scalar reference kernel directly.
+    ///
     /// # Errors
     ///
     /// * [`CodecError::LengthMismatch`] — `values.len() != indices.len()`.
@@ -232,32 +246,19 @@ impl Codebook {
         let entries = &self.entries;
         #[cfg(feature = "simd")]
         {
-            match crate::codec::dispatch::current() {
-                #[cfg(target_arch = "x86_64")]
-                crate::codec::dispatch::DispatchKind::Avx2 => {
-                    // SAFETY: `dispatch::current()` verified AVX2+FMA are
-                    // available on this CPU before returning `Avx2`.
-                    return unsafe {
-                        crate::codec::kernels::avx2::quantize_into(entries, values, indices)
-                    };
-                }
-                #[cfg(target_arch = "aarch64")]
-                crate::codec::dispatch::DispatchKind::Neon => {
-                    // SAFETY: NEON is mandatory on ARMv8 aarch64, so the
-                    // feature is always available whenever this arm is
-                    // reachable.
-                    return unsafe {
-                        crate::codec::kernels::neon::quantize_into(entries, values, indices)
-                    };
-                }
-                crate::codec::dispatch::DispatchKind::Scalar => {}
-            }
+            crate::codec::simd_api::quantize_into(entries, values, indices)
         }
-        scalar_kernel::quantize_into(entries, values, indices)
+        #[cfg(not(feature = "simd"))]
+        {
+            scalar_kernel::quantize_into(entries, values, indices)
+        }
     }
 
     /// Dequantize `indices` into `values` by gathering the corresponding
     /// codebook entries.
+    ///
+    /// Under `feature = "simd"` this delegates to
+    /// [`crate::codec::simd_api::dequantize_into`].
     ///
     /// # Errors
     ///
@@ -268,28 +269,12 @@ impl Codebook {
         let entries = &self.entries;
         #[cfg(feature = "simd")]
         {
-            match crate::codec::dispatch::current() {
-                #[cfg(target_arch = "x86_64")]
-                crate::codec::dispatch::DispatchKind::Avx2 => {
-                    // SAFETY: `dispatch::current()` verified AVX2+FMA are
-                    // available on this CPU before returning `Avx2`.
-                    return unsafe {
-                        crate::codec::kernels::avx2::dequantize_into(entries, indices, values)
-                    };
-                }
-                #[cfg(target_arch = "aarch64")]
-                crate::codec::dispatch::DispatchKind::Neon => {
-                    // SAFETY: NEON is mandatory on ARMv8 aarch64, so the
-                    // feature is always available whenever this arm is
-                    // reachable.
-                    return unsafe {
-                        crate::codec::kernels::neon::dequantize_into(entries, indices, values)
-                    };
-                }
-                crate::codec::dispatch::DispatchKind::Scalar => {}
-            }
+            crate::codec::simd_api::dequantize_into(entries, indices, values)
         }
-        scalar_kernel::dequantize_into(entries, indices, values)
+        #[cfg(not(feature = "simd"))]
+        {
+            scalar_kernel::dequantize_into(entries, indices, values)
+        }
     }
 
     /// Convenience: allocate and return the quantized indices.

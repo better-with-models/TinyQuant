@@ -43,6 +43,10 @@
 //! * `fixtures refresh-all`      — Run all of the above in sequence.
 #![deny(warnings, clippy::all, clippy::pedantic)]
 
+mod cmd {
+    pub mod simd;
+}
+
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
@@ -75,59 +79,12 @@ fn main() {
             &["test", "--manifest-path", "Cargo.toml", "--workspace"],
         ),
         Some("fixtures") => fixtures(args.get(2).map(String::as_str)),
-        Some("simd") => simd(args.get(2).map(String::as_str)),
+        Some("simd") => cmd::simd::run(args.get(2).map(String::as_str)),
         Some("help") | None => print_help(),
         Some(t) => {
             eprintln!("unknown task: {t}");
             process::exit(1);
         }
-    }
-}
-
-/// CI job names that `rust-ci.yml` must define for the Phase 20 SIMD
-/// target-feature matrix. Each entry is matched against the raw YAML
-/// text — the audit is intentionally string-based so it catches
-/// accidental removal without needing a YAML parser dependency.
-const SIMD_CI_JOBS: &[&str] = &["simd-scalar", "simd-avx2", "simd-neon", "miri-scalar"];
-
-fn simd(sub: Option<&str>) {
-    if let Some("audit") = sub {
-        simd_audit();
-    } else {
-        eprintln!("usage: cargo xtask simd <audit>");
-        process::exit(1);
-    }
-}
-
-fn simd_audit() {
-    let repo_root = repo_root();
-    let workflow = repo_root
-        .join(".github")
-        .join("workflows")
-        .join("rust-ci.yml");
-    println!(
-        "xtask simd audit: checking {} for {} expected CI jobs",
-        workflow.display(),
-        SIMD_CI_JOBS.len()
-    );
-    let contents = match std::fs::read_to_string(&workflow) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("failed to read {}: {e}", workflow.display());
-            process::exit(1);
-        }
-    };
-    let mut missing: Vec<&str> = Vec::new();
-    for job in SIMD_CI_JOBS {
-        if !contents.contains(job) {
-            missing.push(job);
-        }
-    }
-    if missing.is_empty() {
-        println!("xtask simd audit: OK ({} jobs found)", SIMD_CI_JOBS.len());
-    } else {
-        eprintln!("xtask simd audit: MISSING jobs: {missing:?}");
-        process::exit(1);
     }
 }
 
