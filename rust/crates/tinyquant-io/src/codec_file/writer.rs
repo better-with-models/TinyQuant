@@ -84,18 +84,25 @@ impl CodecFileWriter {
     ///
     /// Returns [`IoError`] if any seek, write, or sync operation fails.
     pub fn finalize(mut self) -> Result<(), IoError> {
-        // 1. Sync the body data.
+        // 1. Sync the body data so all appended records are durable.
         self.file.sync_data()?;
 
         // 2. Back-patch vector_count at offset 8 (u64 LE).
         self.file.seek(SeekFrom::Start(8))?;
         self.file.write_all(&self.vector_count.to_le_bytes())?;
 
-        // 3. Flip magic from TQCX to TQCV at offset 0.
+        // 3. Sync vector_count before writing the magic flip. This ordering
+        //    guarantee is critical: a crash between steps 2 and 4 must leave
+        //    the file in a state the reader will reject (TQCX magic), never
+        //    in a state with TQCV but an un-synced count.
+        self.file.sync_data()?;
+
+        // 4. Flip magic from TQCX to TQCV at offset 0 — the linearization
+        //    point. After this write the file is visible to readers.
         self.file.seek(SeekFrom::Start(0))?;
         self.file.write_all(MAGIC_FINAL)?;
 
-        // 4. Final sync — file is now readable.
+        // 5. Final sync — file is now readable and fully durable.
         self.file.sync_data()?;
         Ok(())
     }

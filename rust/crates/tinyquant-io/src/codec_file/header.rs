@@ -124,7 +124,14 @@ fn decode_fixed_header(data: &[u8]) -> Result<(u64, u32, u8, bool, usize), IoErr
     match &magic {
         m if m == MAGIC_FINAL => {}
         m if m == MAGIC_TENTATIVE => {
-            return Err(IoError::Truncated { needed: 0, got: 0 });
+            // The file was not finalized (magic is still TQCX). Fold this
+            // into Truncated with coherent field values: the file exists but
+            // is incomplete — signal that one more byte "would help" so callers
+            // see a meaningful "needed > got" relationship.
+            return Err(IoError::Truncated {
+                needed: data.len() + 1,
+                got: data.len(),
+            });
         }
         _ => return Err(IoError::BadMagic { got: magic }),
     }

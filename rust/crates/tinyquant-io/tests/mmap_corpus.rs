@@ -85,9 +85,227 @@ fn finalize_interrupted_before_magic_rewrite_is_rejected() {
 
     let result = CorpusFileReader::open(tmpfile.path());
     assert!(
-        result.is_err(),
-        "expected error opening tentative TQCX file, got Ok"
+        matches!(result, Err(tinyquant_io::errors::IoError::Truncated { .. })),
+        "expected IoError::Truncated for TQCX file, got: {result:?}"
     );
+}
+
+#[test]
+fn corpus_file_unknown_version_is_rejected() {
+    let tmpfile = NamedTempFile::new().unwrap_or_else(|e| panic!("tmpfile: {e}"));
+
+    // Write a well-formed TQCV header, then corrupt the version byte.
+    let mut rng = ChaCha20Rng::seed_from_u64(42);
+    {
+        let mut writer = CodecFileWriter::create(tmpfile.path(), "ver-test", 16, 4, false, &[])
+            .unwrap_or_else(|e| panic!("writer: {e}"));
+        let cv = make_cv(16, 4, &mut rng);
+        writer.append(&cv).unwrap_or_else(|e| panic!("append: {e}"));
+        writer
+            .finalize()
+            .unwrap_or_else(|e| panic!("finalize: {e}"));
+    }
+    // Corrupt format_version at offset 4
+    {
+        use std::io::{Seek, SeekFrom, Write};
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(tmpfile.path())
+            .unwrap_or_else(|e| panic!("open: {e}"));
+        file.seek(SeekFrom::Start(4))
+            .unwrap_or_else(|e| panic!("seek: {e}"));
+        file.write_all(&[0x99])
+            .unwrap_or_else(|e| panic!("write: {e}"));
+    }
+    let result = CorpusFileReader::open(tmpfile.path());
+    assert!(
+        matches!(
+            result,
+            Err(tinyquant_io::errors::IoError::UnknownVersion { got: 0x99 })
+        ),
+        "expected UnknownVersion{{0x99}}, got: {result:?}"
+    );
+}
+
+#[test]
+fn corpus_file_invalid_residual_flag_is_rejected() {
+    let tmpfile = NamedTempFile::new().unwrap_or_else(|e| panic!("tmpfile: {e}"));
+    let mut rng = ChaCha20Rng::seed_from_u64(43);
+    {
+        let mut writer = CodecFileWriter::create(tmpfile.path(), "res-test", 16, 4, false, &[])
+            .unwrap_or_else(|e| panic!("writer: {e}"));
+        writer
+            .append(&make_cv(16, 4, &mut rng))
+            .unwrap_or_else(|e| panic!("append: {e}"));
+        writer
+            .finalize()
+            .unwrap_or_else(|e| panic!("finalize: {e}"));
+    }
+    // Corrupt residual_flag at offset 21 with an invalid value.
+    {
+        use std::io::{Seek, SeekFrom, Write};
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(tmpfile.path())
+            .unwrap_or_else(|e| panic!("open: {e}"));
+        file.seek(SeekFrom::Start(21))
+            .unwrap_or_else(|e| panic!("seek: {e}"));
+        file.write_all(&[0x02])
+            .unwrap_or_else(|e| panic!("write: {e}"));
+    }
+    let result = CorpusFileReader::open(tmpfile.path());
+    assert!(
+        matches!(result, Err(tinyquant_io::errors::IoError::InvalidHeader)),
+        "expected InvalidHeader for bad residual_flag, got: {result:?}"
+    );
+}
+
+#[test]
+fn corpus_file_config_hash_len_too_large_is_rejected() {
+    let tmpfile = NamedTempFile::new().unwrap_or_else(|e| panic!("tmpfile: {e}"));
+    // Build a raw header with config_hash_len = 257 (> 256 max).
+    {
+        let mut file =
+            std::fs::File::create(tmpfile.path()).unwrap_or_else(|e| panic!("create: {e}"));
+        let mut header = [0u8; 32];
+        header[0] = b'T';
+        header[1] = b'Q';
+        header[2] = b'C';
+        header[3] = b'V';
+        header[4] = 0x01; // version
+                          // reserved 5..8 = 0
+                          // vector_count 8..16 = 0
+        header[16] = 64; // dimension = 64
+        header[20] = 4; // bit_width = 4
+                        // residual_flag 21 = 0
+                        // config_hash_len 22..24 = 257 LE
+        header[22] = 1; // low byte: 257 = 0x0101
+        header[23] = 1; // high byte
+        file.write_all(&header)
+            .unwrap_or_else(|e| panic!("write: {e}"));
+    }
+    let result = CorpusFileReader::open(tmpfile.path());
+    assert!(
+        matches!(result, Err(tinyquant_io::errors::IoError::InvalidHeader)),
+        "expected InvalidHeader for config_hash_len > 256, got: {result:?}"
+    );
+}
+
+#[test]
+fn corpus_file_excess_metadata_len_is_rejected() {
+    let tmpfile = NamedTempFile::new().unwrap_or_else(|e| panic!("tmpfile: {e}"));
+    // Build a raw header where metadata_len extends beyond end of file.
+    {
+        let mut file =
+            std::fs::File::create(tmpfile.path()).unwrap_or_else(|e| panic!("create: {e}"));
+        let mut buf = [0u8; 32]; // fixed header + minimal variable prefix
+        buf[0] = b'T';
+        buf[1] = b'Q';
+        buf[2] = b'C';
+        buf[3] = b'V';
+        buf[4] = 0x01;
+        // reserved 5..8 = 0, vector_count 8..16 = 0
+        buf[16] = 64; // dimension = 64
+        buf[20] = 4; // bit_width = 4
+                     // residual_flag = 0, config_hash_len = 0
+                     // After the 24-byte fixed header: metadata_len bytes at offset 24
+                     // Set metadata_len = u32::MAX (definitely exceeds file size)
+        buf[24] = 0xFF;
+        buf[25] = 0xFF;
+        buf[26] = 0xFF;
+        buf[27] = 0xFF;
+        file.write_all(&buf)
+            .unwrap_or_else(|e| panic!("write: {e}"));
+    }
+    let result = CorpusFileReader::open(tmpfile.path());
+    assert!(
+        matches!(result, Err(tinyquant_io::errors::IoError::Truncated { .. })),
+        "expected Truncated for excess metadata_len, got: {result:?}"
+    );
+}
+
+#[test]
+fn corpus_file_record_length_overflow_is_rejected() {
+    let tmpfile = NamedTempFile::new().unwrap_or_else(|e| panic!("tmpfile: {e}"));
+    let mut rng = ChaCha20Rng::seed_from_u64(77);
+
+    // Write a valid file with one record, then corrupt the record length prefix.
+    {
+        let mut writer = CodecFileWriter::create(tmpfile.path(), "reclen-test", 16, 4, false, &[])
+            .unwrap_or_else(|e| panic!("writer: {e}"));
+        writer
+            .append(&make_cv(16, 4, &mut rng))
+            .unwrap_or_else(|e| panic!("append: {e}"));
+        writer
+            .finalize()
+            .unwrap_or_else(|e| panic!("finalize: {e}"));
+    }
+
+    // Find the body offset and corrupt the record length to u32::MAX.
+    {
+        use std::io::{Seek, SeekFrom, Write};
+        let reader = CorpusFileReader::open(tmpfile.path()).unwrap_or_else(|e| panic!("open: {e}"));
+        let body_offset = reader.header().body_offset;
+        drop(reader);
+
+        let mut file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(tmpfile.path())
+            .unwrap_or_else(|e| panic!("open rw: {e}"));
+        file.seek(SeekFrom::Start(body_offset as u64))
+            .unwrap_or_else(|e| panic!("seek: {e}"));
+        file.write_all(&u32::MAX.to_le_bytes())
+            .unwrap_or_else(|e| panic!("write: {e}"));
+    }
+
+    let reader = CorpusFileReader::open(tmpfile.path()).unwrap_or_else(|e| panic!("open: {e}"));
+    let result: Vec<_> = reader.iter().collect();
+    assert_eq!(result.len(), 1);
+    assert!(
+        matches!(
+            result[0],
+            Err(tinyquant_io::errors::IoError::Truncated { .. })
+        ),
+        "expected Truncated for record length overflow"
+    );
+}
+
+#[test]
+fn golden_fixture_matches_index_bin() {
+    let fixture_dir = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/codec_file");
+    let tqcv_path = std::path::Path::new(fixture_dir).join("golden_100.tqcv");
+    let idx_path = std::path::Path::new(fixture_dir).join("golden_100_indices.bin");
+
+    if !tqcv_path.exists() {
+        panic!("golden_100.tqcv not found; run `cargo xtask fixtures refresh-corpus-file` first");
+    }
+
+    let expected_indices =
+        std::fs::read(&idx_path).unwrap_or_else(|e| panic!("read index bin: {e}"));
+    let reader = CorpusFileReader::open(&tqcv_path).unwrap_or_else(|e| panic!("mmap open: {e}"));
+
+    assert_eq!(reader.header().vector_count, 100, "vector_count mismatch");
+    assert_eq!(reader.header().dimension, 64, "dimension mismatch");
+    assert_eq!(reader.header().bit_width, 4, "bit_width mismatch");
+
+    let dim = 64usize;
+    for (i, view_res) in reader.iter().enumerate() {
+        let view = view_res.unwrap_or_else(|e| panic!("iter[{i}]: {e}"));
+        let mut unpacked = vec![0u8; dim];
+        view.unpack_into(&mut unpacked)
+            .unwrap_or_else(|e| panic!("unpack[{i}]: {e}"));
+        let expected_slice = expected_indices
+            .get(i * dim..(i + 1) * dim)
+            .unwrap_or_else(|| panic!("index bin too short at [{i}]"));
+        assert_eq!(
+            unpacked.as_slice(),
+            expected_slice,
+            "index mismatch at [{i}]"
+        );
+    }
 }
 
 #[test]
