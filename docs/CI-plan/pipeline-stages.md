@@ -20,117 +20,140 @@ category: ci-cd
 ```mermaid
 graph TD
     TRIGGER["Trigger<br/>(push to main, PR)"]
-    CHECKOUT["Source checkout"]
-    LINT["Lint & Format<br/>(ruff check + ruff format --check)"]
-    TYPE["Type Check<br/>(mypy --strict)"]
-    MDLINT["Markdown Lint<br/>(markdownlint-cli2)"]
-    BUILD["Build<br/>(pip install -e .[dev])"]
-    UNIT["Unit Tests<br/>(pytest tests/codec/ tests/corpus/ tests/backend/)"]
-    ARCH["Architecture Tests<br/>(pytest tests/architecture/)"]
-    INT["Integration Tests<br/>(pytest tests/integration/)"]
-    E2E["E2E Tests<br/>(pytest tests/e2e/)"]
-    COV["Coverage Gate<br/>(pytest-cov --fail-under)"]
-    ARTIFACT["Build Artifact<br/>(python -m build)"]
+    CHOOSE["choose-runner<br/>(fork vs internal)"]
+    PROBE["probe-self-hosted<br/>(2-min availability check)"]
+    EFF["effective-runner<br/>(resolve + fallback warning)"]
+    LINT["lint<br/>(ruff check + format)"]
+    MDLINT["markdown-lint<br/>(markdownlint-cli2)"]
+    TYPE["typecheck<br/>(mypy --strict)"]
+    CODEC["test-codec"]
+    CORPUS["test-corpus"]
+    BACKEND["test-backend"]
+    ARCH["test-architecture"]
+    INTLOC["test-integration-local"]
+    INTPG["test-integration-pgvector"]
+    E2E["test-e2e"]
+    COV["coverage-combine<br/>(combine + 3 gates)"]
+    ARTIFACT["build-artifact<br/>(python -m build)"]
 
-    TRIGGER --> CHECKOUT
-    CHECKOUT --> LINT
-    CHECKOUT --> MDLINT
+    TRIGGER --> CHOOSE
+    CHOOSE --> PROBE
+    CHOOSE --> EFF
+    PROBE --> EFF
+    EFF --> LINT
+    EFF --> MDLINT
     LINT --> TYPE
-    TYPE --> BUILD
-    MDLINT --> BUILD
-    BUILD --> UNIT
-    BUILD --> ARCH
-    UNIT --> INT
-    ARCH --> INT
-    INT --> E2E
+    TYPE --> CODEC
+    TYPE --> CORPUS
+    TYPE --> BACKEND
+    TYPE --> ARCH
+    MDLINT --> CODEC
+    MDLINT --> CORPUS
+    MDLINT --> BACKEND
+    MDLINT --> ARCH
+    CODEC --> INTLOC
+    CORPUS --> INTLOC
+    BACKEND --> INTLOC
+    ARCH --> INTLOC
+    CODEC --> INTPG
+    CORPUS --> INTPG
+    BACKEND --> INTPG
+    ARCH --> INTPG
+    INTLOC --> E2E
+    INTPG --> E2E
     E2E --> COV
     COV --> ARTIFACT
 ```
 
 ## Stage details
 
-### Stage 1: Lint & Format (parallel)
+### Stage 1: Pre-flight (parallel)
 
-| Job | Command | Duration | Blocks |
-|-----|---------|----------|--------|
-| `lint` | `ruff check . && ruff format --check .` | ~10s | Everything downstream |
-| `markdown-lint` | `markdownlint-cli2 "**/*.md" --ignore docs/` | ~5s | Build |
+|Job|Command|Duration|Blocks|
+|-|-|-|-|
+|`choose-runner`|Select runner label (fork → ubuntu-latest, internal → self-hosted)|~5s|Probe, effective-runner|
+|`probe-self-hosted`|2-minute availability probe for self-hosted runner (skipped for fork PRs)|~120s|effective-runner|
+|`effective-runner`|Consolidate probe result; write fallback warning if unavailable|~5s|Static checks|
+
+**Rationale:** determine runner availability early. Fallback to ubuntu-latest
+if self-hosted is unavailable. Probe runs in parallel with other pre-flight
+work.
+
+### Stage 2: Static checks (parallel, after effective-runner)
+
+|Job|Command|Duration|Blocks|
+|-|-|-|-|
+|`lint`|`ruff check . && ruff format --check .`|~10s|Type check|
+|`markdown-lint`|`markdownlint-cli2 "**/*.md"`|~5s|Type check|
 
 **Rationale:** cheapest checks first. Catches formatting, import order, naming
-violations, and complexity limit breaches before spending time on type checking
-or tests.
+violations, and complexity limit breaches before spending time on type checking.
 
-### Stage 2: Type Check
+### Stage 3: Type check (after lint)
 
-| Job | Command | Duration | Blocks |
-|-----|---------|----------|--------|
-| `typecheck` | `mypy --strict .` | ~30s | Build |
+|Job|Command|Duration|Blocks|
+|-|-|-|-|
+|`typecheck`|`mypy --strict .`|~30s|Tier-1 unit tests|
 
 **Rationale:** type errors indicate contract violations that would cause test
 failures. Catch them before running tests.
 
-### Stage 3: Build
+### Stage 4: Tier-1 unit tests (parallel, after typecheck + markdown-lint)
 
-| Job | Command | Duration | Blocks |
-|-----|---------|----------|--------|
-| `build` | `pip install -e ".[dev]"` | ~30s | All tests |
+|Job|Command|Duration|Blocks|
+|-|-|-|-|
+|`test-codec`|`pytest tests/codec/` (2× Python matrix)|~15s|Tier-2 integration|
+|`test-corpus`|`pytest tests/corpus/` (2× Python matrix)|~15s|Tier-2 integration|
+|`test-backend`|`pytest tests/backend/ tests/test_smoke.py` (2× Python matrix)|~15s|Tier-2 integration|
+|`test-architecture`|`pytest tests/architecture/` (2× Python matrix)|~5s|Tier-2 integration|
 
-**Rationale:** verify the package installs cleanly with all dependencies.
-Uses editable install for test access.
+Each uploads a `coverage-raw-<chunk>-<pyver>` artifact.
 
-### Stage 4: Tests (sequential with parallelism within)
+**Rationale:** parallel unit test chunks organized by test directory. Each
+test matrix produces coverage artifacts for later aggregation.
 
-| Job | Command | Duration | Blocks |
-|-----|---------|----------|--------|
-| `unit-tests` | `pytest tests/codec/ tests/corpus/ tests/backend/ -x` | ~30s | Integration |
-| `architecture-tests` | `pytest tests/architecture/ -x` | ~5s | Integration |
-| `integration-tests` | `pytest tests/integration/ -x` | ~60s | E2E |
-| `e2e-tests` | `pytest tests/e2e/ -x` | ~120s | Coverage |
+### Stage 5: Tier-2 integration tests (parallel with each other, after all Tier-1)
 
-**Rationale:** unit and architecture tests run in parallel (independent).
-Integration depends on both passing. E2E depends on integration. The `-x`
-flag stops on first failure (fail fast).
+|Job|Command|Duration|Blocks|
+|-|-|-|-|
+|`test-integration-local`|`pytest tests/integration/ --ignore=test_pgvector.py` (2× Python matrix)|~30s|E2E|
+|`test-integration-pgvector`|`pytest tests/integration/test_pgvector.py` (2× Python matrix, postgres service)|~30s|E2E|
 
-### Stage 5: Coverage Gate
+Each uploads a `coverage-raw-<chunk>-<pyver>` artifact.
 
-| Job | Command | Duration | Blocks |
-|-----|---------|----------|--------|
-| `coverage` | `pytest --cov=tinyquant_cpu --cov-fail-under=90` | Combined with tests | Artifact |
+**Rationale:** integration tests run in parallel. The pgvector job requires
+a postgres service; local integration skips those tests.
 
-**Rationale:** coverage gate runs as part of the test stage but reported
-separately. Enforces the floors from
-[[design/architecture/linting-and-tooling|Linting and Tooling]].
+### Stage 6: E2E tests (after both Tier-2)
 
-### Stage 6: Build Artifact
+|Job|Command|Duration|Blocks|
+|-|-|-|-|
+|`test-e2e`|`pytest tests/e2e/` (2× Python matrix)|~60s|Coverage combine|
 
-| Job | Command | Duration | Blocks |
-|-----|---------|----------|--------|
-| `artifact` | `python -m build` | ~10s | CD pipeline |
+Uploads `coverage-raw-e2e-<pyver>` artifact.
 
-**Rationale:** build the wheel and sdist once. The CD pipeline promotes this
-exact artifact — no rebuild per environment.
+**Rationale:** end-to-end tests run after all integration tests pass. Full
+coverage aggregation happens after E2E completes.
 
-## Conditional execution
+### Stage 7: Coverage combine (after e2e)
 
-| Condition | Behavior |
-|-----------|----------|
-| Only `docs/` changed | Skip tests; run only markdown lint |
-| Only `tests/` changed | Skip artifact build |
-| `scripts/` changed | Run full pipeline (verification scripts affect CI) |
+|Job|Command|Duration|Blocks|
+|-|-|-|-|
+|`coverage-combine`|Download all `coverage-raw-*` artifacts, run `coverage combine`, enforce gates|~30s|Build artifact|
 
-```yaml
-# Path filter example
-- uses: dorny/paths-filter@v3
-  id: changes
-  with:
-    filters: |
-      src:
-        - 'src/**'
-        - 'tests/**'
-        - 'pyproject.toml'
-      docs:
-        - 'docs/**'
-```
+Gates: global ≥ 90%, codec ≥ 94%, corpus ≥ 90%. Uploads `coverage-report` artifact.
+
+**Rationale:** combine coverage from all test chunks. Three-gate enforcement
+from [[design/architecture/linting-and-tooling|Linting and Tooling]].
+
+### Stage 8: Build artifact (after coverage-combine)
+
+|Job|Command|Duration|Blocks|
+|-|-|-|-|
+|`build-artifact`|`python -m build && twine check`|~10s|CD pipeline|
+
+**Rationale:** build the wheel and sdist once, after all tests pass. The CD
+pipeline promotes this exact artifact — no rebuild per environment.
 
 ## Caching
 
@@ -143,11 +166,13 @@ exact artifact — no rebuild per environment.
 
 | Phase | Target | Gate |
 |-------|--------|------|
+| Pre-flight (choose + probe + effective) | < 2 minutes | Hard |
 | Lint + type check | < 1 minute | Hard |
-| Unit + architecture tests | < 1 minute | Hard |
-| Integration tests | < 2 minutes | Hard |
+| Tier-1 unit chunks (parallel) | < 1 minute | Hard |
+| Tier-2 integration chunks (parallel) | < 2 minutes | Hard |
 | E2E tests | < 3 minutes | Hard |
-| Full pipeline | < 8 minutes | Monitoring |
+| Coverage combine | < 1 minute | Hard |
+| Full pipeline (wall-clock) | < 8 minutes | Monitoring |
 
 ## Matrix strategy
 
