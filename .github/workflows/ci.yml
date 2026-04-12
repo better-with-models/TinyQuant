@@ -42,10 +42,50 @@ jobs:
           fi
       - run: echo "Selected runner=${{ steps.pick.outputs.runner }}"
 
+  probe-self-hosted:
+    name: Probe Self-Hosted Runner
+    # Only run when choose-runner picked self-hosted (non-fork path)
+    if: >-
+      !(github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.fork == true)
+    runs-on: ["self-hosted", "docker-runner"]
+    needs: [choose-runner]
+    timeout-minutes: 2
+    continue-on-error: true
+    outputs:
+      ok: ${{ steps.probe.outputs.ok }}
+    steps:
+      - id: probe
+        run: echo 'ok=true' >> "$GITHUB_OUTPUT"
+
+  effective-runner:
+    name: Effective Runner
+    runs-on: ubuntu-latest
+    needs: [choose-runner, probe-self-hosted]
+    if: always()
+    outputs:
+      runner: ${{ steps.resolve.outputs.runner }}
+    steps:
+      - id: resolve
+        run: |
+          CHOSE_SELF_HOSTED="${{ needs.choose-runner.outputs.runner }}"
+          PROBE_RESULT="${{ needs.probe-self-hosted.result }}"
+          PROBE_OK="${{ needs.probe-self-hosted.outputs.ok }}"
+
+          if [[ "$CHOSE_SELF_HOSTED" == '["self-hosted","docker-runner"]' && \
+                "$PROBE_RESULT" == "success" && "$PROBE_OK" == "true" ]]; then
+            echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
+          else
+            echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
+            if [[ "$CHOSE_SELF_HOSTED" == '["self-hosted","docker-runner"]' ]]; then
+              echo "⚠ Self-hosted runner unavailable — falling back to ubuntu-latest. Local runner offload not active." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+
   lint:
     name: Lint & Format
-    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
-    needs: [choose-runner]
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [choose-runner, effective-runner]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -71,8 +111,8 @@ jobs:
 
   markdown-lint:
     name: Markdown Lint
-    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
-    needs: [choose-runner]
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [choose-runner, effective-runner]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -93,8 +133,8 @@ jobs:
 
   typecheck:
     name: Type Check
-    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
-    needs: [choose-runner, lint]
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, lint]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -115,11 +155,175 @@ jobs:
       - name: mypy strict
         run: mypy --strict .
 
-  test-pgvector:
-    name: Integration – pgvector
-    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
-    needs: [choose-runner, typecheck]
-    timeout-minutes: 10
+  test-codec:
+    name: "Test codec (Python ${{ matrix.python-version }})"
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, typecheck, markdown-lint]
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-${{ matrix.python-version }}-
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        env:
+          COVERAGE_FILE: .coverage.codec
+        run: python -m pytest tests/codec/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-raw-codec-${{ matrix.python-version }}
+          path: .coverage.codec
+          retention-days: 1
+
+  test-corpus:
+    name: "Test corpus (Python ${{ matrix.python-version }})"
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, typecheck, markdown-lint]
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-${{ matrix.python-version }}-
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        env:
+          COVERAGE_FILE: .coverage.corpus
+        run: python -m pytest tests/corpus/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-raw-corpus-${{ matrix.python-version }}
+          path: .coverage.corpus
+          retention-days: 1
+
+  test-backend:
+    name: "Test backend + smoke (Python ${{ matrix.python-version }})"
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, typecheck, markdown-lint]
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-${{ matrix.python-version }}-
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        env:
+          COVERAGE_FILE: .coverage.backend
+        run: python -m pytest tests/backend/ tests/test_smoke.py -x --tb=short --cov=tinyquant_cpu --cov-report=
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-raw-backend-${{ matrix.python-version }}
+          path: .coverage.backend
+          retention-days: 1
+
+  test-architecture:
+    name: "Test architecture (Python ${{ matrix.python-version }})"
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, typecheck, markdown-lint]
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-${{ matrix.python-version }}-
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        env:
+          COVERAGE_FILE: .coverage.arch
+        run: python -m pytest tests/architecture/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-raw-architecture-${{ matrix.python-version }}
+          path: .coverage.arch
+          retention-days: 1
+
+  test-integration-local:
+    name: "Test integration-local (Python ${{ matrix.python-version }})"
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, test-codec, test-corpus, test-backend, test-architecture]
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-${{ matrix.python-version }}-
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      - name: Run tests
+        env:
+          COVERAGE_FILE: .coverage.intloc
+        run: python -m pytest tests/integration/ --ignore=tests/integration/test_pgvector.py -x --tb=short --cov=tinyquant_cpu --cov-report=
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-raw-intloc-${{ matrix.python-version }}
+          path: .coverage.intloc
+          retention-days: 1
+
+  test-integration-pgvector:
+    name: "Test integration-pgvector (Python ${{ matrix.python-version }})"
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, test-codec, test-corpus, test-backend, test-architecture]
+    timeout-minutes: 15
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.12", "3.13"]
     services:
       postgres:
         image: pgvector/pgvector:pg17
@@ -138,65 +342,88 @@ jobs:
       PGVECTOR_TEST_DSN: "postgresql://test:test@localhost:5432/tinyquant_test"
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-python@v6
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
+          python-version: ${{ matrix.python-version }}
+      - uses: actions/cache@v5
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
         run: pip install -e ".[dev,pgvector]"
+      - name: Run tests
+        env:
+          COVERAGE_FILE: .coverage.intpg
+        run: python -m pytest tests/integration/test_pgvector.py -x --tb=short --cov=tinyquant_cpu --cov-report=
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-raw-intpg-${{ matrix.python-version }}
+          path: .coverage.intpg
+          retention-days: 1
 
-      - name: pgvector integration tests
-        run: pytest tests/integration/test_pgvector.py -v -x --tb=short
-
-  test:
-    name: Test (Python ${{ matrix.python-version }})
-    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
-    needs: [choose-runner, typecheck, markdown-lint]
-    timeout-minutes: 90
+  test-e2e:
+    name: "Test e2e (Python ${{ matrix.python-version }})"
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, test-integration-local, test-integration-pgvector]
+    timeout-minutes: 15
     strategy:
       fail-fast: true
       matrix:
         python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-
       - uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
-
       - name: Install dependencies
         run: pip install -e ".[dev]"
+      - name: Run tests
+        env:
+          COVERAGE_FILE: .coverage.e2e
+        run: python -m pytest tests/e2e/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-raw-e2e-${{ matrix.python-version }}
+          path: .coverage.e2e
+          retention-days: 1
 
-      - name: Unit tests
-        run: pytest tests/codec/ tests/corpus/ tests/backend/ -x --tb=short --cov=tinyquant_cpu --cov-report=
-
-      - name: Architecture tests
-        run: pytest tests/architecture/ -x --tb=short --cov=tinyquant_cpu --cov-append --cov-report=
-
-      - name: Integration tests
-        run: pytest tests/integration/ -x --tb=short --cov=tinyquant_cpu --cov-append --cov-report=
-
-      - name: E2E tests
-        run: pytest tests/e2e/ -x --tb=short --cov=tinyquant_cpu --cov-append --cov-report=
-
-      - name: Coverage report
-        # Collect coverage during the test steps above using --cov-append so no
-        # tests are re-run here — just generate the report from accumulated data.
-        run: |
-          coverage report --fail-under=90
-          coverage xml
-          coverage report --include="*/tinyquant_cpu/codec/*" --fail-under=94
-          coverage report --include="*/tinyquant_cpu/corpus/*" --fail-under=90
-
-      - name: Upload coverage
-        if: matrix.python-version == '3.12'
+  coverage-combine:
+    name: Coverage Combine & Gate
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, test-e2e]
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Install coverage
+        run: pip install coverage
+      - name: Download all coverage artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: coverage-raw-*
+          path: coverage_data/
+          merge-multiple: true
+      - name: Combine coverage
+        run: python -m coverage combine coverage_data/
+      - name: Coverage gate — global
+        run: python -m coverage report --fail-under=90
+      - name: Generate XML report
+        run: python -m coverage xml
+      - name: Coverage gate — codec
+        run: python -m coverage report --include="*/tinyquant_cpu/codec/*" --fail-under=94
+      - name: Coverage gate — corpus
+        run: python -m coverage report --include="*/tinyquant_cpu/corpus/*" --fail-under=90
+      - name: Upload coverage report
         uses: actions/upload-artifact@v5
         with:
           name: coverage-report
@@ -205,8 +432,8 @@ jobs:
 
   build-artifact:
     name: Build Package
-    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
-    needs: [choose-runner, test]
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, coverage-combine]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
