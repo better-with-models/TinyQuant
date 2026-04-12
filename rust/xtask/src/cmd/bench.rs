@@ -102,11 +102,17 @@ fn clear_criterion_cache() {
 fn validate_baseline(name: &str) {
     let bl_path = baseline_path(name);
     let bl_text = fs::read_to_string(&bl_path).unwrap_or_else(|e| {
-        eprintln!("xtask bench --validate: cannot read {}: {e}", bl_path.display());
+        eprintln!(
+            "xtask bench --validate: cannot read {}: {e}",
+            bl_path.display()
+        );
         process::exit(1);
     });
     let baseline: Value = serde_json::from_str(&bl_text).unwrap_or_else(|e| {
-        eprintln!("xtask bench --validate: {}: invalid JSON: {e}", bl_path.display());
+        eprintln!(
+            "xtask bench --validate: {}: invalid JSON: {e}",
+            bl_path.display()
+        );
         process::exit(1);
     });
 
@@ -120,7 +126,10 @@ fn validate_baseline(name: &str) {
     });
 
     // Lightweight structural validation (no full JSON-Schema engine dep).
-    let sv = baseline.get("schema_version").and_then(Value::as_i64).unwrap_or(-1);
+    let sv = baseline
+        .get("schema_version")
+        .and_then(Value::as_i64)
+        .unwrap_or(-1);
     let expected_sv = schema
         .get("properties")
         .and_then(|p| p.get("schema_version"))
@@ -129,9 +138,7 @@ fn validate_baseline(name: &str) {
         .unwrap_or(1);
 
     if sv != expected_sv {
-        eprintln!(
-            "xtask bench --validate: schema_version={sv} != expected {expected_sv}"
-        );
+        eprintln!("xtask bench --validate: schema_version={sv} != expected {expected_sv}");
         process::exit(1);
     }
 
@@ -276,7 +283,10 @@ fn check_against(name: &str) {
 
     // Compare.
     let mut failed = false;
-    println!("\n{:<50} {:>14} {:>14} {:>10}", "Group", "Baseline(ns)", "Current(ns)", "vs budget");
+    println!(
+        "\n{:<50} {:>14} {:>14} {:>10}",
+        "Group", "Baseline(ns)", "Current(ns)", "vs budget"
+    );
     println!("{}", "-".repeat(92));
 
     for (group_name, bl_entry) in bl_groups {
@@ -302,7 +312,10 @@ fn check_against(name: &str) {
                 failed = true;
             }
         } else {
-            println!("{group_name:<50} {bl_median:>14.0} {:>14} {:>10}", "(missing)", "?");
+            println!(
+                "{group_name:<50} {bl_median:>14.0} {:>14} {:>10}",
+                "(missing)", "?"
+            );
         }
     }
 
@@ -325,7 +338,10 @@ fn diff_baselines(from_name: &str, to_name: &str) {
     let to_path = baseline_path(to_name);
 
     let from_text = fs::read_to_string(&from_path).unwrap_or_else(|e| {
-        eprintln!("xtask bench --diff: cannot read {}: {e}", from_path.display());
+        eprintln!(
+            "xtask bench --diff: cannot read {}: {e}",
+            from_path.display()
+        );
         process::exit(1);
     });
     let to_text = fs::read_to_string(&to_path).unwrap_or_else(|e| {
@@ -334,11 +350,17 @@ fn diff_baselines(from_name: &str, to_name: &str) {
     });
 
     let from_bl: Value = serde_json::from_str(&from_text).unwrap_or_else(|e| {
-        eprintln!("xtask bench --diff: {}: invalid JSON: {e}", from_path.display());
+        eprintln!(
+            "xtask bench --diff: {}: invalid JSON: {e}",
+            from_path.display()
+        );
         process::exit(1);
     });
     let to_bl: Value = serde_json::from_str(&to_text).unwrap_or_else(|e| {
-        eprintln!("xtask bench --diff: {}: invalid JSON: {e}", to_path.display());
+        eprintln!(
+            "xtask bench --diff: {}: invalid JSON: {e}",
+            to_path.display()
+        );
         process::exit(1);
     });
 
@@ -357,10 +379,11 @@ fn diff_baselines(from_name: &str, to_name: &str) {
             process::exit(1);
         });
 
+    println!("\nDiff: {from_name} → {to_name}\n");
     println!(
-        "\nDiff: {from_name} → {to_name}\n"
+        "{:<50} {:>14} {:>14} {:>10}",
+        "Group", "From(ns)", "To(ns)", "Δ%"
     );
-    println!("{:<50} {:>14} {:>14} {:>10}", "Group", "From(ns)", "To(ns)", "Δ%");
     println!("{}", "-".repeat(92));
 
     // Union of all group names from both baselines.
@@ -421,23 +444,20 @@ fn collect_criterion_results() -> serde_json::Map<String, Value> {
     out
 }
 
-fn collect_recursive(
-    root: &Path,
-    dir: &Path,
-    out: &mut serde_json::Map<String, Value>,
-) {
-    let Ok(entries) = fs::read_dir(dir) else { return };
+fn collect_recursive(root: &Path, dir: &Path, out: &mut serde_json::Map<String, Value>) {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return;
+    };
     for entry in entries.flatten() {
         let path = entry.path();
         if path.is_dir() {
             collect_recursive(root, &path, out);
         } else if path.file_name() == Some(std::ffi::OsStr::new("estimates.json"))
-            && path.parent().and_then(Path::file_name)
-                == Some(std::ffi::OsStr::new("new"))
+            && path.parent().and_then(Path::file_name) == Some(std::ffi::OsStr::new("new"))
         {
             // Group name is the relative path minus `/new/estimates.json`.
             let group_path = path
-                .parent()   // "new/"
+                .parent() // "new/"
                 .and_then(Path::parent) // bench group dir
                 .unwrap_or(root);
             let group_name = group_path

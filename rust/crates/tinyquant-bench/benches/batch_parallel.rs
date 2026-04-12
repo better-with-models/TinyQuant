@@ -68,14 +68,7 @@ fn bench_batch_parallel(c: &mut Criterion) {
                 group.bench_with_input(BenchmarkId::new("t", threads), &threads, |b, _| {
                     b.iter(|| {
                         codec
-                            .compress_batch_with(
-                                &batch,
-                                ROWS,
-                                dim,
-                                &cfg,
-                                &cb,
-                                Parallelism::Serial,
-                            )
+                            .compress_batch_with(&batch, ROWS, dim, &cfg, &cb, Parallelism::Serial)
                             .unwrap()
                     });
                 });

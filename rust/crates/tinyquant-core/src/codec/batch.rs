@@ -36,12 +36,8 @@ use core::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 
 use crate::{
     codec::{
-        batch_error::PartialInit,
-        codebook::Codebook,
-        codec_config::CodecConfig,
-        compressed_vector::CompressedVector,
-        parallelism::Parallelism,
-        service::Codec,
+        batch_error::PartialInit, codebook::Codebook, codec_config::CodecConfig,
+        compressed_vector::CompressedVector, parallelism::Parallelism, service::Codec,
     },
     errors::CodecError,
 };
@@ -152,9 +148,7 @@ pub(super) fn compress_batch_parallel(
 #[allow(clippy::unwrap_used, clippy::indexing_slicing)]
 mod tests {
     use super::compress_batch_parallel;
-    use crate::codec::{
-        codebook::Codebook, codec_config::CodecConfig, parallelism::Parallelism,
-    };
+    use crate::codec::{codebook::Codebook, codec_config::CodecConfig, parallelism::Parallelism};
 
     fn make_training() -> alloc::vec::Vec<f32> {
         // Small synthetic corpus: 32 vectors × 8 dims, deterministic.

@@ -212,7 +212,12 @@ impl Codec {
         #[cfg(feature = "std")]
         {
             crate::codec::batch::compress_batch_parallel(
-                vectors, rows, cols, config, codebook, parallelism,
+                vectors,
+                rows,
+                cols,
+                config,
+                codebook,
+                parallelism,
             )
         }
         // no_std fallback: always serial regardless of `parallelism` argument.

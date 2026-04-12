@@ -30,27 +30,27 @@ struct Threshold {
 }
 
 const BW4_RESIDUAL: Threshold = Threshold {
-    rho_min: 0.998,          // spec lower bound: bw=4 residual=on (§Calibration thresholds)
-    recall_at_10_min: 0.95,  // spec lower bound: bw=4 residual=on
-    ratio_min: 7.0,          // spec lower bound: bw=4 residual=on
+    rho_min: 0.998,         // spec lower bound: bw=4 residual=on (§Calibration thresholds)
+    recall_at_10_min: 0.95, // spec lower bound: bw=4 residual=on
+    ratio_min: 7.0,         // spec lower bound: bw=4 residual=on
 };
 const BW4_NO_RESIDUAL: Threshold = Threshold {
-    rho_min: 0.98,           // spec lower bound: bw=4 residual=off (§Calibration thresholds)
-    recall_at_10_min: 0.85,  // spec lower bound: bw=4 residual=off
-    ratio_min: 8.0,          // spec lower bound: bw=4 residual=off
+    rho_min: 0.98,          // spec lower bound: bw=4 residual=off (§Calibration thresholds)
+    recall_at_10_min: 0.85, // spec lower bound: bw=4 residual=off
+    ratio_min: 8.0,         // spec lower bound: bw=4 residual=off
 };
 const BW2_RESIDUAL: Threshold = Threshold {
-    rho_min: 0.95,           // spec lower bound: bw=2 residual=on (§Calibration thresholds)
-    recall_at_10_min: 0.80,  // spec lower bound: bw=2 residual=on
-    ratio_min: 14.0,         // spec lower bound: bw=2 residual=on
+    rho_min: 0.95,          // spec lower bound: bw=2 residual=on (§Calibration thresholds)
+    recall_at_10_min: 0.80, // spec lower bound: bw=2 residual=on
+    ratio_min: 14.0,        // spec lower bound: bw=2 residual=on
 };
 const BW8_RESIDUAL: Threshold = Threshold {
-    rho_min: 0.999,          // spec lower bound: bw=8 residual=on (§Calibration thresholds)
-    recall_at_10_min: 0.98,  // spec lower bound: bw=8 residual=on
-    ratio_min: 4.0,          // spec lower bound: bw=8 residual=on
+    rho_min: 0.999,         // spec lower bound: bw=8 residual=on (§Calibration thresholds)
+    recall_at_10_min: 0.98, // spec lower bound: bw=8 residual=on
+    ratio_min: 4.0,         // spec lower bound: bw=8 residual=on
 };
 const BW2_NO_RESIDUAL: Threshold = Threshold {
-    rho_min: 0.85,          // bw=2 no-residual: lower than residual path due to unrecovered quality loss
+    rho_min: 0.85, // bw=2 no-residual: lower than residual path due to unrecovered quality loss
     recall_at_10_min: 0.60, // bw=2 no-residual: lower than residual path due to unrecovered quality loss
     ratio_min: 14.0,        // bw=2 no-residual: higher ratio than residual path (no residual bytes)
 };
@@ -140,13 +140,7 @@ fn run_gate(corpus: GoldCorpus, bw: u8, residual: bool, threshold: &Threshold) {
     let codec = Codec::new();
 
     let cvs = codec
-        .compress_batch(
-            &corpus.vectors,
-            corpus.rows,
-            corpus.cols,
-            &cfg,
-            &cb,
-        )
+        .compress_batch(&corpus.vectors, corpus.rows, corpus.cols, &cfg, &cb)
         .unwrap();
 
     let raw_bytes = corpus.rows * corpus.cols * 4;
@@ -190,7 +184,12 @@ fn pr_speed_bw4_residual_on_meets_thresholds() {
 #[test]
 #[ignore = "calibration; run with --ignored or in rust-ci/calibration job"]
 fn pr_speed_bw4_residual_off_meets_thresholds() {
-    run_gate(GoldCorpus::load_openai_1k_d768(), 4, false, &BW4_NO_RESIDUAL);
+    run_gate(
+        GoldCorpus::load_openai_1k_d768(),
+        4,
+        false,
+        &BW4_NO_RESIDUAL,
+    );
 }
 
 #[test]
@@ -202,7 +201,12 @@ fn pr_speed_bw2_residual_on_meets_thresholds() {
 #[test]
 #[ignore = "calibration; run with --ignored or in rust-ci/calibration job"]
 fn pr_speed_bw2_residual_off_meets_thresholds() {
-    run_gate(GoldCorpus::load_openai_1k_d768(), 2, false, &BW2_NO_RESIDUAL);
+    run_gate(
+        GoldCorpus::load_openai_1k_d768(),
+        2,
+        false,
+        &BW2_NO_RESIDUAL,
+    );
 }
 
 #[test]
@@ -222,7 +226,12 @@ fn full_bw4_residual_on_meets_thresholds() {
 #[test]
 #[ignore = "calibration/full; run on main with: cargo test -- --ignored"]
 fn full_bw4_residual_off_meets_thresholds() {
-    run_gate(GoldCorpus::load_openai_10k_d1536(), 4, false, &BW4_NO_RESIDUAL);
+    run_gate(
+        GoldCorpus::load_openai_10k_d1536(),
+        4,
+        false,
+        &BW4_NO_RESIDUAL,
+    );
 }
 
 #[test]
@@ -234,7 +243,12 @@ fn full_bw2_residual_on_meets_thresholds() {
 #[test]
 #[ignore = "calibration/full; run on main with: cargo test -- --ignored"]
 fn full_bw2_residual_off_meets_thresholds() {
-    run_gate(GoldCorpus::load_openai_10k_d1536(), 2, false, &BW2_NO_RESIDUAL);
+    run_gate(
+        GoldCorpus::load_openai_10k_d1536(),
+        2,
+        false,
+        &BW2_NO_RESIDUAL,
+    );
 }
 
 #[test]

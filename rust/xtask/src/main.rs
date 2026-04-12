@@ -428,7 +428,10 @@ fn docs_check_ci_parity() {
     let repo_root = repo_root();
     let ci_path = repo_root.join(".github/workflows/rust-ci.yml");
     let ci_text = std::fs::read_to_string(&ci_path).unwrap_or_else(|e| {
-        eprintln!("docs check-ci-parity: cannot read {}: {e}", ci_path.display());
+        eprintln!(
+            "docs check-ci-parity: cannot read {}: {e}",
+            ci_path.display()
+        );
         process::exit(1);
     });
 
@@ -493,7 +496,9 @@ fn print_help() {
          refresh-codebook | refresh-quantize | refresh-residual | refresh-codec | \
          refresh-serialization | refresh-corpus-file | refresh-calibration | refresh-all)"
     );
-    println!("  bench     Benchmark budget (--capture-baseline | --check-against | --diff | --validate)");
+    println!(
+        "  bench     Benchmark budget (--capture-baseline | --check-against | --diff | --validate)"
+    );
     println!("  docs      Documentation checks (check-ci-parity)");
     println!("  simd      SIMD framework tasks (audit)");
     println!("  help      Print this message (default)");

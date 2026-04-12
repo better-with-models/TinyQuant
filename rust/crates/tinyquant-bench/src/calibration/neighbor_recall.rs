@@ -49,10 +49,7 @@ pub fn mean_recall_at_k(
     for query in 0..rows {
         let true_top_k = top_k_neighbours(&orig_cos, query, rows, k);
         let retr_top_k = top_k_neighbours(&recon_cos, query, rows, k);
-        let hits = true_top_k
-            .iter()
-            .filter(|n| retr_top_k.contains(n))
-            .count();
+        let hits = true_top_k.iter().filter(|n| retr_top_k.contains(n)).count();
         #[allow(clippy::cast_precision_loss)]
         let recall = hits as f64 / k as f64;
         total_recall += recall;

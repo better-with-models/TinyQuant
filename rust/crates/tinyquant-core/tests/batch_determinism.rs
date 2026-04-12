@@ -15,8 +15,7 @@ use tinyquant_core::codec::{Codebook, Codec, CodecConfig, CompressedVector, Para
 fn load_training() -> Vec<f32> {
     let p = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("tests/fixtures/codebook/training_n10000_d64.f32.bin");
-    let bytes = std::fs::read(&p)
-        .unwrap_or_else(|e| panic!("training fixture missing: {e}"));
+    let bytes = std::fs::read(&p).unwrap_or_else(|e| panic!("training fixture missing: {e}"));
     bytes
         .chunks_exact(4)
         .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))

@@ -27,24 +27,29 @@ import json
 import struct
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING, Sequence
+
+if TYPE_CHECKING:
+    import numpy as np
+    import numpy.typing as npt
 
 
-def l2_normalise(arr):
+def l2_normalise(arr: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
     """Row-wise L2 normalisation (avoids numpy norm for compat)."""
-    import numpy as np
-    norms = np.linalg.norm(arr, axis=1, keepdims=True)
-    norms = np.where(norms == 0, 1.0, norms)
-    return arr / norms
+    import numpy as _np
+    norms = _np.linalg.norm(arr, axis=1, keepdims=True)
+    norms = _np.where(norms == 0, 1.0, norms)
+    return arr / norms  # type: ignore[return-value]
 
 
-def generate(rng, rows: int, cols: int):
+def generate(rng: np.random.Generator, rows: int, cols: int) -> npt.NDArray[np.float32]:
     """Return an (rows, cols) float32 array of unit-sphere Gaussians."""
-    import numpy as np
-    data = rng.standard_normal((rows, cols)).astype(np.float32)
+    import numpy as _np
+    data = rng.standard_normal((rows, cols)).astype(_np.float32)
     return l2_normalise(data)
 
 
-def write_f32_bin(path: Path, arr) -> str:
+def write_f32_bin(path: Path, arr: npt.NDArray[np.float32]) -> str:
     """Write float32 array to little-endian binary; return hex SHA-256."""
     raw = arr.astype("<f4").tobytes()
     path.write_bytes(raw)
@@ -53,7 +58,7 @@ def write_f32_bin(path: Path, arr) -> str:
     return digest
 
 
-def main(argv=None):
+def main(argv: Sequence[str] | None = None) -> None:
     import numpy as np
 
     parser = argparse.ArgumentParser(description=__doc__)

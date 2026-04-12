@@ -167,9 +167,7 @@ fn decompress_batch_matches_individual() {
     let cols = 64_usize;
     let batch = &training[..rows * cols];
 
-    let cvs = codec
-        .compress_batch(batch, rows, cols, &cfg, &cb)
-        .unwrap();
+    let cvs = codec.compress_batch(batch, rows, cols, &cfg, &cb).unwrap();
 
     let mut out = vec![0.0_f32; rows * cols];
     codec
