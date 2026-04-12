@@ -410,7 +410,34 @@ jobs:
         with:
           workspaces: rust -> target
       - name: Run calibration gates (--ignored)
-        run: cargo test -p tinyquant-bench --features std -- --ignored
+        run: cargo test --workspace --features std -- --ignored
+
+  # ── Phase 21: Calibration quality gates (arm64) ──────────────────────────────
+  #
+  # Second-architecture leg required by spec §CI integration: "at least two
+  # distinct host CPUs" to catch ISA-level numerical divergence (Phase 14 L4).
+  # continue-on-error: true because ubuntu-24.04-arm availability varies by tier.
+  # Remove that flag once ARM64 runners are confirmed available on this account.
+  calibration-arm64:
+    name: Calibration quality gates (arm64)
+    runs-on: ubuntu-24.04-arm
+    needs: [test]
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: Run calibration gates (--ignored, arm64)
+        run: cargo test --workspace --features std -- --ignored
 
   # ── Phase 21: Benchmark budget gate ──────────────────────────────────────────
   #
@@ -443,7 +470,6 @@ jobs:
         run: cargo run -p xtask -- docs check-ci-parity
       - name: Check benchmark budget against baseline
         if: github.ref == 'refs/heads/main'
-        continue-on-error: true
         working-directory: rust
         run: |
           if [ -f crates/tinyquant-bench/baselines/main.json ]; then

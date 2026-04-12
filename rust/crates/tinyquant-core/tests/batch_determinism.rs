@@ -80,10 +80,11 @@ fn cvs_eq(a: &[CompressedVector], b: &[CompressedVector], label: &str) {
 #[test]
 fn full_pipeline_deterministic_across_repeat_runs() {
     let training = load_training();
-    let first = full_pipeline(&training, 1);
+    let n_threads = rayon::current_num_threads().max(2);
+    let first = full_pipeline(&training, n_threads);
     for run in 1..10 {
-        let again = full_pipeline(&training, 1);
-        cvs_eq(&first, &again, &format!("repeat-run {run}"));
+        let again = full_pipeline(&training, n_threads);
+        cvs_eq(&first, &again, &format!("repeat-run {run} (t={n_threads})"));
     }
 }
 
@@ -93,7 +94,7 @@ fn full_pipeline_deterministic_across_thread_counts() {
     let reference = full_pipeline(&training, 1); // serial baseline
 
     let n_cpu = rayon::current_num_threads().max(2);
-    for &t in &[2_usize, 4, n_cpu] {
+    for &t in &[2_usize, 4, 8, n_cpu] {
         if t > n_cpu {
             continue; // skip if the machine has fewer cores
         }

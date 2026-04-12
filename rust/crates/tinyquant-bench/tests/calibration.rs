@@ -30,24 +30,24 @@ struct Threshold {
 }
 
 const BW4_RESIDUAL: Threshold = Threshold {
-    rho_min: 0.99,          // empirical floor from Phase 21 calibration runs on OpenAI ada-002 sample
-    recall_at_10_min: 0.85, // empirical floor from Phase 21 calibration runs on OpenAI ada-002 sample
-    ratio_min: 6.0,         // empirical floor from Phase 21 calibration runs on OpenAI ada-002 sample
+    rho_min: 0.998,          // spec lower bound: bw=4 residual=on (§Calibration thresholds)
+    recall_at_10_min: 0.95,  // spec lower bound: bw=4 residual=on
+    ratio_min: 7.0,          // spec lower bound: bw=4 residual=on
 };
 const BW4_NO_RESIDUAL: Threshold = Threshold {
-    rho_min: 0.97,          // no-residual path trades ~2 pp recall for higher compression
-    recall_at_10_min: 0.75, // no-residual path trades ~2 pp recall for higher compression
-    ratio_min: 7.0,         // no-residual path trades ~2 pp recall for higher compression
+    rho_min: 0.98,           // spec lower bound: bw=4 residual=off (§Calibration thresholds)
+    recall_at_10_min: 0.85,  // spec lower bound: bw=4 residual=off
+    ratio_min: 8.0,          // spec lower bound: bw=4 residual=off
 };
 const BW2_RESIDUAL: Threshold = Threshold {
-    rho_min: 0.92,          // aggressive compression; residual partially recovers quality
-    recall_at_10_min: 0.70, // aggressive compression; residual partially recovers quality
-    ratio_min: 12.0,        // aggressive compression; residual partially recovers quality
+    rho_min: 0.95,           // spec lower bound: bw=2 residual=on (§Calibration thresholds)
+    recall_at_10_min: 0.80,  // spec lower bound: bw=2 residual=on
+    ratio_min: 14.0,         // spec lower bound: bw=2 residual=on
 };
 const BW8_RESIDUAL: Threshold = Threshold {
-    rho_min: 0.999,         // 8-bit is near-lossless; low ratio is expected (less compression)
-    recall_at_10_min: 0.95, // 8-bit is near-lossless; low ratio is expected (less compression)
-    ratio_min: 3.5,         // 8-bit is near-lossless; low ratio is expected (less compression)
+    rho_min: 0.999,          // spec lower bound: bw=8 residual=on (§Calibration thresholds)
+    recall_at_10_min: 0.98,  // spec lower bound: bw=8 residual=on
+    ratio_min: 4.0,          // spec lower bound: bw=8 residual=on
 };
 const BW2_NO_RESIDUAL: Threshold = Threshold {
     rho_min: 0.85,          // bw=2 no-residual: lower than residual path due to unrecovered quality loss

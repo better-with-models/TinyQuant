@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "captured_at": "2026-04-11T00:00:00Z",
-  "git_commit": "placeholder",
+  "captured_at": "2026-04-12T00:00:00Z",
+  "git_commit": "156ffae",
   "host": {
     "os": "linux",
     "arch": "x86_64",
@@ -11,19 +11,19 @@
   "bench_groups": {
     "batch_parallel/d64_n256/t1": {
       "median_ns": 50000000,
-      "budget_pct": 115
+      "budget_pct": 110
     },
     "batch_parallel/d64_n256/t4": {
       "median_ns": 15000000,
-      "budget_pct": 115
+      "budget_pct": 110
     },
     "batch_parallel/d1536_n256/t1": {
       "median_ns": 800000000,
-      "budget_pct": 115
+      "budget_pct": 110
     },
     "batch_parallel/d1536_n256/t4": {
       "median_ns": 220000000,
-      "budget_pct": 115
+      "budget_pct": 110
     }
   }
 }

@@ -12,7 +12,7 @@
 //!
 //! A regression is detected when
 //! `new_median > baseline_median * (budget_pct / 100)`.
-//! The default `budget_pct` is **115** (15 % regression allowed).
+//! The default `budget_pct` is **110** (10 % regression allowed).
 //!
 //! Baselines committed to `baselines/*.json` MUST be captured on a CI
 //! runner, not a developer laptop, to avoid noise-induced flakes
@@ -40,10 +40,16 @@ pub fn run(args: &[String]) {
         Some("--validate") => {
             validate_baseline("main");
         }
+        Some("--diff") => {
+            let from = args.get(1).map_or("main", String::as_str);
+            let to = args.get(2).map_or("head", String::as_str);
+            diff_baselines(from, to);
+        }
         _ => {
             eprintln!(
                 "usage: cargo xtask bench \
-                 <--capture-baseline <name>|--check-against <name>|--validate>"
+                 <--capture-baseline <name>|--check-against <name>|\
+                 --diff <from> <to>|--validate>"
             );
             process::exit(1);
         }
@@ -182,6 +188,7 @@ fn capture_baseline(name: &str) {
         "host": {
             "os": os,
             "arch": arch,
+            "cpu_model": cpu_model(),
             "rustc": rustc_ver
         },
         "bench_groups": groups
@@ -268,7 +275,7 @@ fn check_against(name: &str) {
         let budget_pct = bl_entry
             .get("budget_pct")
             .and_then(Value::as_f64)
-            .unwrap_or(115.0);
+            .unwrap_or(110.0);
         let budget_ns = bl_median * budget_pct / 100.0;
 
         if let Some(cur_entry) = current_groups.get(group_name) {
@@ -293,6 +300,93 @@ fn check_against(name: &str) {
     } else {
         println!("\nxtask bench --check-against {name}: all groups within budget ✓");
     }
+}
+
+// ── Diff baselines ────────────────────────────────────────────────────────────
+
+/// Compare two committed baselines and print a delta table.
+///
+/// No criterion run is performed; this purely diffs two JSON files on disk.
+/// The table shows per-group: `from_ns`, `to_ns`, and Δ% = (to − from) / from × 100.
+fn diff_baselines(from_name: &str, to_name: &str) {
+    let from_path = baseline_path(from_name);
+    let to_path = baseline_path(to_name);
+
+    let from_text = fs::read_to_string(&from_path).unwrap_or_else(|e| {
+        eprintln!("xtask bench --diff: cannot read {}: {e}", from_path.display());
+        process::exit(1);
+    });
+    let to_text = fs::read_to_string(&to_path).unwrap_or_else(|e| {
+        eprintln!("xtask bench --diff: cannot read {}: {e}", to_path.display());
+        process::exit(1);
+    });
+
+    let from_bl: Value = serde_json::from_str(&from_text).unwrap_or_else(|e| {
+        eprintln!("xtask bench --diff: {}: invalid JSON: {e}", from_path.display());
+        process::exit(1);
+    });
+    let to_bl: Value = serde_json::from_str(&to_text).unwrap_or_else(|e| {
+        eprintln!("xtask bench --diff: {}: invalid JSON: {e}", to_path.display());
+        process::exit(1);
+    });
+
+    let from_groups = from_bl
+        .get("bench_groups")
+        .and_then(Value::as_object)
+        .unwrap_or_else(|| {
+            eprintln!("xtask bench --diff: 'bench_groups' missing in {from_name}");
+            process::exit(1);
+        });
+    let to_groups = to_bl
+        .get("bench_groups")
+        .and_then(Value::as_object)
+        .unwrap_or_else(|| {
+            eprintln!("xtask bench --diff: 'bench_groups' missing in {to_name}");
+            process::exit(1);
+        });
+
+    println!(
+        "\nDiff: {from_name} → {to_name}\n"
+    );
+    println!("{:<50} {:>14} {:>14} {:>10}", "Group", "From(ns)", "To(ns)", "Δ%");
+    println!("{}", "-".repeat(92));
+
+    // Union of all group names from both baselines.
+    let mut all_groups: Vec<&str> = from_groups
+        .keys()
+        .chain(to_groups.keys())
+        .map(String::as_str)
+        .collect();
+    all_groups.sort_unstable();
+    all_groups.dedup();
+
+    for group in all_groups {
+        let from_ns = from_groups
+            .get(group)
+            .and_then(|e| e.get("median_ns"))
+            .and_then(Value::as_f64);
+        let to_ns = to_groups
+            .get(group)
+            .and_then(|e| e.get("median_ns"))
+            .and_then(Value::as_f64);
+        match (from_ns, to_ns) {
+            (Some(f), Some(t)) => {
+                let delta_pct = (t - f) / f * 100.0;
+                let marker = if delta_pct > 10.0 {
+                    "↑ REGRESSION"
+                } else if delta_pct < -10.0 {
+                    "↓ improvement"
+                } else {
+                    "≈"
+                };
+                println!("{group:<50} {f:>14.0} {t:>14.0} {delta_pct:>+9.1}% {marker}");
+            }
+            (Some(f), None) => println!("{group:<50} {f:>14.0} {:>14} {:>10}", "(removed)", ""),
+            (None, Some(t)) => println!("{group:<50} {:>14} {t:>14.0} {:>10}", "(new)", ""),
+            (None, None) => {}
+        }
+    }
+    println!();
 }
 
 // ── Criterion result collection ───────────────────────────────────────────────
@@ -353,7 +447,7 @@ fn collect_recursive(
                             // To change this per-group, re-capture the baseline after
                             // editing this value; --check-against reads it from the
                             // committed baseline JSON.
-                            "budget_pct": 115
+                            "budget_pct": 110
                         }),
                     );
                 }
@@ -386,6 +480,55 @@ fn os_arch() -> (String, String) {
     let os = std::env::consts::OS.to_owned();
     let arch = std::env::consts::ARCH.to_owned();
     (os, arch)
+}
+
+fn cpu_model() -> String {
+    #[cfg(target_os = "linux")]
+    {
+        if let Ok(text) = fs::read_to_string("/proc/cpuinfo") {
+            for line in text.lines() {
+                if let Some(val) = line
+                    .strip_prefix("model name\t: ")
+                    .or_else(|| line.strip_prefix("Model name:\t"))
+                {
+                    return val.trim().to_owned();
+                }
+            }
+        }
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if let Ok(out) = Command::new("sysctl")
+            .args(["-n", "machdep.cpu.brand_string"])
+            .output()
+        {
+            if let Ok(s) = String::from_utf8(out.stdout) {
+                let s = s.trim().to_owned();
+                if !s.is_empty() {
+                    return s;
+                }
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(out) = Command::new("wmic")
+            .args(["cpu", "get", "Name", "/value"])
+            .output()
+        {
+            if let Ok(s) = String::from_utf8(out.stdout) {
+                for line in s.lines() {
+                    if let Some(val) = line.strip_prefix("Name=") {
+                        let val = val.trim().to_owned();
+                        if !val.is_empty() {
+                            return val;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    "unknown".to_owned()
 }
 
 fn now_utc() -> String {

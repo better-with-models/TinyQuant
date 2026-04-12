@@ -51,6 +51,7 @@
 //! * `bench --capture-baseline <name>` — Run criterion and save a baseline JSON.
 //! * `bench --check-against <name>`    — Compare current run against a baseline.
 //! * `bench --validate`                — Assert `baselines/main.json` matches schema.
+//! * `bench --diff <from> <to>`        — Compare two named baselines and print deltas.
 //!
 //! Docs subcommands:
 //!
@@ -492,7 +493,7 @@ fn print_help() {
          refresh-codebook | refresh-quantize | refresh-residual | refresh-codec | \
          refresh-serialization | refresh-corpus-file | refresh-calibration | refresh-all)"
     );
-    println!("  bench     Benchmark budget (--capture-baseline | --check-against | --validate)");
+    println!("  bench     Benchmark budget (--capture-baseline | --check-against | --diff | --validate)");
     println!("  docs      Documentation checks (check-ci-parity)");
     println!("  simd      SIMD framework tasks (audit)");
     println!("  help      Print this message (default)");
