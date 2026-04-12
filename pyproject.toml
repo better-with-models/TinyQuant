@@ -85,7 +85,6 @@ module = "matplotlib.*"
 ignore_missing_imports = true
 
 [tool.coverage.run]
-parallel = true
 source = ["tinyquant_cpu"]
 omit = [
     "src/tinyquant_cpu/tools/*",
