@@ -352,10 +352,18 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust -> target
-      - name: miri test
-        run: cargo +nightly miri test -p tinyquant-core
-      - name: miri test (simd dispatch layer, no intrinsics)
-        run: cargo +nightly miri test -p tinyquant-core --features simd
+      # Scope Miri to `--lib` (unit tests in source files only).
+      # Integration tests under `tests/` are excluded for two reasons:
+      #   1. They load fixture files via `fs::read` which Miri's isolation
+      #      mode blocks; adding -Zmiri-disable-isolation would work but
+      #      then codebook.rs alone takes ~12 min under Miri's interpreter.
+      #   2. Total execution time would exceed CI job limits.
+      # Unit tests verify memory safety of the scalar kernels and dispatch
+      # scaffolding — the core intent of this job per the Phase 20 plan.
+      - name: miri test (unit tests, scalar)
+        run: cargo +nightly miri test -p tinyquant-core --lib
+      - name: miri test (unit tests, simd dispatch layer)
+        run: cargo +nightly miri test -p tinyquant-core --lib --features simd
 
   simd-audit:
     name: SIMD CI matrix audit (xtask)
