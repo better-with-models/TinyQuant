@@ -408,11 +408,13 @@ jobs:
       fail-fast: false
       matrix:
         group:
-          - { name: "pr-speed",     filter: "pr_speed",  pkg: "-p tinyquant-bench" }
-          - { name: "full-bw2",     filter: "full_bw2",  pkg: "-p tinyquant-bench" }
-          - { name: "full-bw4",     filter: "full_bw4",  pkg: "-p tinyquant-bench" }
-          - { name: "full-bw8",     filter: "full_bw8",  pkg: "-p tinyquant-bench" }
-          - { name: "core-ignored", filter: "",           pkg: "-p tinyquant-core"  }
+          # tinyquant-bench has no `std` feature (only `simd`); no --features flag needed.
+          # tinyquant-core has `std` which the ignored integration tests require.
+          - { name: "pr-speed",     filter: "pr_speed",  pkg: "-p tinyquant-bench", features: ""              }
+          - { name: "full-bw2",     filter: "full_bw2",  pkg: "-p tinyquant-bench", features: ""              }
+          - { name: "full-bw4",     filter: "full_bw4",  pkg: "-p tinyquant-bench", features: ""              }
+          - { name: "full-bw8",     filter: "full_bw8",  pkg: "-p tinyquant-bench", features: ""              }
+          - { name: "core-ignored", filter: "",           pkg: "-p tinyquant-core",  features: "--features std" }
     defaults:
       run:
         working-directory: rust
@@ -430,7 +432,7 @@ jobs:
           workspaces: rust -> target
       - name: "Run calibration gates (${{ matrix.group.name }}, --release --ignored)"
         run: >-
-          cargo test --release ${{ matrix.group.pkg }} --features std
+          cargo test --release ${{ matrix.group.pkg }} ${{ matrix.group.features }}
           -- --ignored ${{ matrix.group.filter }}
 
   # ── Phase 21: Calibration quality gates (arm64) ──────────────────────────────
@@ -449,11 +451,11 @@ jobs:
       fail-fast: false
       matrix:
         group:
-          - { name: "pr-speed",     filter: "pr_speed",  pkg: "-p tinyquant-bench" }
-          - { name: "full-bw2",     filter: "full_bw2",  pkg: "-p tinyquant-bench" }
-          - { name: "full-bw4",     filter: "full_bw4",  pkg: "-p tinyquant-bench" }
-          - { name: "full-bw8",     filter: "full_bw8",  pkg: "-p tinyquant-bench" }
-          - { name: "core-ignored", filter: "",           pkg: "-p tinyquant-core"  }
+          - { name: "pr-speed",     filter: "pr_speed",  pkg: "-p tinyquant-bench", features: ""              }
+          - { name: "full-bw2",     filter: "full_bw2",  pkg: "-p tinyquant-bench", features: ""              }
+          - { name: "full-bw4",     filter: "full_bw4",  pkg: "-p tinyquant-bench", features: ""              }
+          - { name: "full-bw8",     filter: "full_bw8",  pkg: "-p tinyquant-bench", features: ""              }
+          - { name: "core-ignored", filter: "",           pkg: "-p tinyquant-core",  features: "--features std" }
     defaults:
       run:
         working-directory: rust
@@ -471,7 +473,7 @@ jobs:
           workspaces: rust -> target
       - name: "Run calibration gates (arm64, ${{ matrix.group.name }}, --release --ignored)"
         run: >-
-          cargo test --release ${{ matrix.group.pkg }} --features std
+          cargo test --release ${{ matrix.group.pkg }} ${{ matrix.group.features }}
           -- --ignored ${{ matrix.group.filter }}
 
   # ── Phase 21: Benchmark budget gate ──────────────────────────────────────────
