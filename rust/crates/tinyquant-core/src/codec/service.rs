@@ -172,7 +172,7 @@ impl Codec {
     /// Row-major batch compress with explicit parallelism strategy.
     ///
     /// Phase 21: honours `parallelism`. `Serial` runs the existing single-threaded
-    /// loop; `Custom(driver)` uses the `MaybeUninit + SyncPtr` parallel path in
+    /// loop; `Custom(driver)` uses the `MaybeUninit + AtomicPtr<CompressedVector>` parallel path in
     /// `batch.rs` (requires the `std` feature).
     ///
     /// The determinism contract guarantees byte-identical output regardless of
@@ -198,10 +198,14 @@ impl Codec {
                 got,
             });
         }
-        if vectors.len() != rows * cols {
+        let expected_len = rows.checked_mul(cols).ok_or(CodecError::LengthMismatch {
+            left: vectors.len(),
+            right: usize::MAX,
+        })?;
+        if vectors.len() != expected_len {
             return Err(CodecError::LengthMismatch {
                 left: vectors.len(),
-                right: rows * cols,
+                right: expected_len,
             });
         }
         // Delegate to the parallel batch module when `std` is available.

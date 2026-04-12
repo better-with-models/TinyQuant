@@ -1,3 +1,6 @@
+// Note: these tests exercise the Parallelism::Custom interface with a
+// sequential driver. Real concurrent execution is tested in batch_determinism.rs.
+
 //! Parallel batch correctness tests (Phase 21).
 //!
 //! Verifies that `compress_batch_with(Parallelism::Custom(...))` produces

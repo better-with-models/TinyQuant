@@ -10,6 +10,11 @@ pub enum Parallelism {
     #[default]
     Serial,
     /// Defer to a caller-supplied driver (e.g. rayon).
+    ///
+    /// The driver is a plain function pointer, so it cannot close over state
+    /// such as a specific `rayon::ThreadPool`. To target a non-global pool,
+    /// install it before invoking `compress_batch_with`:
+    /// `pool.install(|| codec.compress_batch_with(..., Parallelism::Custom(driver)))`.
     Custom(fn(count: usize, body: &(dyn Fn(usize) + Sync + Send))),
 }
 

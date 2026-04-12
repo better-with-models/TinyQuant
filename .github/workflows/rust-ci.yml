@@ -383,3 +383,72 @@ jobs:
           workspaces: rust -> target
       - name: cargo xtask simd audit
         run: cargo run -p xtask -- simd audit
+
+  # ── Phase 21: Calibration quality gates ─────────────────────────────────────
+  #
+  # Runs all `#[ignore]`-tagged calibration tests against the LFS-tracked
+  # fixtures. The LFS checkout is mandatory (Phase 14 Lesson L2).
+  #
+  # Triggers: PRs and main pushes touching Rust sources.
+  # Mode: blocking on main; advisory on PRs (continue-on-error: true for PRs).
+  calibration:
+    name: Calibration quality gates
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
+    needs: [choose-runner, test]
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: Run calibration gates (--ignored)
+        run: cargo test -p tinyquant-bench --features std -- --ignored
+
+  # ── Phase 21: Benchmark budget gate ──────────────────────────────────────────
+  #
+  # Validates the committed `baselines/main.json` matches the schema.
+  # The full `--check-against main` run is advisory on PRs (it needs a
+  # stable CI runner to produce reliable medians — R21.8).
+  #
+  # Triggers: PRs and main pushes touching Rust bench or core sources.
+  bench-budget:
+    name: Benchmark budget validation
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
+    needs: [choose-runner, test]
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: Validate baseline schema
+        run: cargo run -p xtask -- bench --validate
+      - name: CI parity check (docs vs rust-ci.yml)
+        run: cargo run -p xtask -- docs check-ci-parity
+      - name: Check benchmark budget against baseline
+        if: github.ref == 'refs/heads/main'
+        continue-on-error: true
+        working-directory: rust
+        run: |
+          if [ -f crates/tinyquant-bench/baselines/main.json ]; then
+            cargo run -p xtask -- bench --check-against main
+          else
+            echo "No committed baseline found; skipping budget check."
+            echo "Run 'cargo xtask bench --capture-baseline main' on a CI runner to establish one."
+          fi

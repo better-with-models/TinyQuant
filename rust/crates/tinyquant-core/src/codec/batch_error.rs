@@ -86,7 +86,7 @@ impl<T> PartialInit<T> {
         // are about to repurpose).
         let mut md = ManuallyDrop::new(self);
         // Drop flags explicitly so their heap allocation is freed.
-        // SAFETY: flags is valid; we're manually controlling cleanup.
+        // Safety: `AtomicBool: !Drop` so `drop_in_place` cannot panic.
         unsafe { core::ptr::drop_in_place(&mut md.flags) };
         // The data buffer is now owned by the returned Vec<T>.
         // md itself is never dropped (ManuallyDrop prevents it).
@@ -126,6 +126,8 @@ impl<T> Drop for PartialInit<T> {
 )]
 mod tests {
     use super::PartialInit;
+    use crate::codec::compressed_vector::CompressedVector;
+    use alloc::sync::Arc;
 
     fn mark(pi: &PartialInit<impl Sized>, i: usize) {
         // Flags are indexed 0..len, so get() always succeeds for valid i.
@@ -187,5 +189,39 @@ mod tests {
         let _ = pi.as_mut_ptr(); // ensure it's usable
         let v = unsafe { pi.into_vec() };
         assert_eq!(v.len(), 0);
+    }
+
+    #[test]
+    fn partial_init_into_vec_with_compressed_vector() {
+        // Build two real CompressedVector values (dimension=2, bit_width=4, no residual).
+        let hash: Arc<str> = Arc::from("test-hash");
+        let cv0 = CompressedVector::new(
+            alloc::vec![1_u8, 2_u8].into_boxed_slice(),
+            None,
+            Arc::clone(&hash),
+            2,
+            4,
+        )
+        .unwrap();
+        let cv1 = CompressedVector::new(
+            alloc::vec![3_u8, 4_u8].into_boxed_slice(),
+            None,
+            Arc::clone(&hash),
+            2,
+            4,
+        )
+        .unwrap();
+
+        let mut pi: PartialInit<CompressedVector> = PartialInit::new(2);
+        let base = pi.as_mut_ptr();
+        unsafe { base.add(0).cast::<CompressedVector>().write(cv0.clone()) };
+        mark(&pi, 0);
+        unsafe { base.add(1).cast::<CompressedVector>().write(cv1.clone()) };
+        mark(&pi, 1);
+
+        let v = unsafe { pi.into_vec() };
+        assert_eq!(v.len(), 2);
+        assert_eq!(v.first().unwrap().indices(), cv0.indices());
+        assert_eq!(v.get(1).unwrap().indices(), cv1.indices());
     }
 }

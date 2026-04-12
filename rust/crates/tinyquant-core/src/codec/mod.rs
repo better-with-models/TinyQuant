@@ -9,6 +9,7 @@
 
 #[cfg(feature = "std")]
 pub(crate) mod batch;
+#[cfg(feature = "std")]
 pub(crate) mod batch_error;
 pub mod codebook;
 pub mod codec_config;

@@ -64,6 +64,10 @@ rust/crates/tinyquant-io/tests/fixtures/**/*.bin filter=lfs diff=lfs merge=lfs -
 rust/crates/tinyquant-io/tests/fixtures/codec_file/*.tqcv filter=lfs diff=lfs merge=lfs -text
 rust/crates/tinyquant-io/tests/fixtures/codec_file/*.bin filter=lfs diff=lfs merge=lfs -text
 
+# Store calibration fixture binary blobs in LFS (Phase 21). Regenerate via
+# `python scripts/calibration/gen_openai_sample.py`.
+rust/crates/tinyquant-bench/fixtures/calibration/*.bin filter=lfs diff=lfs merge=lfs -text
+
 # --------------------------------------------------------------------------
 # Git diff drivers — improve diffs for common formats
 # --------------------------------------------------------------------------

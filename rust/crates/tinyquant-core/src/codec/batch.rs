@@ -27,6 +27,10 @@
 //! constant) and write at non-overlapping offsets, so there is no data race on
 //! the element slots. The `AtomicPtr` is captured by the `for_each_row`
 //! closure and is used only until `for_each_row` returns (before `into_vec`).
+//!
+//! `has_error` uses `Relaxed` ordering for the fast-path load: a stale
+//! read only delays error detection by at most one row; the authoritative
+//! result is always the first error stored under the `Mutex`.
 
 use core::sync::atomic::{AtomicBool, AtomicPtr, Ordering};
 
@@ -47,7 +51,7 @@ use alloc::vec::Vec;
 ///
 /// When `parallelism` is `Serial` this is equivalent to the serial loop in
 /// `service.rs`. When `Custom(driver)` is passed, workers write into
-/// `PartialInit<CompressedVector>` at independent indices via `SyncPtr`.
+/// `PartialInit<CompressedVector>` at independent indices via `AtomicPtr<CompressedVector>`.
 ///
 /// On any per-vector error the first error is returned and all successfully
 /// initialized `CompressedVector`s are dropped by `PartialInit::drop`.
@@ -64,6 +68,14 @@ pub(super) fn compress_batch_parallel(
     codebook: &Codebook,
     parallelism: Parallelism,
 ) -> Result<Vec<CompressedVector>, CodecError> {
+    debug_assert_eq!(
+        vectors.len(),
+        rows * cols,
+        "compress_batch_parallel: vectors.len() ({}) != rows ({}) * cols ({})",
+        vectors.len(),
+        rows,
+        cols
+    );
     let mut partial: PartialInit<CompressedVector> = PartialInit::new(rows);
 
     // `AtomicPtr<CompressedVector>` is `Send + Sync`, so the closure below can
@@ -72,25 +84,16 @@ pub(super) fn compress_batch_parallel(
     // offsets, so there is no data race on the element slots themselves.
     let out_atomic = AtomicPtr::new(partial.as_mut_ptr().cast::<CompressedVector>());
 
-    // Capture a shared reference to the flags slice. `&[AtomicBool]` is `Sync`.
-    // We reborrow through a raw pointer to decouple it from the `&mut partial`
-    // borrow used for `as_mut_ptr`. SAFETY: `partial` lives until after
-    // `for_each_row` returns, so the pointer remains valid.
-    let flags: &[AtomicBool] = {
-        let f: &[AtomicBool] = partial.flags();
-        // SAFETY: `partial` outlives the entire parallel section below.
-        unsafe { &*core::ptr::from_ref::<[AtomicBool]>(f) }
-    };
+    let flags: &[AtomicBool] = partial.flags();
 
     let first_error = std::sync::Mutex::new(None::<CodecError>);
+    // `has_error` is an atomic flag for the fast-path check so workers do not
+    // need to acquire `first_error`'s mutex on every row when no error has occurred.
+    let has_error = AtomicBool::new(false);
 
     parallelism.for_each_row(rows, |i| {
         // Fast-path: if another worker already failed, skip this slot.
-        if first_error
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .is_some()
-        {
+        if has_error.load(Ordering::Relaxed) {
             return;
         }
         // Safety: `i < rows` (enforced by `for_each_row`); `i*cols..(i+1)*cols`
@@ -115,6 +118,9 @@ pub(super) fn compress_batch_parallel(
                 }
             }
             Err(e) => {
+                // Announce the error on the atomic flag first so other workers
+                // can short-circuit without touching the mutex.
+                has_error.store(true, Ordering::Relaxed);
                 let mut slot = first_error
                     .lock()
                     .unwrap_or_else(std::sync::PoisonError::into_inner);
