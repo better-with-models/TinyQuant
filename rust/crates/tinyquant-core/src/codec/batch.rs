@@ -165,6 +165,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore = "libm sqrtsd SSE2 asm unsupported under Miri")]
     fn serial_and_custom_match_byte_for_byte() {
         let training = make_training();
         let cfg = CodecConfig::new(4, 42, 8, true).unwrap();
