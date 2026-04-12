@@ -43,6 +43,10 @@
 //! * `fixtures refresh-all`      — Run all of the above in sequence.
 #![deny(warnings, clippy::all, clippy::pedantic)]
 
+mod cmd {
+    pub mod simd;
+}
+
 use std::path::{Path, PathBuf};
 use std::process::{self, Command};
 
@@ -75,6 +79,7 @@ fn main() {
             &["test", "--manifest-path", "Cargo.toml", "--workspace"],
         ),
         Some("fixtures") => fixtures(args.get(2).map(String::as_str)),
+        Some("simd") => cmd::simd::run(args.get(2).map(String::as_str)),
         Some("help") | None => print_help(),
         Some(t) => {
             eprintln!("unknown task: {t}");
@@ -396,5 +401,6 @@ fn print_help() {
          refresh-codebook | refresh-quantize | refresh-residual | refresh-codec | \
          refresh-serialization | refresh-corpus-file | refresh-all)"
     );
+    println!("  simd      SIMD framework tasks (audit)");
     println!("  help      Print this message (default)");
 }

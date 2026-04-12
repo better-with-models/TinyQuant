@@ -58,7 +58,7 @@ jobs:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.78.0"
+          toolchain: "1.81.0"
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
@@ -79,7 +79,7 @@ jobs:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.78.0"
+          toolchain: "1.81.0"
           components: rustfmt,clippy
       - uses: Swatinem/rust-cache@v2
         with:
@@ -119,7 +119,7 @@ jobs:
         run: git lfs pull
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.78.0"
+          toolchain: "1.81.0"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust -> target
@@ -143,7 +143,7 @@ jobs:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: "1.78.0"
+          toolchain: "1.81.0"
           targets: thumbv7em-none-eabihf
       - uses: Swatinem/rust-cache@v2
         with:
@@ -224,3 +224,162 @@ jobs:
           lfs: true
       - name: fixture-drift
         run: git diff --exit-code crates/tinyquant-io/tests/fixtures/codec_file/
+
+  simd-scalar:
+    name: SIMD parity (scalar, feature=simd)
+    runs-on: ubuntu-22.04
+    needs: [clippy]
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: test (simd=on, no extra target-feature)
+        run: cargo test -p tinyquant-core --features simd
+
+  simd-avx2:
+    name: SIMD parity (AVX2+FMA, x86_64)
+    runs-on: ubuntu-22.04
+    needs: [clippy]
+    defaults:
+      run:
+        working-directory: rust
+    env:
+      RUSTFLAGS: "-C target-feature=+avx2,+fma -D warnings"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: test (simd=on, +avx2,+fma)
+        run: cargo test -p tinyquant-core --features simd
+      - name: test bruteforce (simd=on, +avx2,+fma)
+        run: cargo test -p tinyquant-bruteforce --features simd
+
+  simd-neon:
+    name: SIMD parity (NEON, aarch64)
+    runs-on: ubuntu-22.04-arm
+    needs: [clippy]
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: test (simd=on, aarch64 NEON)
+        run: cargo test -p tinyquant-core --features simd
+      - name: test bruteforce (simd=on, aarch64 NEON)
+        run: cargo test -p tinyquant-bruteforce --features simd
+
+  simd-neon-darwin:
+    name: SIMD parity (NEON, aarch64 macOS)
+    runs-on: macos-14
+    needs: [clippy]
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: test (simd=on, NEON, macOS aarch64)
+        run: cargo test -p tinyquant-core --features simd
+
+  simd-avx2-windows:
+    name: SIMD parity (AVX2+FMA, Windows x86_64)
+    runs-on: windows-2022
+    needs: [clippy]
+    defaults:
+      run:
+        working-directory: rust
+    env:
+      RUSTFLAGS: "-C target-feature=+avx2,+fma -D warnings"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: test (simd=on, +avx2,+fma, Windows)
+        run: cargo test -p tinyquant-core --features simd
+
+  miri-scalar:
+    name: Miri (scalar, tinyquant-core)
+    runs-on: ubuntu-22.04
+    needs: [clippy]
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly
+          components: miri
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      # Scope Miri to `--lib` (unit tests in source files only).
+      # Integration tests under `tests/` are excluded for two reasons:
+      #   1. They load fixture files via `fs::read` which Miri's isolation
+      #      mode blocks; adding -Zmiri-disable-isolation would work but
+      #      then codebook.rs alone takes ~12 min under Miri's interpreter.
+      #   2. Total execution time would exceed CI job limits.
+      # Unit tests verify memory safety of the scalar kernels and dispatch
+      # scaffolding — the core intent of this job per the Phase 20 plan.
+      - name: miri test (unit tests, scalar)
+        run: cargo +nightly miri test -p tinyquant-core --lib
+      - name: miri test (unit tests, simd dispatch layer)
+        run: cargo +nightly miri test -p tinyquant-core --lib --features simd
+
+  simd-audit:
+    name: SIMD CI matrix audit (xtask)
+    runs-on: ubuntu-22.04
+    needs: [clippy]
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: cargo xtask simd audit
+        run: cargo run -p xtask -- simd audit

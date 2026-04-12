@@ -10,13 +10,18 @@
 pub mod codebook;
 pub mod codec_config;
 pub mod compressed_vector;
+#[cfg(feature = "simd")]
+pub mod dispatch;
 pub mod gaussian;
+pub(crate) mod kernels;
 pub mod parallelism;
 pub(crate) mod quantize;
 pub mod residual;
 pub mod rotation_cache;
 pub mod rotation_matrix;
 pub mod service;
+#[cfg(feature = "simd")]
+pub mod simd_api;
 
 pub use codebook::Codebook;
 pub use codec_config::{CodecConfig, SUPPORTED_BIT_WIDTHS};

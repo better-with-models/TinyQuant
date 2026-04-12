@@ -11,6 +11,14 @@
 //! §Codebook training. Changing anything here requires regenerating
 //! the frozen fixtures under `tests/fixtures/codebook/` and
 //! `tests/fixtures/quantize/` via `cargo xtask fixtures refresh-all`.
+//!
+//! Under `feature = "simd"` the quantize / dequantize methods route
+//! through [`crate::codec::simd_api`], which is the single source of
+//! truth for dispatch selection. No `unsafe` intrinsics are invoked
+//! directly from this file, but the file-level `#![allow(unsafe_code)]`
+//! is retained so that future SIMD specialisation (Phase 22) can add
+//! direct intrinsic paths here without re-plumbing the lint surface.
+#![allow(unsafe_code)]
 
 use alloc::boxed::Box;
 use alloc::sync::Arc;
@@ -20,7 +28,8 @@ use core::cmp::Ordering;
 use core::fmt;
 
 use crate::codec::codec_config::CodecConfig;
-use crate::codec::quantize::{scalar_dequantize, scalar_quantize};
+#[cfg(not(feature = "simd"))]
+use crate::codec::kernels::scalar as scalar_kernel;
 use crate::errors::CodecError;
 
 /// Immutable lookup table mapping quantized `u8` indices to `f32` values.
@@ -225,15 +234,31 @@ impl Codebook {
     /// each value. Ties favor the right (higher-valued) neighbor, matching
     /// Python's strict `<` tie-break.
     ///
+    /// Under `feature = "simd"` this delegates to
+    /// [`crate::codec::simd_api::quantize_into`], which is the single
+    /// source of truth for dispatch selection. Without the feature,
+    /// it calls the scalar reference kernel directly.
+    ///
     /// # Errors
     ///
     /// * [`CodecError::LengthMismatch`] — `values.len() != indices.len()`.
     pub fn quantize_into(&self, values: &[f32], indices: &mut [u8]) -> Result<(), CodecError> {
-        scalar_quantize(&self.entries, values, indices)
+        let entries = &self.entries;
+        #[cfg(feature = "simd")]
+        {
+            crate::codec::simd_api::quantize_into(entries, values, indices)
+        }
+        #[cfg(not(feature = "simd"))]
+        {
+            scalar_kernel::quantize_into(entries, values, indices)
+        }
     }
 
     /// Dequantize `indices` into `values` by gathering the corresponding
     /// codebook entries.
+    ///
+    /// Under `feature = "simd"` this delegates to
+    /// [`crate::codec::simd_api::dequantize_into`].
     ///
     /// # Errors
     ///
@@ -241,7 +266,15 @@ impl Codebook {
     /// * [`CodecError::IndexOutOfRange`] — any index is
     ///   `>= num_entries()`.
     pub fn dequantize_into(&self, indices: &[u8], values: &mut [f32]) -> Result<(), CodecError> {
-        scalar_dequantize(&self.entries, indices, values)
+        let entries = &self.entries;
+        #[cfg(feature = "simd")]
+        {
+            crate::codec::simd_api::dequantize_into(entries, indices, values)
+        }
+        #[cfg(not(feature = "simd"))]
+        {
+            scalar_kernel::dequantize_into(entries, indices, values)
+        }
     }
 
     /// Convenience: allocate and return the quantized indices.

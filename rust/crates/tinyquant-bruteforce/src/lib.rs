@@ -34,6 +34,8 @@
 pub(crate) mod backend;
 pub(crate) mod errors;
 pub(crate) mod similarity;
+#[cfg(feature = "simd")]
+pub(crate) mod similarity_simd;
 pub(crate) mod store;
 
 pub use backend::BruteForceBackend;

@@ -18,6 +18,8 @@ rand        = { workspace = true }
 
 [features]
 default = []
-simd    = []
+# Phase 20: route the cosine similarity kernel through
+# tinyquant-core's runtime SIMD dispatch.
+simd    = ["tinyquant-core/simd"]
 dashmap = []
 std     = []

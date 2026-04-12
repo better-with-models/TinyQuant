@@ -21,6 +21,9 @@
 
 extern crate alloc;
 
+#[cfg(feature = "std")]
+extern crate std;
+
 pub mod backend;
 pub mod codec;
 pub mod corpus;

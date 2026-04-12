@@ -7,11 +7,23 @@ license.workspace      = true
 repository.workspace   = true
 publish = false
 
+[features]
+default = []
+# Phase 20: compile the `simd_kernels` benchmark against the dispatch-
+# routed `tinyquant-core/simd` and `tinyquant-bruteforce/simd` paths.
+simd    = ["tinyquant-core/simd", "tinyquant-bruteforce/simd"]
+
 [[bench]]
 name    = "smoke"
 harness = false
 
+[[bench]]
+name              = "simd_kernels"
+harness           = false
+required-features = ["simd"]
+
 [dev-dependencies]
-criterion      = { workspace = true }
-tinyquant-core = { workspace = true }
-tinyquant-io   = { workspace = true }
+criterion            = { workspace = true }
+tinyquant-core       = { workspace = true }
+tinyquant-io         = { workspace = true }
+tinyquant-bruteforce = { workspace = true }
