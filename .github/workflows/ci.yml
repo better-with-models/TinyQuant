@@ -186,6 +186,7 @@ jobs:
         with:
           name: coverage-raw-codec-${{ matrix.python-version }}
           path: .coverage.codec.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-corpus:
@@ -216,6 +217,7 @@ jobs:
         with:
           name: coverage-raw-corpus-${{ matrix.python-version }}
           path: .coverage.corpus.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-backend:
@@ -246,6 +248,7 @@ jobs:
         with:
           name: coverage-raw-backend-${{ matrix.python-version }}
           path: .coverage.backend.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-architecture:
@@ -276,6 +279,7 @@ jobs:
         with:
           name: coverage-raw-architecture-${{ matrix.python-version }}
           path: .coverage.arch.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-integration-local:
@@ -306,6 +310,7 @@ jobs:
         with:
           name: coverage-raw-intloc-${{ matrix.python-version }}
           path: .coverage.intloc.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-integration-pgvector:
@@ -352,6 +357,7 @@ jobs:
         with:
           name: coverage-raw-intpg-${{ matrix.python-version }}
           path: .coverage.intpg.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-e2e:
@@ -382,6 +388,7 @@ jobs:
         with:
           name: coverage-raw-e2e-${{ matrix.python-version }}
           path: .coverage.e2e.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   coverage-combine:
