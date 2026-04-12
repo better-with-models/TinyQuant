@@ -180,9 +180,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.codec.${{ matrix.python-version }}
-        run: python -m pytest tests/codec/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.codec.${{ matrix.python-version }} -m pytest tests/codec/ -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
@@ -212,9 +210,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.corpus.${{ matrix.python-version }}
-        run: python -m pytest tests/corpus/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.corpus.${{ matrix.python-version }} -m pytest tests/corpus/ -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
@@ -244,9 +240,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.backend.${{ matrix.python-version }}
-        run: python -m pytest tests/backend/ tests/test_smoke.py -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.backend.${{ matrix.python-version }} -m pytest tests/backend/ tests/test_smoke.py -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
@@ -276,9 +270,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.arch.${{ matrix.python-version }}
-        run: python -m pytest tests/architecture/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.arch.${{ matrix.python-version }} -m pytest tests/architecture/ -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
@@ -308,9 +300,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.intloc.${{ matrix.python-version }}
-        run: python -m pytest tests/integration/ --ignore=tests/integration/test_pgvector.py -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.intloc.${{ matrix.python-version }} -m pytest tests/integration/ --ignore=tests/integration/test_pgvector.py -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
@@ -356,9 +346,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev,pgvector]"
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.intpg.${{ matrix.python-version }}
-        run: python -m pytest tests/integration/test_pgvector.py -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.intpg.${{ matrix.python-version }} -m pytest tests/integration/test_pgvector.py -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
@@ -388,9 +376,7 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.e2e.${{ matrix.python-version }}
-        run: python -m pytest tests/e2e/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.e2e.${{ matrix.python-version }} -m pytest tests/e2e/ -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
