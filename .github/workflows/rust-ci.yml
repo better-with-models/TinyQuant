@@ -264,34 +264,6 @@ jobs:
       - name: test bruteforce (simd=on, aarch64 NEON)
         run: cargo test -p tinyquant-bruteforce --features simd
 
-  simd-avx2-darwin:
-    name: SIMD parity (AVX2+FMA, x86_64 macOS)
-    runs-on: macos-13
-    # Intel Mac runners (macos-13) have limited availability as GitHub deprecates
-    # x86_64 macOS runners in favour of Apple Silicon (macos-14). If no runner is
-    # available the job is cancelled automatically. x86_64 AVX2 parity is covered
-    # by the required `simd-avx2` Linux job; this job provides additional coverage
-    # on a best-effort basis.
-    continue-on-error: true
-    needs: [clippy]
-    defaults:
-      run:
-        working-directory: rust
-    env:
-      RUSTFLAGS: "-C target-feature=+avx2,+fma -D warnings"
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: "1.81.0"
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: rust -> target
-      - name: test (simd=on, +avx2,+fma, macOS x86_64)
-        run: cargo test -p tinyquant-core --features simd
-
   simd-neon-darwin:
     name: SIMD parity (NEON, aarch64 macOS)
     runs-on: macos-14

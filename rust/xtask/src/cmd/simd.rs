@@ -9,7 +9,6 @@ const SIMD_CI_JOBS: &[&str] = &[
     "simd-avx2",
     "simd-neon",
     "miri-scalar",
-    "simd-avx2-darwin",
     "simd-neon-darwin",
     "simd-avx2-windows",
 ];
