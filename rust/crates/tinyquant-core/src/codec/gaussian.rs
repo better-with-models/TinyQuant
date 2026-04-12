@@ -70,7 +70,15 @@ impl ChaChaGaussianStream {
 mod tests {
     use super::ChaChaGaussianStream;
 
+    // `libm` 0.2.16 uses SSE2 inline assembly (`sqrtsd`) for `f64::sqrt` on
+    // x86_64. Miri's interpreter does not support inline assembly, so these
+    // three tests — which all call `ChaChaGaussianStream::next_f64` and
+    // therefore hit `libm::sqrt` via the Box-Muller transform — are skipped
+    // under Miri. They run normally under `cargo test`.
+    // See Phase 20 implementation notes §Miri / libm inline-asm gap.
+
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn same_seed_produces_identical_stream() {
         let mut a = ChaChaGaussianStream::new(42);
         let mut b = ChaChaGaussianStream::new(42);
@@ -80,6 +88,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn different_seeds_diverge() {
         let mut a = ChaChaGaussianStream::new(42);
         let mut b = ChaChaGaussianStream::new(43);
@@ -93,6 +102,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn samples_have_reasonable_spread() {
         let mut s = ChaChaGaussianStream::new(0);
         let mut sum = 0.0f64;

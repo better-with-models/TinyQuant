@@ -267,6 +267,12 @@ jobs:
   simd-avx2-darwin:
     name: SIMD parity (AVX2+FMA, x86_64 macOS)
     runs-on: macos-13
+    # Intel Mac runners (macos-13) have limited availability as GitHub deprecates
+    # x86_64 macOS runners in favour of Apple Silicon (macos-14). If no runner is
+    # available the job is cancelled automatically. x86_64 AVX2 parity is covered
+    # by the required `simd-avx2` Linux job; this job provides additional coverage
+    # on a best-effort basis.
+    continue-on-error: true
     needs: [clippy]
     defaults:
       run:
