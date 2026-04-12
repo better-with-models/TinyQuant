@@ -85,8 +85,17 @@ module = "matplotlib.*"
 ignore_missing_imports = true
 
 [tool.coverage.run]
+parallel = true
+source = ["tinyquant_cpu"]
 omit = [
     "src/tinyquant_cpu/tools/*",
+]
+
+[tool.coverage.paths]
+source = [
+    "src/tinyquant_cpu",
+    "*/src/tinyquant_cpu",
+    "*/site-packages/tinyquant_cpu",
 ]
 
 [tool.pytest.ini_options]
