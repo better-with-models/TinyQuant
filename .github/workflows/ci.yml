@@ -44,7 +44,9 @@ jobs:
 
   probe-self-hosted:
     name: Probe Self-Hosted Runner
-    # Only run when choose-runner picked self-hosted (non-fork path)
+    # Only run on non-fork triggers (push to main, or internal PR).
+    # Job-level `if:` cannot read outputs from other jobs, so the fork
+    # condition is re-evaluated here directly rather than from choose-runner.
     if: >-
       !(github.event_name == 'pull_request' &&
         github.event.pull_request.head.repo.fork == true)
@@ -69,11 +71,12 @@ jobs:
       - id: resolve
         run: |
           CHOSE_SELF_HOSTED="${{ needs.choose-runner.outputs.runner }}"
-          PROBE_RESULT="${{ needs.probe-self-hosted.result }}"
           PROBE_OK="${{ needs.probe-self-hosted.outputs.ok }}"
 
+          # PROBE_RESULT is always "success" when continue-on-error: true, whether or
+          # not the runner was reachable. PROBE_OK is the only reliable availability signal.
           if [[ "$CHOSE_SELF_HOSTED" == '["self-hosted","docker-runner"]' && \
-                "$PROBE_RESULT" == "success" && "$PROBE_OK" == "true" ]]; then
+                "$PROBE_OK" == "true" ]]; then
             echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
           else
             echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
@@ -178,13 +181,13 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         env:
-          COVERAGE_FILE: .coverage.codec
+          COVERAGE_FILE: .coverage.codec.${{ matrix.python-version }}
         run: python -m pytest tests/codec/ -x --tb=short --cov=tinyquant_cpu --cov-report=
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-codec-${{ matrix.python-version }}
-          path: .coverage.codec
+          path: .coverage.codec.${{ matrix.python-version }}
           retention-days: 1
 
   test-corpus:
@@ -210,13 +213,13 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         env:
-          COVERAGE_FILE: .coverage.corpus
+          COVERAGE_FILE: .coverage.corpus.${{ matrix.python-version }}
         run: python -m pytest tests/corpus/ -x --tb=short --cov=tinyquant_cpu --cov-report=
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-corpus-${{ matrix.python-version }}
-          path: .coverage.corpus
+          path: .coverage.corpus.${{ matrix.python-version }}
           retention-days: 1
 
   test-backend:
@@ -242,13 +245,13 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         env:
-          COVERAGE_FILE: .coverage.backend
+          COVERAGE_FILE: .coverage.backend.${{ matrix.python-version }}
         run: python -m pytest tests/backend/ tests/test_smoke.py -x --tb=short --cov=tinyquant_cpu --cov-report=
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-backend-${{ matrix.python-version }}
-          path: .coverage.backend
+          path: .coverage.backend.${{ matrix.python-version }}
           retention-days: 1
 
   test-architecture:
@@ -274,13 +277,13 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         env:
-          COVERAGE_FILE: .coverage.arch
+          COVERAGE_FILE: .coverage.arch.${{ matrix.python-version }}
         run: python -m pytest tests/architecture/ -x --tb=short --cov=tinyquant_cpu --cov-report=
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-architecture-${{ matrix.python-version }}
-          path: .coverage.arch
+          path: .coverage.arch.${{ matrix.python-version }}
           retention-days: 1
 
   test-integration-local:
@@ -306,13 +309,13 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         env:
-          COVERAGE_FILE: .coverage.intloc
+          COVERAGE_FILE: .coverage.intloc.${{ matrix.python-version }}
         run: python -m pytest tests/integration/ --ignore=tests/integration/test_pgvector.py -x --tb=short --cov=tinyquant_cpu --cov-report=
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-intloc-${{ matrix.python-version }}
-          path: .coverage.intloc
+          path: .coverage.intloc.${{ matrix.python-version }}
           retention-days: 1
 
   test-integration-pgvector:
@@ -354,13 +357,13 @@ jobs:
         run: pip install -e ".[dev,pgvector]"
       - name: Run tests
         env:
-          COVERAGE_FILE: .coverage.intpg
+          COVERAGE_FILE: .coverage.intpg.${{ matrix.python-version }}
         run: python -m pytest tests/integration/test_pgvector.py -x --tb=short --cov=tinyquant_cpu --cov-report=
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-intpg-${{ matrix.python-version }}
-          path: .coverage.intpg
+          path: .coverage.intpg.${{ matrix.python-version }}
           retention-days: 1
 
   test-e2e:
@@ -386,13 +389,13 @@ jobs:
         run: pip install -e ".[dev]"
       - name: Run tests
         env:
-          COVERAGE_FILE: .coverage.e2e
+          COVERAGE_FILE: .coverage.e2e.${{ matrix.python-version }}
         run: python -m pytest tests/e2e/ -x --tb=short --cov=tinyquant_cpu --cov-report=
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-e2e-${{ matrix.python-version }}
-          path: .coverage.e2e
+          path: .coverage.e2e.${{ matrix.python-version }}
           retention-days: 1
 
   coverage-combine:
