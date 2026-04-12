@@ -41,8 +41,20 @@ pub fn run(args: &[String]) {
             validate_baseline("main");
         }
         Some("--diff") => {
-            let from = args.get(1).map_or("main", String::as_str);
-            let to = args.get(2).map_or("head", String::as_str);
+            let from = args.get(1).map_or_else(
+                || {
+                    eprintln!("usage: cargo xtask bench --diff <from> <to>");
+                    process::exit(1);
+                },
+                String::as_str,
+            );
+            let to = args.get(2).map_or_else(
+                || {
+                    eprintln!("usage: cargo xtask bench --diff <from> <to>");
+                    process::exit(1);
+                },
+                String::as_str,
+            );
             diff_baselines(from, to);
         }
         _ => {
@@ -393,7 +405,7 @@ fn diff_baselines(from_name: &str, to_name: &str) {
 
 /// Walk `target/criterion/` and collect `new/estimates.json` files.
 ///
-/// Returns a map `group_name → {"median_ns": <f64>, "budget_pct": 115}`.
+/// Returns a map `group_name → {"median_ns": <f64>, "budget_pct": 110}`.
 fn collect_criterion_results() -> serde_json::Map<String, Value> {
     let mut out = serde_json::Map::new();
     // NOTE: this walks ALL of target/criterion/, including results from prior
@@ -489,7 +501,7 @@ fn cpu_model() -> String {
             for line in text.lines() {
                 if let Some(val) = line
                     .strip_prefix("model name\t: ")
-                    .or_else(|| line.strip_prefix("Model name:\t"))
+                    .or_else(|| line.strip_prefix("Model name\t: "))
                 {
                     return val.trim().to_owned();
                 }
