@@ -389,13 +389,30 @@ jobs:
   # Runs all `#[ignore]`-tagged calibration tests against the LFS-tracked
   # fixtures. The LFS checkout is mandatory (Phase 14 Lesson L2).
   #
+  # Parallelism strategy (Phase 21 optimisation):
+  #   - Matrix splits by test group so full-corpus bw=2/4/8 jobs run on
+  #     separate runners concurrently (wall time = max, not sum).
+  #   - --release eliminates debug-profile k-means overhead (~10-100x speedup
+  #     for the 10k×1536 corpus tests). Thresholds are >= bounds so
+  #     release vs debug numerical differences cannot cause flakes.
+  #   - fail-fast: false lets all groups report independently.
+  #
   # Triggers: PRs and main pushes touching Rust sources.
   # Mode: blocking on main; advisory on PRs (continue-on-error: true for PRs).
   calibration:
-    name: Calibration quality gates
+    name: "Calibration quality gates (${{ matrix.group.name }})"
     runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner, test]
     continue-on-error: ${{ github.event_name == 'pull_request' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - { name: "pr-speed",     filter: "pr_speed",  pkg: "-p tinyquant-bench" }
+          - { name: "full-bw2",     filter: "full_bw2",  pkg: "-p tinyquant-bench" }
+          - { name: "full-bw4",     filter: "full_bw4",  pkg: "-p tinyquant-bench" }
+          - { name: "full-bw8",     filter: "full_bw8",  pkg: "-p tinyquant-bench" }
+          - { name: "core-ignored", filter: "",           pkg: "-p tinyquant-core"  }
     defaults:
       run:
         working-directory: rust
@@ -411,20 +428,32 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust -> target
-      - name: Run calibration gates (--ignored)
-        run: cargo test --workspace --features std -- --ignored
+      - name: "Run calibration gates (${{ matrix.group.name }}, --release --ignored)"
+        run: >-
+          cargo test --release ${{ matrix.group.pkg }} --features std
+          -- --ignored ${{ matrix.group.filter }}
 
   # ── Phase 21: Calibration quality gates (arm64) ──────────────────────────────
   #
   # Second-architecture leg required by spec §CI integration: "at least two
   # distinct host CPUs" to catch ISA-level numerical divergence (Phase 14 L4).
+  # Uses the same parallel matrix as the x86_64 job.
   # continue-on-error: true because ubuntu-24.04-arm availability varies by tier.
   # Remove that flag once ARM64 runners are confirmed available on this account.
   calibration-arm64:
-    name: Calibration quality gates (arm64)
+    name: "Calibration quality gates (arm64, ${{ matrix.group.name }})"
     runs-on: ubuntu-24.04-arm
     needs: [test]
     continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - { name: "pr-speed",     filter: "pr_speed",  pkg: "-p tinyquant-bench" }
+          - { name: "full-bw2",     filter: "full_bw2",  pkg: "-p tinyquant-bench" }
+          - { name: "full-bw4",     filter: "full_bw4",  pkg: "-p tinyquant-bench" }
+          - { name: "full-bw8",     filter: "full_bw8",  pkg: "-p tinyquant-bench" }
+          - { name: "core-ignored", filter: "",           pkg: "-p tinyquant-core"  }
     defaults:
       run:
         working-directory: rust
@@ -440,8 +469,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust -> target
-      - name: Run calibration gates (--ignored, arm64)
-        run: cargo test --workspace --features std -- --ignored
+      - name: "Run calibration gates (arm64, ${{ matrix.group.name }}, --release --ignored)"
+        run: >-
+          cargo test --release ${{ matrix.group.pkg }} --features std
+          -- --ignored ${{ matrix.group.filter }}
 
   # ── Phase 21: Benchmark budget gate ──────────────────────────────────────────
   #
