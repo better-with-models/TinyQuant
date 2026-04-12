@@ -35,6 +35,8 @@ serde_json = { workspace = true }
 bytemuck   = { workspace = true }
 # Phase 20: SIMD parity tests need std rand (dev-only, not in the no_std build).
 rand       = { workspace = true, features = ["std", "std_rng"] }
+# Phase 21: batch determinism tests exercise local rayon pools.
+rayon      = { workspace = true }
 
 [[example]]
 name              = "dump_rotation_fixture"

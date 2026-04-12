@@ -171,7 +171,12 @@ impl Codec {
 
     /// Row-major batch compress with explicit parallelism strategy.
     ///
-    /// Phase 15: serial only. Phase 21 will honour `parallelism`.
+    /// Phase 21: honours `parallelism`. `Serial` runs the existing single-threaded
+    /// loop; `Custom(driver)` uses the `MaybeUninit + SyncPtr` parallel path in
+    /// `batch.rs` (requires the `std` feature).
+    ///
+    /// The determinism contract guarantees byte-identical output regardless of
+    /// the driver or thread count (see `batch.rs` module doc).
     ///
     /// # Errors
     ///
@@ -183,7 +188,7 @@ impl Codec {
         cols: usize,
         config: &CodecConfig,
         codebook: &Codebook,
-        _parallelism: Parallelism,
+        parallelism: Parallelism,
     ) -> Result<Vec<CompressedVector>, CodecError> {
         if cols != config.dimension() as usize {
             #[allow(clippy::cast_possible_truncation)]
@@ -199,14 +204,26 @@ impl Codec {
                 right: rows * cols,
             });
         }
-        let mut out = Vec::with_capacity(rows);
-        // Safety: vectors.len() == rows * cols (checked above); start..start+cols is in-bounds.
-        #[allow(clippy::indexing_slicing)]
-        for row in 0..rows {
-            let start = row * cols;
-            out.push(self.compress(&vectors[start..start + cols], config, codebook)?);
+        // Delegate to the parallel batch module when `std` is available.
+        #[cfg(feature = "std")]
+        {
+            crate::codec::batch::compress_batch_parallel(
+                vectors, rows, cols, config, codebook, parallelism,
+            )
         }
-        Ok(out)
+        // no_std fallback: always serial regardless of `parallelism` argument.
+        #[cfg(not(feature = "std"))]
+        {
+            let _ = parallelism;
+            let mut out = Vec::with_capacity(rows);
+            // Safety: vectors.len() == rows * cols (checked above); slices are in-bounds.
+            #[allow(clippy::indexing_slicing)]
+            for row in 0..rows {
+                let start = row * cols;
+                out.push(self.compress(&vectors[start..start + cols], config, codebook)?);
+            }
+            Ok(out)
+        }
     }
 
     /// Batch decompress into a contiguous row-major `output` buffer.

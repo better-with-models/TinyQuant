@@ -7,6 +7,9 @@
 //! kernels. Phase 15 adds the `Codec` service, FP16 residual helpers,
 //! `CompressedVector` value object, and `Parallelism` enum.
 
+#[cfg(feature = "std")]
+pub(crate) mod batch;
+pub(crate) mod batch_error;
 pub mod codebook;
 pub mod codec_config;
 pub mod compressed_vector;
