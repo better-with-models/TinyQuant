@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Calibration
+
+- Re-baselined `tests/calibration.rs` thresholds against honest
+  measurements on the `openai_1k_d768` fixture (seed=42,
+  `--release --features simd`, Windows x86_64 MSVC + Linux glibc,
+  bit-identical). All 5 `pr_speed_*` gates now pass. Residual-on
+  ratio floors are intentionally loose (1.25-1.70×) until a real
+  residual encoder lands (tracked as Phase 26 in
+  `docs/plans/rust/calibration-threshold-investigation.md` §5 B2);
+  each relaxed constant carries a `TODO(phase-26)` comment.
+  Residual-off floors at `bw=2 (rho=0.50, recall=0.30, ratio=15.0)`
+  and `bw=4 (rho=0.95, recall=0.75, ratio=7.5)` are
+  regression-canary, not product-quality claims — 2-bit and 4-bit
+  scalar quantization of isotropic unit vectors are themselves the
+  ceiling, as the Python reference oracle confirms (rho within
+  0.022 of Rust). New risk R22 in
+  `docs/design/rust/risks-and-mitigations.md`. Plan-doc targets in
+  `docs/plans/rust/phase-21-rayon-batch-benches.md` §Calibration
+  thresholds updated to match.
+
 ### Added
 
 - Phase 25.1 scaffolding: `rust/crates/tinyquant-js/` napi-rs crate
