@@ -1,0 +1,5 @@
+# Scratch directory created by `abi_c_smoke.rs` and
+# `abi_cxx_smoke.rs` when they point `cc` at a test-local OUT_DIR.
+# Not a real cargo build artifact — the real target dir lives at
+# `rust/target/` and is ignored via `rust/.gitignore`.
+target/

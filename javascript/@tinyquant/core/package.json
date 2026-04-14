@@ -1,0 +1,61 @@
+{
+  "name": "@tinyquant/core",
+  "version": "0.1.0",
+  "description": "CPU-only vector quantization codec for embedding storage compression.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/better-with-models/TinyQuant.git",
+    "directory": "javascript/@tinyquant/core"
+  },
+  "engines": {
+    "node": ">=20.10.0",
+    "bun": ">=1.1.0"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "binaries/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "vector",
+    "quantization",
+    "embedding",
+    "compression",
+    "tinyquant",
+    "rust",
+    "native"
+  ],
+  "scripts": {
+    "clean": "node -e \"for (const d of ['dist','dist-cjs','dist-tests','src-cjs-staging']) require('fs').rmSync(d,{recursive:true,force:true})\"",
+    "clean:tests": "node -e \"require('fs').rmSync('dist-tests', {recursive:true, force:true})\"",
+    "build:cjs": "node scripts/emit-cjs-bundle.mjs",
+    "build": "node scripts/build.mjs",
+    "test": "npm run build && npm run clean:tests && tsc -p tsconfig.test.json && node --test \"dist-tests/**/*.test.js\" \"tests/**/*.test.cjs\"",
+    "fixtures:generate": "python ../../../scripts/packaging/generate_js_parity_fixtures.py tests/fixtures"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "3.0.0",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.4.0",
+    "detect-libc": "^2.0.3"
+  }
+}

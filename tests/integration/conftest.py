@@ -20,7 +20,7 @@ def _try_start_container() -> tuple[Any, str] | None:
     testcontainers is not installed or Docker is unavailable.
     """
     try:
-        from testcontainers.postgres import PostgresContainer  # type: ignore[import-not-found]  # noqa: I001
+        from testcontainers.postgres import PostgresContainer  # type: ignore[import-untyped]  # noqa: I001
     except ImportError:
         return None
 

@@ -53,20 +53,36 @@ publication-quality plots.
 
 ## Installation
 
+> **Heads up — Phase 23 reference demotion.**
+> `tinyquant-cpu==0.1.1` on PyPI is the **last pure-Python release**.
+> As of Phase 23 the pure-Python implementation has been demoted to a
+> test-only reference under `tests/reference/tinyquant_py_reference/`
+> and is no longer shipped. Phase 24 reclaims the `tinyquant-cpu` name
+> with a Rust-backed fat wheel at version `0.2.0+` — same import path
+> (`import tinyquant_cpu`), same public API surface, different engine.
+
 ```bash
-pip install tinyquant-cpu
+# Pinned pure-Python release (Phase 22 and earlier)
+pip install tinyquant-cpu==0.1.1
+
+# Phase 24 Rust-backed fat wheel (when released)
+pip install 'tinyquant-cpu>=0.2.0'
 ```
 
-For PostgreSQL + pgvector backend support:
+For PostgreSQL + pgvector backend support on the `0.1.1` line:
 
 ```bash
-pip install "tinyquant-cpu[pgvector]"
+pip install "tinyquant-cpu[pgvector]==0.1.1"
 ```
 
-For development (tests, type checking, linting):
+For development against this repository, dev dependencies are installed
+directly from the pinned set (the tree is no longer a buildable
+package):
 
 ```bash
-pip install "tinyquant-cpu[dev]"
+pip install pytest pytest-cov hypothesis numpy ruff mypy
+pytest               # exercises tests/reference/tinyquant_py_reference via pythonpath
+pytest -m parity     # cross-impl parity scaffold
 ```
 
 **Requirements:** Python 3.12+, NumPy 1.26+
@@ -246,10 +262,10 @@ implementation:
 
 | Path | Purpose |
 | --- | --- |
-| `src/tinyquant_cpu/codec/` | Codec, config, codebook, compressed vector, rotation |
-| `src/tinyquant_cpu/corpus/` | Corpus aggregate, compression policies, domain events |
-| `src/tinyquant_cpu/backend/` | Search backend protocol and implementations |
-| `tests/` | Unit, integration, E2E, and calibration tests (208 tests, 90.95% coverage) |
+| `rust/` | Cargo workspace for the shipping Rust implementation (tinyquant-core, tinyquant-py, tinyquant-sys, tinyquant-cli) |
+| `tests/reference/tinyquant_py_reference/` | Pure-Python reference implementation — test-only oracle, frozen at `v0.1.1` behavior |
+| `tests/parity/` | Cross-implementation parity suite (`pytest -m parity`); self-parity is live, Rust-side parity wires on at Phase 24 |
+| `tests/` | Unit, integration, E2E, calibration, and architecture suites (214 tests against the reference) |
 | `experiments/` | Benchmarks and empirical evaluations |
 | `docs/` | Obsidian wiki with design docs, research, and specs |
 
@@ -260,20 +276,26 @@ implementation:
 ```bash
 git clone https://github.com/better-with-models/TinyQuant.git
 cd TinyQuant
-pip install -e ".[dev]"
 
-# Lint and type check
+# Install dev dependencies directly — the tree is no longer a buildable package.
+pip install pytest pytest-cov hypothesis numpy ruff mypy build
+
+# Lint and type check (against tests/reference/tinyquant_py_reference)
 ruff check . && ruff format --check .
 mypy --strict .
 
-# Run the full test suite
-pytest --cov=tinyquant_cpu
+# Run the full test suite (reference is reachable via pyproject's pythonpath).
+pytest --cov=tinyquant_py_reference
+
+# Cross-impl parity scaffold (rs side skipped until Phase 24 fat wheel).
+pytest -m parity -v
 ```
 
-The test suite includes 208 tests covering unit, integration,
-end-to-end, calibration, and architecture-enforcement scenarios.
-Coverage is held above 90% by CI. Live PostgreSQL+pgvector tests run
-against a Docker container in CI via testcontainers.
+The test suite includes 214 tests covering unit, integration,
+end-to-end, calibration, and architecture-enforcement scenarios
+against the reference implementation. Coverage is held above 90% by
+CI. Live PostgreSQL+pgvector tests run against a Docker container in
+CI via testcontainers.
 
 ---
 

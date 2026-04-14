@@ -9,6 +9,17 @@
 //! * `test`     — Run all workspace tests
 //! * `fixtures` — Regenerate test fixtures (see subcommands below)
 //! * `bench`    — Benchmark budget commands (see subcommands below)
+//! * `bench-budget` — Phase 22.D alias for `bench --check-against main`
+//! * `check-matrix-sync` — Phase 22.D: diff the CLI smoke matrix in the
+//!   plan doc against `rust-release.yml`, and assert that all four
+//!   `publish-*` jobs in `rust-release.yml` share a byte-identical
+//!   `if:` guard expression (Phase 22.D code-quality follow-up M3)
+//! * `check-publish-guards` — Phase 24.3: run BOTH publish-guard drift
+//!   checks — the four-way equality on `rust-release.yml` and the
+//!   single-job contract check on `python-fatwheel.yml`. Reuses the
+//!   same string-level extractor as `check-matrix-sync`'s guard step
+//!   but exposes a dedicated verb so the fat-wheel workflow can call
+//!   it without also running the CLI smoke matrix check.
 //! * `docs`     — Documentation checks (see subcommands below)
 //! * `help`     — Print usage
 //!
@@ -61,6 +72,9 @@
 
 mod cmd {
     pub mod bench;
+    pub mod guard_sync;
+    pub mod guard_sync_python;
+    pub mod matrix_sync;
     pub mod simd;
 }
 
@@ -98,6 +112,33 @@ fn main() {
         Some("fixtures") => fixtures(args.get(2).map(String::as_str)),
         Some("simd") => cmd::simd::run(args.get(2).map(String::as_str)),
         Some("bench") => cmd::bench::run(&args[2..]),
+        // Phase 22.D: `bench-budget` is a convenience alias that runs the
+        // budget check against the canonical `main` baseline. It exists so
+        // the release workflow can call a single verb without having to
+        // encode the flag incantation in YAML.
+        Some("bench-budget") => cmd::bench::run(&["--check-against".to_owned(), "main".to_owned()]),
+        Some("check-matrix-sync") => {
+            // Both checks share a single CLI verb so the release workflow
+            // only needs one step. Run them in sequence — matrix first
+            // (docs ↔ release.yml), publish-guards second — and bail on
+            // the first failure so the cause is obvious in CI logs.
+            // Phase 24.3 extension: also enforce the python-fatwheel
+            // single-job contract so a matrix-sync run catches drift in
+            // either release workflow.
+            cmd::matrix_sync::run();
+            cmd::guard_sync::run();
+            cmd::guard_sync_python::run();
+        }
+        Some("check-publish-guards") => {
+            // Phase 24.3: dedicated verb for the two publish-guard
+            // checks (rust-release.yml four-way equality +
+            // python-fatwheel.yml contract equality). Distinct from
+            // `check-matrix-sync` so the fat-wheel workflow can gate on
+            // the guards without also re-running the CLI smoke matrix
+            // parser.
+            cmd::guard_sync::run();
+            cmd::guard_sync_python::run();
+        }
         Some("docs") => docs(args.get(2).map(String::as_str)),
         Some("help") | None => print_help(),
         Some(t) => {
@@ -501,6 +542,16 @@ fn print_help() {
     );
     println!(
         "  bench     Benchmark budget (--capture-baseline | --check-against | --diff | --validate)"
+    );
+    println!("  bench-budget        Alias for `bench --check-against main` (Phase 22.D)");
+    println!(
+        "  check-matrix-sync   Diff CLI smoke matrix in plan vs rust-release.yml + assert \
+         publish-* guards byte-identical (Phase 22.D) + python-fatwheel publish contract \
+         (Phase 24.3)"
+    );
+    println!(
+        "  check-publish-guards  Run only the publish-guard drift checks \
+         (rust-release.yml four-way + python-fatwheel.yml contract) — Phase 24.3"
     );
     println!("  docs      Documentation checks (check-ci-parity)");
     println!("  simd      SIMD framework tasks (audit)");

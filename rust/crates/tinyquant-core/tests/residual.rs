@@ -1,3 +1,8 @@
+//! Byte-parity tests for the FP16 residual correction path.
+//!
+//! Compares `compute_residual` and `apply_residual_into` against Python-
+//! generated golden fixtures under `tests/fixtures/residual/`.
+
 use std::{fs, path::Path};
 use tinyquant_core::codec::residual::{apply_residual_into, compute_residual};
 

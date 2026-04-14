@@ -19,9 +19,17 @@ GitHub auto-prefers for the repo landing page.
 ## Repository overview
 
 TinyQuant uses an LLM-maintained documentation vault under `docs/`. The
-repository is currently documentation-first: research inputs live alongside a
-structured wiki that can later grow into product specs, design notes, behavior
-specifications, and implementation guidance.
+repository is documentation-first and implementation-plural: the shipping
+engine is the Rust workspace under `rust/`, and a pure-Python reference
+implementation lives under `tests/reference/tinyquant_py_reference/` as a
+test-only differential oracle. The legacy in-tree pure-Python package was
+removed in Phase 23; what now lives at `src/tinyquant_cpu/` is a Phase
+24.1 developer shim that re-exports the Rust extension (`tinyquant_rs`)
+under the `tinyquant_cpu` import name so editor IDEs and the Phase 24
+fat-wheel templates have a single source of truth for the public API
+surface. The `tinyquant-cpu==0.1.1` wheel on PyPI remains as the last
+pure-Python release; Phase 24 reclaims the `tinyquant-cpu` name on PyPI
+with a Rust-backed fat wheel at version `0.2.0`.
 
 The documentation system is explicitly based on the ideas in
 `docs/research/llm-wiki.md`. Treat that file as the conceptual source for how
@@ -31,6 +39,9 @@ the repo's knowledge base should operate.
 
 | Path | Purpose |
 | ------ | ------- |
+| `rust/` | Cargo workspace for the shipping Rust implementation (tinyquant-core, tinyquant-py, tinyquant-sys, tinyquant-cli). |
+| `tests/reference/tinyquant_py_reference/` | Pure-Python reference implementation. Test-only oracle; never installed by end users. Frozen at `v0.1.1` behavior. |
+| `tests/parity/` | Cross-implementation parity suite (`pytest -m parity`). Self-parity lives now; Rust-side parity is wired on in Phase 24. |
 | `docs/` | LLM-maintained wiki (Obsidian vault). All markdown here uses Obsidian-flavored syntax unless explicitly exempted. |
 | `docs/research/` | Raw source material. The LLM reads from these but never modifies them after placement. |
 | `docs/entities/` | Wiki pages for concrete systems, datasets, services, libraries, or tools. |
@@ -173,16 +184,49 @@ Documentation quality is part of pre-commit verification for this repository.
 
 Before commit, verify at least the following:
 
-- `/well-documented` expectations are satisfied at full maturity
+- `/well-documented` expectations are satisfied at full maturity, including
+  the docstring rules below
 - markdown outside `docs/` passes strict markdownlint rules
+  (`.markdownlint-cli2.jsonc`)
+- markdown inside `docs/` (excluding `docs/research/`) passes
+  `markdownlint-obsidian`, configured via `.obsidian-linter.jsonc`
 - links, paths, commands, and structural references in documentation still
   match the current repository
 - code changes that affect behavior, architecture, layout, or workflows are
   reflected in the relevant docs
 
-The Obsidian wiki inside `docs/` should still be checked for internal
-consistency, but it is allowed to use Obsidian-specific constructs that would
-not be valid under a strict ordinary-markdown markdownlint profile.
+The Obsidian wiki inside `docs/` is gated by `markdownlint-obsidian`, which
+understands wikilinks, embeds, callouts, and block references. Raw sources
+under `docs/research/` are excluded from linting because this file forbids
+modifying them after initial placement.
+
+### Markdown linting surfaces
+
+| Surface | Tool | Config | Scope |
+| ---- | ---- | ---- | ---- |
+| Non-`docs/` markdown | `markdownlint-cli2` | `.markdownlint-cli2.jsonc` | everything outside `docs/` |
+| `docs/` Obsidian vault | `markdownlint-obsidian` | `.obsidian-linter.jsonc` | `docs/**/*.md` except `docs/research/` |
+
+Both tools run as pre-commit hooks via `.pre-commit-config.yaml` and as
+CI jobs under `.github/workflows/`. The Obsidian lint job is defined in
+`.github/workflows/docs-lint.yml`.
+
+### Code docstring requirement
+
+Every source file in this repository must open with a module-level
+docstring or doc comment that explains its purpose in one sentence.
+Public symbols must carry their own docstrings. The expectation is
+per-language:
+
+- Python (`src/`, `scripts/`, `tests/`): module-level `"""..."""`
+  docstring at the top of every `.py` file, plus docstrings on public
+  classes and functions (see `$python-docstrings`).
+- Rust (`rust/crates/`, `rust/xtask/`): `//!` module docstring at the
+  top of every `.rs` file and `///` doc comments on public items
+  (see `$rust-docstrings`).
+
+`scripts/verify_pre_commit.py` is the intended home for an automated
+check that enforces this requirement across the tree.
 
 ## Escalation cues
 

@@ -13,19 +13,19 @@ import pytest
 
 @contextlib.contextmanager
 def _clean_tinyquant_imports() -> Generator[None, None, None]:
-    """Remove all tinyquant_cpu modules from sys.modules, then restore on exit."""
+    """Remove all tinyquant_py_reference modules from sys.modules, then restore on exit."""
     saved: dict[str, Any] = {
-        k: v for k, v in sys.modules.items() if k.startswith("tinyquant_cpu")
+        k: v for k, v in sys.modules.items() if k.startswith("tinyquant_py_reference")
     }
     for key in list(sys.modules):
-        if key.startswith("tinyquant_cpu"):
+        if key.startswith("tinyquant_py_reference"):
             del sys.modules[key]
     try:
         yield
     finally:
         # Remove anything the test imported
         for key in list(sys.modules):
-            if key.startswith("tinyquant_cpu"):
+            if key.startswith("tinyquant_py_reference"):
                 del sys.modules[key]
         # Restore originals
         sys.modules.update(saved)
@@ -35,44 +35,44 @@ class TestDependencyDirection:
     """Codec must not depend on corpus or backend; corpus must not depend on backend."""
 
     def test_codec_does_not_import_corpus(self) -> None:
-        """Importing tinyquant_cpu.codec brings no corpus modules."""
+        """Importing tinyquant_py_reference.codec brings no corpus modules."""
         with _clean_tinyquant_imports():
-            importlib.import_module("tinyquant_cpu.codec")
+            importlib.import_module("tinyquant_py_reference.codec")
             corpus_modules = [
-                k for k in sys.modules if k.startswith("tinyquant_cpu.corpus")
+                k for k in sys.modules if k.startswith("tinyquant_py_reference.corpus")
             ]
             assert corpus_modules == [], (
                 f"codec imported corpus modules: {corpus_modules}"
             )
 
     def test_codec_does_not_import_backend(self) -> None:
-        """Importing tinyquant_cpu.codec brings no backend modules."""
+        """Importing tinyquant_py_reference.codec brings no backend modules."""
         with _clean_tinyquant_imports():
-            importlib.import_module("tinyquant_cpu.codec")
+            importlib.import_module("tinyquant_py_reference.codec")
             backend_modules = [
-                k for k in sys.modules if k.startswith("tinyquant_cpu.backend")
+                k for k in sys.modules if k.startswith("tinyquant_py_reference.backend")
             ]
             assert backend_modules == [], (
                 f"codec imported backend modules: {backend_modules}"
             )
 
     def test_corpus_does_not_import_backend(self) -> None:
-        """Importing tinyquant_cpu.corpus brings no backend modules."""
+        """Importing tinyquant_py_reference.corpus brings no backend modules."""
         with _clean_tinyquant_imports():
-            importlib.import_module("tinyquant_cpu.corpus")
+            importlib.import_module("tinyquant_py_reference.corpus")
             backend_modules = [
-                k for k in sys.modules if k.startswith("tinyquant_cpu.backend")
+                k for k in sys.modules if k.startswith("tinyquant_py_reference.backend")
             ]
             assert backend_modules == [], (
                 f"corpus imported backend modules: {backend_modules}"
             )
 
 
-_PACKAGES = ("tinyquant_cpu.codec", "tinyquant_cpu.corpus", "tinyquant_cpu.backend")
+_PACKAGES = ("tinyquant_py_reference.codec", "tinyquant_py_reference.corpus", "tinyquant_py_reference.backend")
 
 
 def _collect_cross_package_deps() -> dict[str, set[str]]:
-    """Build a dependency map between tinyquant_cpu subpackages from sys.modules."""
+    """Build a dependency map between tinyquant_py_reference subpackages from sys.modules."""
     deps: dict[str, set[str]] = {p: set() for p in _PACKAGES}
     for mod_name, mod in sys.modules.items():
         owner = next((p for p in _PACKAGES if mod_name.startswith(p)), None)
@@ -93,20 +93,20 @@ class TestImportGraph:
     def test_no_package_cycles(self) -> None:
         """Dependency graph codec -> corpus -> backend has no reverse edges."""
         with _clean_tinyquant_imports():
-            importlib.import_module("tinyquant_cpu.codec")
-            importlib.import_module("tinyquant_cpu.corpus")
-            importlib.import_module("tinyquant_cpu.backend")
+            importlib.import_module("tinyquant_py_reference.codec")
+            importlib.import_module("tinyquant_py_reference.corpus")
+            importlib.import_module("tinyquant_py_reference.backend")
 
             deps = _collect_cross_package_deps()
 
             # Forbidden reverse edges:
-            assert "tinyquant_cpu.corpus" not in deps["tinyquant_cpu.codec"], (
+            assert "tinyquant_py_reference.corpus" not in deps["tinyquant_py_reference.codec"], (
                 "cycle: codec depends on corpus"
             )
-            assert "tinyquant_cpu.backend" not in deps["tinyquant_cpu.codec"], (
+            assert "tinyquant_py_reference.backend" not in deps["tinyquant_py_reference.codec"], (
                 "cycle: codec depends on backend"
             )
-            assert "tinyquant_cpu.backend" not in deps["tinyquant_cpu.corpus"], (
+            assert "tinyquant_py_reference.backend" not in deps["tinyquant_py_reference.corpus"], (
                 "cycle: corpus depends on backend"
             )
 
@@ -117,9 +117,9 @@ class TestExports:
     @pytest.mark.parametrize(
         "package_name",
         [
-            "tinyquant_cpu.codec",
-            "tinyquant_cpu.corpus",
-            "tinyquant_cpu.backend",
+            "tinyquant_py_reference.codec",
+            "tinyquant_py_reference.corpus",
+            "tinyquant_py_reference.backend",
         ],
     )
     def test_init_exports_match_all(self, package_name: str) -> None:

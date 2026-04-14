@@ -1,0 +1,47 @@
+name: Docs Lint (Obsidian)
+
+# Lint the docs/ Obsidian vault with markdownlint-obsidian.
+# Raw sources in docs/research/ are excluded because AGENTS.md forbids
+# modifying them after placement.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**/*.md"
+      - ".github/workflows/docs-lint.yml"
+      - ".obsidian-linter.jsonc"
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**/*.md"
+      - ".github/workflows/docs-lint.yml"
+      - ".obsidian-linter.jsonc"
+
+concurrency:
+  group: docs-lint-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  markdownlint-obsidian:
+    name: markdownlint-obsidian docs/
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install markdownlint-obsidian-cli
+        run: npm install -g markdownlint-obsidian-cli@1.0.6
+
+      - name: Lint docs/ (excluding docs/research/)
+        # Globs and ignores come from .obsidian-linter.jsonc at the repo root.
+        run: markdownlint-obsidian

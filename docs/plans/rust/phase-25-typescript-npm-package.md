@@ -11,7 +11,7 @@ tags:
   - node-api
   - napi-rs
 date-created: 2026-04-13
-status: planned
+status: complete
 category: planning
 ---
 
@@ -785,7 +785,12 @@ export declare class Corpus {
   contains(vectorId: string): boolean;
   decompress(vectorId: string): Float32Array;
   decompressAll(): Record<string, Float32Array>;
-  remove(vectorId: string): void;
+  // `remove` returns `true` if the vector was removed, `false` if it
+  // was not present — mirrors Python's
+  // `dict.pop(vector_id, None) is not None` semantics used by the
+  // reference oracle. Reconciled with implementation in the
+  // Phase 25.3 spec-review fix pass (see `src/corpus.ts:328`).
+  remove(vectorId: string): boolean;
 
   pendingEvents(): CorpusEvent[];
 }
@@ -1430,6 +1435,82 @@ is effectively permanent. The playbook:
    the npm OIDC trust configuration for the repo and rotate
    the signing key. Users who verify provenance will see the
    revocation.
+
+## Phase 25.1 declared deviations
+
+The scaffold that landed at commit `a6c80cd` (plus the
+workspace-inheritance follow-up) intentionally diverges from the
+specification in three places. Each is a forward-compatible
+substitution that the remaining sub-slices (25.2–25.4) inherit
+transparently.
+
+### 1. napi-rs v2 instead of v3
+
+§`tinyquant-js` crate module map (`Cargo.toml` block at plan
+§115–165) pins `napi = "=3.0"` with feature `napi9` and
+`napi-derive = "=3.0"`. The scaffold pins `napi = "2"` with
+feature `napi8` and `napi-derive = "2"` instead. Rationale: napi-rs
+v3 was pre-release at plan-authoring time; v2 is the stable line
+that `@napi-rs/cli` 2.x ships against and matches the Node ≥ 20
+baseline in §API surface. When napi-rs v3 is GA and passes CI, a
+separate maintenance slice can bump the pin — no API change is
+required because `#[napi]` attribute macros are stable across v2/v3.
+
+### 2. `moduleResolution: Bundler` instead of `NodeNext`
+
+§`tsconfig.json` (plan §444–475) specifies
+`"module": "NodeNext", "moduleResolution": "NodeNext"`. The
+scaffold uses `"module": "ESNext", "moduleResolution": "Bundler"`.
+Rationale: the Bundler resolution mode was designed precisely for
+libraries that ship both ESM and CJS via the `exports` field and is
+the setting most downstream TypeScript + bundler toolchains
+(`tsup`, `esbuild`, `vite`, `rolldown`) expect to see on a library
+published to npm. The `exports` block — which drives runtime
+resolution — is unchanged, so Node and Bun see the same entry
+points regardless of what this package's own `tsconfig.json` says
+for its internal build.
+
+### 3. `./dist/index.cjs` instead of `./dist/index.js` for the CJS entry
+
+§`package.json` (plan §371–443) names the CJS artefact
+`./dist/index.js` and the ESM artefact `./dist/index.mjs`. The
+scaffold uses `./dist/index.cjs` for CJS and `./dist/index.mjs` for
+ESM. Rationale: the explicit `.cjs` extension makes Node's
+module-system classification unambiguous under `"type": "module"`
+and avoids the class of bug where a consumer-set `"type": "module"`
+overrides the per-file default on a file named `index.js`. The
+`exports` map still points `require:` at the `.cjs` entry and
+`import:` at the `.mjs` entry, so downstream consumers see no
+surface change.
+
+## Phase 25.3 declared deviations
+
+### 1. `VectorEntry.metadata` is a no-op in 25.3
+
+§`Corpus.insert(vector_id, vector, metadata=None)` and
+§`VectorEntry.metadata` (plan §§916, 925) describe metadata as a
+round-trippable `Record<string, unknown>`. In 25.3 the napi-rs
+binding accepts the `metadata_json` parameter on the constructor,
+`insert`, and `insertBatch` for API-shape parity, but the value is
+silently dropped: `EntryMetaValue` (the core's no_std `serde_json`
+substitute) is not serde-serialisable from the `tinyquant-js`
+crate, and the original `format!("{v:?}")` path in the
+`metadata_json` getter produced a data-corrupting rendering
+(`{count: 5}` read back as `{"count": "Integer(5)"}`).
+
+Rather than ship that corruption, the getter unconditionally
+returns `None` / `null`, matching the PyO3 binding's stance
+(`tinyquant_py/src/corpus.rs` raises `NotImplementedError` on
+metadata reads/writes, see lines 284–290). The TS wrapper's
+`VectorEntry.metadata` getter documents the no-op and returns
+`null` regardless of input. Phase 25.4 or beyond wires metadata
+through once the core lands a canonical JSON round-trip for
+`EntryMetaValue` (either a `serde` impl behind a `alloc-json`
+feature flag or a hand-rolled `to_json_string` method on the enum).
+
+No fixture or test depends on metadata round-tripping today, so
+the deviation is observable only to callers who pass metadata and
+then read it back.
 
 ## Steps (TDD order)
 

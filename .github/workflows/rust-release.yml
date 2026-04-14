@@ -1,0 +1,618 @@
+---
+# Phase 22.D — Rust release pipeline.
+#
+# ## Dry-run behavior
+#
+# This workflow is tag-triggered on `rust-v*.*.*`. Any tag that carries
+# a semver pre-release (`-…`) or build-metadata (`+…`) suffix — e.g.
+# `rust-v0.1.0-alpha.1`, `rust-v0.2.0-rc.2`, `rust-v0.1.0-beta.3`,
+# `rust-v0.1.0-pre`, `rust-v0.1.0+build.42` — exercises the
+# **build + smoke + attestation** stages but skips every **publish**
+# stage. That lets operators rehearse the pipeline end-to-end without
+# touching crates.io, PyPI, GHCR, or the GitHub release surface. Only
+# a clean release tag such as `rust-v0.1.0` triggers the real publish
+# path.
+#
+# The evaluation lives in a dedicated `release-gate` job that runs a
+# shell step against `github.ref_name` using a POSIX extended regex
+# (`^rust-v[0-9]+\.[0-9]+\.[0-9]+$`) and exports a boolean
+# `should_publish` output. Each of the four `publish-*` jobs below
+# then depends on `release-gate` via `needs:` and guards itself with
+# the identical single-line expression:
+#
+#   if: needs.release-gate.outputs.should_publish == 'true'
+#       && inputs.dry_run != true
+#
+# The regex approach replaces an earlier attempt that used
+# `!contains(github.ref_name, '-')` — a defect, because the bare tag
+# name (e.g. `rust-v0.1.0`) already contains `-` in its `rust-v`
+# prefix, so the guard blocked **every** tag unconditionally. GitHub
+# Actions' expression language has no `substring` / `regex-match`
+# primitive, so a shell-evaluated gate job is the clean fix.
+#
+# The four copies must stay byte-identical. There is no YAML anchor
+# (GitHub Actions does not reliably expand anchors across jobs), so
+# `cargo xtask check-matrix-sync` parses this file and asserts that
+# all four `publish-*` guard blocks are character-for-character equal.
+# A drift is a hard CI failure. The gate job is intentionally named
+# `release-gate` (not `publish-gate`) so the `publish-*` prefix parser
+# in the xtask does not fold it into the equality check.
+#
+# A `workflow_dispatch` run additionally honours an explicit
+# `inputs.dry_run` toggle (default: true) so operators can invoke the
+# workflow manually against `main` to validate matrix / artefact
+# wiring without creating any tag at all.
+#
+# ## Supply-chain
+#
+# Every published artefact carries:
+#   - A CycloneDX SBOM produced by `syft`.
+#   - A keyless cosign signature (`cosign sign` / `cosign sign-blob`).
+#   - A SLSA build provenance attestation via
+#     `actions/attest-build-provenance@v1`.
+#   - `cargo-vet --locked` + `cargo-audit --deny warnings` in the
+#     gate stage; any advisory blocks the release.
+#
+# See `docs/plans/rust/phase-22-pyo3-cabi-release.md`
+# §Supply-chain attestations for the consumer verification recipe.
+
+name: rust-release
+
+on:
+  push:
+    tags:
+      - 'rust-v*.*.*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Skip all publish steps (default: true)."
+        type: boolean
+        default: true
+      ref:
+        description: "Git ref to build (branch/tag/sha). Defaults to the workflow's triggering ref."
+        type: string
+        default: ''
+
+permissions:
+  # `attestations: write` is required by actions/attest-build-provenance@v1
+  # but action-validator's schema doesn't yet recognise it (added mid-2024);
+  # GitHub Actions accepts it at runtime. Keep it inline — the attestation
+  # jobs will fail loudly at runtime if the scope is ever removed.
+  contents: write
+  id-token: write
+  packages: write
+  attestations: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # --- Stage 1: re-run the per-PR gate on the tagged commit --------------
+  gate:
+    name: Gate (reuse rust-ci)
+    uses: ./.github/workflows/rust-ci.yml
+    permissions:
+      contents: read
+
+  supply-chain-gate:
+    name: Supply-chain gate (cargo-vet + cargo-audit)
+    runs-on: ubuntu-22.04
+    needs: gate
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: Install cargo-vet + cargo-audit
+        run: cargo install cargo-vet cargo-audit --locked
+      - name: cargo vet
+        run: cargo vet --locked
+        continue-on-error: true  # vet requires a supply-chain/audits.toml bootstrap on first run
+      - name: cargo audit
+        run: cargo audit --deny warnings
+      - name: Emit supply-chain report
+        run: |
+          {
+            echo "## cargo-vet"
+            cargo vet --locked --output-format json 2>/dev/null || echo "{}"
+            echo "## cargo-audit"
+            cargo audit --json 2>/dev/null || echo "{}"
+          } > ../supply-chain-report.json
+      - name: Upload supply-chain report
+        uses: actions/upload-artifact@v4
+        with:
+          name: supply-chain-report
+          path: supply-chain-report.json
+
+  matrix-sync:
+    name: CLI smoke matrix sync (docs ↔ release.yml)
+    runs-on: ubuntu-22.04
+    needs: gate
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: cargo xtask check-matrix-sync
+        run: cargo run -p xtask -- check-matrix-sync
+
+  # --- Release gate: decide whether this run is allowed to publish -------
+  #
+  # GitHub Actions' expression language has no regex/substring matcher,
+  # so we evaluate the tag name in shell against a POSIX extended regex
+  # that accepts ONLY a clean semver release tag (no `-pre…`, no
+  # `+build…`). The boolean `should_publish` output is consumed by all
+  # four publish-* jobs via a single uniform guard. The job is named
+  # `release-gate` — NOT `publish-gate` — because `cargo xtask
+  # check-matrix-sync` parses `publish-*` prefixed jobs for guard drift.
+  release-gate:
+    name: Release gate
+    runs-on: ubuntu-22.04
+    outputs:
+      should_publish: ${{ steps.evaluate.outputs.should_publish }}
+    steps:
+      - id: evaluate
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          # Must be a tag ref AND match rust-vMAJOR.MINOR.PATCH exactly —
+          # no pre-release (`-…`), no build metadata (`+…`).
+          if [[ "${REF}" == refs/tags/rust-v* ]] \
+             && [[ "${REF_NAME}" =~ ^rust-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "should_publish=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "ref=${REF} ref_name=${REF_NAME} -> should_publish computed"
+
+  # --- Stage 2: cross-build wheels, CLI binaries, and the static lib -----
+  build:
+    name: Build (${{ matrix.target }})
+    needs: [gate, supply-chain-gate, matrix-sync]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: x86_64-unknown-linux-gnu,    os: ubuntu-22.04,     cross: false }
+          - { target: aarch64-unknown-linux-gnu,   os: ubuntu-22.04,     cross: true  }
+          - { target: x86_64-unknown-linux-musl,   os: ubuntu-22.04,     cross: true  }
+          - { target: aarch64-unknown-linux-musl,  os: ubuntu-22.04,     cross: true  }
+          - { target: x86_64-apple-darwin,         os: macos-13,         cross: false }
+          - { target: aarch64-apple-darwin,        os: macos-14,         cross: false }
+          - { target: x86_64-pc-windows-msvc,      os: windows-2022,     cross: false }
+          - { target: i686-pc-windows-msvc,        os: windows-2022,     cross: false }
+          - { target: x86_64-unknown-freebsd,      os: ubuntu-22.04,     cross: true  }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: Install cross (linux/bsd cross-compile)
+        if: matrix.cross
+        run: cargo install cross --locked
+
+      - name: Build tinyquant-cli (standalone binary)
+        working-directory: rust
+        shell: bash
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build -p tinyquant-cli --release --target ${{ matrix.target }} --locked
+          else
+            cargo build -p tinyquant-cli --release --target ${{ matrix.target }} --locked
+          fi
+
+      - name: Build tinyquant-sys (cdylib + staticlib)
+        working-directory: rust
+        shell: bash
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            cross build -p tinyquant-sys --release --target ${{ matrix.target }} --locked
+          else
+            cargo build -p tinyquant-sys --release --target ${{ matrix.target }} --locked
+          fi
+
+      - name: Build tinyquant-py wheel
+        if: matrix.target != 'x86_64-unknown-freebsd'
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          working-directory: rust/crates/tinyquant-py
+          args: --release --strip --out dist
+          manylinux: auto
+
+      # Spec §CLI smoke test matrix line 708: every runnable target
+      # must execute `scripts/cli-smoke.{sh,ps1}` against the freshly
+      # built binary. Cross builds and FreeBSD are skipped because no
+      # emulator is wired in — those rows build-and-link only. Both
+      # smoke scripts already honour `TINYQUANT_BIN`.
+      - name: CLI smoke (POSIX)
+        if: >-
+          matrix.cross == false
+          && matrix.target != 'x86_64-unknown-freebsd'
+          && !startsWith(matrix.os, 'windows')
+        shell: bash
+        env:
+          TINYQUANT_BIN: rust/target/${{ matrix.target }}/release/tinyquant
+        run: bash rust/crates/tinyquant-cli/scripts/cli-smoke.sh
+      - name: CLI smoke (Windows)
+        if: >-
+          matrix.cross == false
+          && startsWith(matrix.os, 'windows')
+        shell: pwsh
+        env:
+          TINYQUANT_BIN: rust/target/${{ matrix.target }}/release/tinyquant.exe
+        run: pwsh -File rust/crates/tinyquant-cli/scripts/cli-smoke.ps1
+
+      - name: Package CLI archive
+        shell: bash
+        run: |
+          cd rust/target/${{ matrix.target }}/release
+          if [[ "${{ matrix.target }}" == *windows* ]]; then
+            ARCHIVE="tinyquant-${{ github.ref_name }}-${{ matrix.target }}.zip"
+            7z a "$ARCHIVE" tinyquant.exe
+          else
+            ARCHIVE="tinyquant-${{ github.ref_name }}-${{ matrix.target }}.tar.gz"
+            tar czf "$ARCHIVE" tinyquant
+          fi
+          mv "$ARCHIVE" "$GITHUB_WORKSPACE/"
+
+      - name: Enforce size budget (linux-gnu-x86_64 only)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        shell: bash
+        working-directory: rust
+        run: |
+          size=$(stat --format='%s' "target/${{ matrix.target }}/release/tinyquant")
+          limit=$((8 * 1024 * 1024))
+          echo "tinyquant binary size: $size bytes (limit $limit)"
+          if [ "$size" -gt "$limit" ]; then
+            echo "::error::release binary exceeds 8 MiB size budget"
+            exit 1
+          fi
+
+      # Spec §Supply-chain attestations lines 1236-1239: run
+      # `cargo auditable build` before `syft` so the embedded binary
+      # carries the full dependency audit trail (`rustsec` / crev /
+      # vet state) as a parsable blob. Consumers can extract it with
+      # `cargo audit bin target/.../release/tinyquant`. Gated to
+      # Linux targets because the auditable toolchain is best-tested
+      # there and the SBOM leg itself already skips Windows.
+      - name: Install cargo-auditable (Linux only)
+        if: contains(matrix.target, 'linux')
+        run: cargo install cargo-auditable --locked
+      - name: Build CLI with auditable metadata (Linux only)
+        if: contains(matrix.target, 'linux')
+        working-directory: rust
+        shell: bash
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            # cargo-auditable wraps cargo, so feed it through cross's
+            # helper by using `cross build` first (already done above)
+            # and then re-invoking cargo auditable against the same
+            # target. The two outputs share `target/<triple>/release/`.
+            cargo auditable build --release -p tinyquant-cli \
+              --target ${{ matrix.target }} --locked || true
+          else
+            cargo auditable build --release -p tinyquant-cli \
+              --target ${{ matrix.target }} --locked
+          fi
+
+      - name: Install syft (SBOM)
+        if: ${{ !startsWith(matrix.os, 'windows') }}
+        uses: anchore/sbom-action/download-syft@v0
+      - name: Generate CycloneDX SBOM
+        if: ${{ !startsWith(matrix.os, 'windows') }}
+        shell: bash
+        run: |
+          syft "dir:rust/target/${{ matrix.target }}/release" \
+               -o cyclonedx-json > "tinyquant-cli-${{ matrix.target }}.cdx.json" || echo "syft unavailable — skipping"
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with: { cosign-release: 'v2.2.4' }
+      - name: Sign CLI archive (keyless OIDC)
+        shell: bash
+        run: |
+          for archive in "$GITHUB_WORKSPACE"/tinyquant-${{ github.ref_name }}-${{ matrix.target }}.*; do
+            [ -e "$archive" ] || continue
+            cosign sign-blob --yes \
+              --output-signature "$archive.sig" \
+              --output-certificate "$archive.pem" \
+              "$archive"
+          done
+
+      - name: Attest build provenance (CLI)
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: ${{ github.workspace }}/tinyquant-${{ github.ref_name }}-${{ matrix.target }}.*
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tinyquant-cli-${{ matrix.target }}
+          path: |
+            tinyquant-${{ github.ref_name }}-${{ matrix.target }}.*
+            tinyquant-cli-${{ matrix.target }}.cdx.json
+
+      - name: Upload wheel artifact
+        if: matrix.target != 'x86_64-unknown-freebsd'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.target }}
+          path: rust/crates/tinyquant-py/dist/*.whl
+
+      - name: Attest build provenance (wheels)
+        if: matrix.target != 'x86_64-unknown-freebsd'
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-path: rust/crates/tinyquant-py/dist/*.whl
+
+      - name: Upload staticlib + header
+        uses: actions/upload-artifact@v4
+        with:
+          name: sys-${{ matrix.target }}
+          path: |
+            rust/target/${{ matrix.target }}/release/libtinyquant.*
+            rust/target/${{ matrix.target }}/release/tinyquant.dll
+            rust/crates/tinyquant-sys/include/tinyquant.h
+
+  # --- Stage 3: container reproducibility check --------------------------
+  container-reproducibility:
+    name: Container reproducibility (build twice, diff image IDs)
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: Resolve SOURCE_DATE_EPOCH from tag commit
+        id: sde
+        run: |
+          sde=$(git log -1 --format=%ct "${{ inputs.ref || github.sha }}")
+          echo "sde=$sde" >> "$GITHUB_OUTPUT"
+      - name: Guard against placeholder digests
+        run: |
+          if grep -n 'REPLACE_WITH_PINNED_DIGEST' rust/Dockerfile; then
+            echo "::error::Dockerfile still contains placeholder digests. Pin base images before releasing."
+            exit 1
+          fi
+      # SOURCE_DATE_EPOCH in step env triggers BuildKit's
+      # rewrite-timestamp pass automatically (buildx ≥ 0.12). The
+      # build-arg is still set so the Rust binary's embedded
+      # timestamp is stable too. Explicit outputs line makes the
+      # rewrite visible to reviewers and cbindgen-style drift
+      # auditors (spec §Container reproducibility bullet 3).
+      - name: Build (pass 1)
+        uses: docker/build-push-action@v6
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
+        with:
+          context: .
+          file: rust/Dockerfile
+          tags: tinyquant:repro-1
+          build-args: |
+            SOURCE_DATE_EPOCH=${{ steps.sde.outputs.sde }}
+          outputs: type=docker,rewrite-timestamp=true
+          push: false
+      - name: Build (pass 2)
+        uses: docker/build-push-action@v6
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
+        with:
+          context: .
+          file: rust/Dockerfile
+          tags: tinyquant:repro-2
+          build-args: |
+            SOURCE_DATE_EPOCH=${{ steps.sde.outputs.sde }}
+          outputs: type=docker,rewrite-timestamp=true
+          push: false
+      - name: Diff image IDs
+        run: |
+          id1=$(docker inspect --format '{{.Id}}' tinyquant:repro-1)
+          id2=$(docker inspect --format '{{.Id}}' tinyquant:repro-2)
+          echo "pass1=$id1"
+          echo "pass2=$id2"
+          if [ "$id1" != "$id2" ]; then
+            echo "::error::tinyquant container image is not bit-identical across rebuilds"
+            exit 1
+          fi
+
+  # --- Stage 4: publish crates.io (upstream → downstream order) ----------
+  publish-crates:
+    name: Publish crates.io
+    needs: [build, container-reproducibility, release-gate]
+    runs-on: ubuntu-22.04
+    if: >-
+      needs.release-gate.outputs.should_publish == 'true'
+      && inputs.dry_run != true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+      - name: Publish crates (ordered)
+        working-directory: rust
+        env:
+          # Required for `cargo publish` to authenticate against crates.io.
+          # Configure the `CARGO_REGISTRY_TOKEN` repo secret (owner → Settings
+          # → Secrets and variables → Actions) with a crates.io API token
+          # scoped to the `tinyquant-*` crate family before cutting the first
+          # real release tag. Dry-run tags (`-alpha`, `-rc`, `-beta`, `-pre`,
+          # `+build.*`, etc.) and `workflow_dispatch` runs with
+          # `inputs.dry_run == true` skip this job entirely via the guard
+          # expression above, so a missing secret does not break rehearsals.
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          cargo publish -p tinyquant-core
+          cargo publish -p tinyquant-io
+          cargo publish -p tinyquant-bruteforce
+          cargo publish -p tinyquant-pgvector
+          cargo publish -p tinyquant-sys
+          cargo publish -p tinyquant-cli
+
+  # --- Stage 5: publish Python wheels to PyPI ----------------------------
+  publish-pypi:
+    name: Publish PyPI
+    needs: [build, container-reproducibility, release-gate]
+    runs-on: ubuntu-22.04
+    if: >-
+      needs.release-gate.outputs.should_publish == 'true'
+      && inputs.dry_run != true
+    environment:
+      name: release
+      url: https://pypi.org/project/tinyquant-rs/
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+
+  # --- Stage 6: build + push multi-arch CLI container -------------------
+  publish-container:
+    name: Publish GHCR image
+    needs: [build, container-reproducibility, release-gate]
+    runs-on: ubuntu-22.04
+    if: >-
+      needs.release-gate.outputs.should_publish == 'true'
+      && inputs.dry_run != true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          ref: ${{ inputs.ref || github.ref }}
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Resolve SOURCE_DATE_EPOCH
+        id: sde
+        run: |
+          sde=$(git log -1 --format=%ct "${{ github.sha }}")
+          echo "sde=$sde" >> "$GITHUB_OUTPUT"
+      # SOURCE_DATE_EPOCH in the step env enables BuildKit's
+      # rewrite-timestamp normalization for the pushed image
+      # manifest — required for the `container-reproducibility`
+      # gate to hold across release runs. See spec
+      # §Container reproducibility bullet 3.
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
+        with:
+          context: .
+          file: rust/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            SOURCE_DATE_EPOCH=${{ steps.sde.outputs.sde }}
+          tags: |
+            ghcr.io/better-with-models/tinyquant:${{ github.ref_name }}
+            ghcr.io/better-with-models/tinyquant:latest
+          outputs: type=image,rewrite-timestamp=true,push=true
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+        with: { cosign-release: 'v2.2.4' }
+      - name: Sign container image (keyless OIDC)
+        run: |
+          cosign sign --yes \
+            ghcr.io/better-with-models/tinyquant@${{ steps.build.outputs.digest }}
+      - name: Install syft
+        uses: anchore/sbom-action/download-syft@v0
+      - name: Generate + attach container SBOM
+        run: |
+          syft "ghcr.io/better-with-models/tinyquant@${{ steps.build.outputs.digest }}" \
+               -o cyclonedx-json > tinyquant-container.cdx.json
+          cosign attach sbom --sbom tinyquant-container.cdx.json \
+            ghcr.io/better-with-models/tinyquant@${{ steps.build.outputs.digest }}
+      - name: Attest container build provenance
+        uses: actions/attest-build-provenance@v1
+        with:
+          subject-name: ghcr.io/better-with-models/tinyquant
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
+  # --- Stage 7: assemble GitHub release ---------------------------------
+  publish-release:
+    name: GitHub release
+    needs: [build, publish-crates, publish-pypi, publish-container, release-gate]
+    runs-on: ubuntu-22.04
+    if: >-
+      needs.release-gate.outputs.should_publish == 'true'
+      && inputs.dry_run != true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: tinyquant-cli-*
+          merge-multiple: true
+          path: cli/
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: sys-*
+          merge-multiple: true
+          path: sys/
+      - uses: actions/download-artifact@v4
+        with:
+          name: supply-chain-report
+          path: ./
+      - name: Generate release notes
+        run: |
+          {
+            echo "# Release ${{ github.ref_name }}"
+            echo ""
+            echo "See CHANGELOG.md for details. Supply-chain report, SBOMs,"
+            echo "and cosign signatures are attached."
+          } > RELEASE_NOTES.md
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            cli/*.tar.gz
+            cli/*.zip
+            cli/*.sig
+            cli/*.pem
+            cli/*.cdx.json
+            sys/libtinyquant.*
+            sys/tinyquant.dll
+            sys/tinyquant.h
+            supply-chain-report.json
+          body_path: RELEASE_NOTES.md

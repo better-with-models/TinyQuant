@@ -1,0 +1,326 @@
+---
+# Phase 25.4 — npm release pipeline for @tinyquant/core.
+#
+# ## Dry-run behavior
+#
+# This workflow is tag-triggered on `v*` and manually triggerable via
+# `workflow_dispatch`. The publish step is guarded by a dedicated
+# `release-gate` job that mirrors the Phase 22.D / 24.3 pattern:
+#
+#   if: needs.release-gate.outputs.should_publish == 'true'
+#       && inputs.dry_run != true
+#
+# The gate's shell step evaluates `github.ref_name` against the POSIX
+# extended regex `^v[0-9]+\.[0-9]+\.[0-9]+$` so that pre-release
+# (`-rc.1`, `-alpha`) and build-metadata (`+build.42`) tags exercise
+# verify-version / build-native / assemble / npm pack without
+# publishing. Any `workflow_dispatch` run sets
+# `should_publish=false` unconditionally so operators can rehearse the
+# pipeline against `main`.
+#
+# The `dry_run` input defaults to `true` so a human-triggered run
+# NEVER publishes by accident. Only a clean release tag such as
+# `v0.1.0` pushed directly AND `inputs.dry_run != true` (i.e. not
+# manually invoked) reaches the `npm publish` step.
+#
+# ## First-publish status
+#
+# This workflow is release-ready but has NOT been invoked against
+# the real npm registry. The `@tinyquant` scope still needs to be
+# registered on npm and the OIDC trusted publisher bound to this
+# repo before the first real `v*` tag is pushed.
+
+name: js-release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Skip the npm publish step (default: true)."
+        type: boolean
+        default: true
+
+permissions:
+  contents: write      # for GitHub Release upload via `gh`
+  id-token: write      # for npm OIDC provenance
+
+concurrency:
+  group: js-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+
+  # -------------------------------------------------------------------
+  # Release gate: decide whether this run is allowed to publish.
+  # Same shape as `rust-release.yml` / `python-fatwheel.yml` — the
+  # tag prefix is the single difference (`v` here, `rust-v` / `py-v`
+  # elsewhere).
+  # -------------------------------------------------------------------
+  release-gate:
+    name: Release gate
+    runs-on: ubuntu-22.04
+    outputs:
+      should_publish: ${{ steps.evaluate.outputs.should_publish }}
+    steps:
+      - id: evaluate
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          # `workflow_dispatch` never publishes — short-circuit.
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          elif [[ "${REF}" == refs/tags/v* ]] \
+               && [[ "${REF_NAME}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "should_publish=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "event=${EVENT_NAME} ref=${REF} ref_name=${REF_NAME} -> should_publish computed"
+
+  # -------------------------------------------------------------------
+  # verify-version: tag semver MUST equal rust/Cargo.toml workspace
+  # version AND javascript/@tinyquant/core/package.json version.
+  #
+  # For workflow_dispatch (no tag), the tag component is skipped and
+  # only the Rust↔npm parity is asserted — the gate job already
+  # blocks publish so a semver mismatch is purely informational on
+  # dispatch.
+  # -------------------------------------------------------------------
+  verify-version:
+    name: Verify version alignment
+    needs: release-gate
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check versions
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          # rust/Cargo.toml uses workspace.package.version. Target the
+          # `[workspace.package]` stanza specifically so we don't
+          # accidentally pick up a path-dep pin further down.
+          RUST_VER=$(awk '
+            /^\[workspace\.package\]/ { in_pkg = 1; next }
+            /^\[/                     { in_pkg = 0 }
+            in_pkg && /^version[[:space:]]*=/ {
+              match($0, /"[^"]+"/);
+              print substr($0, RSTART+1, RLENGTH-2);
+              exit
+            }
+          ' rust/Cargo.toml)
+          NPM_VER=$(node -p "require('./javascript/@tinyquant/core/package.json').version")
+          echo "rust=${RUST_VER} npm=${NPM_VER} event=${EVENT_NAME} ref_name=${REF_NAME}"
+          test -n "${RUST_VER}" || { echo "::error::failed to parse rust version"; exit 1; }
+          test -n "${NPM_VER}"  || { echo "::error::failed to parse npm version"; exit 1; }
+          test "${RUST_VER}" = "${NPM_VER}" || {
+            echo "::error::rust (${RUST_VER}) != npm (${NPM_VER})"
+            exit 1
+          }
+          if [[ "${EVENT_NAME}" == "push" ]] && [[ "${REF_NAME}" == v* ]]; then
+            TAG="${REF_NAME#v}"
+            test "${TAG}" = "${RUST_VER}" || {
+              echo "::error::tag (${TAG}) != rust (${RUST_VER})"
+              exit 1
+            }
+            test "${TAG}" = "${NPM_VER}" || {
+              echo "::error::tag (${TAG}) != npm (${NPM_VER})"
+              exit 1
+            }
+            echo "version alignment ok: tag=${TAG} rust=${RUST_VER} npm=${NPM_VER}"
+          else
+            echo "dispatch/non-tag run: skipping tag comparison (rust↔npm still checked)"
+          fi
+
+  # -------------------------------------------------------------------
+  # build-native: same matrix as js-ci.yml. Produces the 5 per-triple
+  # `.node` artefacts consumed by the publish job.
+  # -------------------------------------------------------------------
+  build-native:
+    name: build .node (${{ matrix.triple }})
+    needs: [release-gate, verify-version]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu }
+          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu }
+          - { triple: x86_64-apple-darwin,        runner: macos-13,         key: darwin-x64 }
+          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64 }
+          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+          targets: ${{ matrix.triple }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+      - name: npm ci
+        working-directory: javascript/@tinyquant/core
+        run: npm ci
+      - name: npm run build
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        env:
+          RUSTFLAGS: "-C strip=symbols"
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.key }}
+          path: javascript/@tinyquant/core/binaries/${{ matrix.key }}.node
+
+  # -------------------------------------------------------------------
+  # publish: assemble tarball from all 5 binaries, run `npm publish
+  # --provenance`, pack a second copy for the GitHub Release, and
+  # upload via the `gh` CLI.
+  #
+  # The `if:` expression MUST stay aligned with `rust-release.yml`
+  # and `python-fatwheel.yml`. The xtask `check-publish-guards`
+  # contract currently only covers those two workflows; if it is
+  # extended to cover `js-release.yml`, this block must match the
+  # contract byte-for-byte.
+  # -------------------------------------------------------------------
+  publish:
+    name: Publish npm + GitHub Release
+    needs: [release-gate, verify-version, build-native]
+    runs-on: ubuntu-22.04
+    if: >-
+      needs.release-gate.outputs.should_publish == 'true'
+      && inputs.dry_run != true
+    environment:
+      name: npm
+      url: https://www.npmjs.com/package/@tinyquant/core
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+          registry-url: "https://registry.npmjs.org"
+      - uses: actions/download-artifact@v4
+        with:
+          path: javascript/@tinyquant/core/binaries
+          pattern: native-*
+          merge-multiple: true
+      - name: npm ci
+        working-directory: javascript/@tinyquant/core
+        run: npm ci
+      - name: npm run build
+        working-directory: javascript/@tinyquant/core
+        run: npm run build
+      - name: Verify 5 binaries present
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          for key in linux-x64-gnu linux-arm64-gnu darwin-x64 darwin-arm64 win32-x64-msvc; do
+            test -f "binaries/${key}.node" || {
+              echo "::error::missing binaries/${key}.node before publish"
+              exit 1
+            }
+          done
+      - name: npm publish with provenance
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          npm publish --provenance --access public
+      - name: npm pack for GitHub Release
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../../../dist-npm
+          npm pack --pack-destination ../../../dist-npm
+      # Use the `gh` CLI rather than `softprops/action-gh-release@v2`
+      # for consistency with 0.1.1's `release.yml` hardening choice
+      # (see CHANGELOG.md 0.1.1 "Upgraded GitHub Actions to Node 24"
+      # entry). `gh release create` fails loudly if the tag already
+      # has a release; `--clobber` on asset upload handles re-runs.
+      # The tag name comes from `github.ref_name` directly; we pass
+      # it via stdin / env to sidestep any shell-injection edge case
+      # that a crafted tag name could exercise.
+      - name: Upload tarball to GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          tarballs=( dist-npm/*.tgz )
+          if [[ ${#tarballs[@]} -eq 0 ]]; then
+            echo "::error::no tarball produced by npm pack"
+            exit 1
+          fi
+          # Create the release if it does not exist; otherwise just
+          # upload the assets. `gh release view` returns non-zero if
+          # the release is missing, so we probe first.
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${tarballs[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${tarballs[@]}" \
+              --title "@tinyquant/core $RELEASE_TAG" \
+              --notes "npm tarball for @tinyquant/core $RELEASE_TAG. See CHANGELOG.md for details."
+          fi
+
+  # -------------------------------------------------------------------
+  # publish-dry-run: on dispatch / pre-release tags this job runs the
+  # full assemble + pack path but stops short of publishing. That
+  # exercise catches broken pack metadata before the first real tag.
+  # -------------------------------------------------------------------
+  publish-dry-run:
+    name: Dry-run (pack + verify)
+    needs: [release-gate, verify-version, build-native]
+    runs-on: ubuntu-22.04
+    if: >-
+      needs.release-gate.outputs.should_publish != 'true'
+      || inputs.dry_run == true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+      - uses: actions/download-artifact@v4
+        with:
+          path: javascript/@tinyquant/core/binaries
+          pattern: native-*
+          merge-multiple: true
+      - name: npm ci
+        working-directory: javascript/@tinyquant/core
+        run: npm ci
+      - name: npm run build
+        working-directory: javascript/@tinyquant/core
+        run: npm run build
+      - name: npm pack (dry-run)
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../../../dist-npm
+          npm pack --pack-destination ../../../dist-npm --dry-run
+          npm pack --pack-destination ../../../dist-npm
+          ls -la ../../../dist-npm/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball-dry-run
+          path: dist-npm/*.tgz

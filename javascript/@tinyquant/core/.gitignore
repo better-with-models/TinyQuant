@@ -1,0 +1,19 @@
+# Node / npm
+node_modules/
+package-lock.json
+
+# tsc build output
+dist/
+dist-tests/
+
+# Stray tsc-in-src artefacts (shouldn't normally happen, but guard
+# against an accidental tsconfig regression writing `.js` next to `.ts`).
+src/*.js
+src/*.js.map
+src/*.d.ts
+src/*.d.ts.map
+
+# napi-rs build output — per-platform `.node` binaries are generated
+# into `binaries/<triple>.node` by `napi build` and packed into the
+# npm tarball at publish time. They are NEVER committed to the repo.
+binaries/

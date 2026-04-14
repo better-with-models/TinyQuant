@@ -76,9 +76,11 @@ jobs:
 
       - name: Check bare suppressions
         run: |
-          # Fail if any # noqa or # type: ignore lacks an explanation
-          ! grep -rn '# noqa$' src/ tests/ || exit 1
-          ! grep -rn '# type: ignore$' src/ tests/ || exit 1
+          # Fail if any # noqa or # type: ignore lacks an explanation.
+          # Phase 23: src/ no longer exists; the pure-Python reference
+          # lives under tests/reference/.
+          ! grep -rn '# noqa$' tests/ || exit 1
+          ! grep -rn '# type: ignore$' tests/ || exit 1
 
   markdown-lint:
     name: Markdown Lint
@@ -115,7 +117,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
 
       - uses: actions/cache@v5
         with:
@@ -146,7 +150,9 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
         run: python -m coverage run --data-file=.coverage.codec.${{ matrix.python-version }} -m pytest tests/codec/ -x --tb=short
       - name: Upload coverage artifact
@@ -177,7 +183,9 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
         run: python -m coverage run --data-file=.coverage.corpus.${{ matrix.python-version }} -m pytest tests/corpus/ -x --tb=short
       - name: Upload coverage artifact
@@ -208,7 +216,9 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
         run: python -m coverage run --data-file=.coverage.backend.${{ matrix.python-version }} -m pytest tests/backend/ tests/test_smoke.py -x --tb=short
       - name: Upload coverage artifact
@@ -239,7 +249,9 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
         run: python -m coverage run --data-file=.coverage.arch.${{ matrix.python-version }} -m pytest tests/architecture/ -x --tb=short
       - name: Upload coverage artifact
@@ -270,7 +282,9 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
         run: python -m coverage run --data-file=.coverage.intloc.${{ matrix.python-version }} -m pytest tests/integration/ --ignore=tests/integration/test_pgvector.py -x --tb=short
       - name: Upload coverage artifact
@@ -317,7 +331,9 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev,pgvector]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.* "psycopg[binary]>=3.1"
       - name: Run tests
         run: python -m coverage run --data-file=.coverage.intpg.${{ matrix.python-version }} -m pytest tests/integration/test_pgvector.py -x --tb=short
       - name: Upload coverage artifact
@@ -348,7 +364,9 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
         run: python -m coverage run --data-file=.coverage.e2e.${{ matrix.python-version }} -m pytest tests/e2e/ -x --tb=short
       - name: Upload coverage artifact
@@ -384,9 +402,9 @@ jobs:
       - name: Generate XML report
         run: python -m coverage xml
       - name: Coverage gate — codec
-        run: python -m coverage report --include="*/tinyquant_cpu/codec/*" --fail-under=94
+        run: python -m coverage report --include="*/tinyquant_py_reference/codec/*" --fail-under=94
       - name: Coverage gate — corpus
-        run: python -m coverage report --include="*/tinyquant_cpu/corpus/*" --fail-under=90
+        run: python -m coverage report --include="*/tinyquant_py_reference/corpus/*" --fail-under=90
       - name: Upload coverage report
         uses: actions/upload-artifact@v5
         with:
@@ -394,32 +412,61 @@ jobs:
           path: coverage.xml
           retention-days: 14
 
-  build-artifact:
-    name: Build Package
-    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+  # Phase 23 dead-wheel guard.
+  # Replaces the former `build-artifact` job: Phase 23 intentionally
+  # produces NO wheel (the pure-Python reference lives under tests/
+  # and is not a shipped artifact). Phase 24 will reintroduce a real
+  # wheel build backed by the Rust core; this guard keeps the leakage
+  # check in place across that transition.
+  build-package-does-not-leak-reference:
+    name: Wheel leakage guard
     needs: [effective-runner, coverage-combine]
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install build tools
-        run: pip install build
+      - name: Install build tooling
+        run: python -m pip install --upgrade build==1.* hatchling
 
-      - name: Build wheel and sdist
-        run: python -m build
+      # Phase 23 contract: no reference-implementation files may be
+      # shipped in any wheel built from this tree. With hatchling's
+      # `packages = []` + `bypass-selection = true`, recent hatchling
+      # versions build an empty metadata-only wheel rather than erroring
+      # out; older versions fail the build entirely. Either behavior is
+      # acceptable under Phase 23 — the hard contract is strictly that
+      # nothing from `tests/reference/` or `tinyquant_py_reference/`
+      # makes it into the archive. This guard is therefore phrased as a
+      # leakage check that is meaningful through Phase 24 (when the
+      # fat wheel legitimately starts carrying Rust-backed code but
+      # still must never ship the pure-Python reference).
+      - name: Build wheel (Phase 23 expects empty-or-failed build)
+        id: build
+        continue-on-error: true
+        run: python -m build --wheel --outdir dist/
 
-      - name: Verify distributions
+      - name: Inspect any wheel that was produced for reference leakage
+        if: steps.build.outcome == 'success'
         run: |
-          pip install twine
-          twine check dist/*
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: dist
-          path: dist/
-          retention-days: 30
+          set -euo pipefail
+          shopt -s nullglob
+          produced=0
+          for whl in dist/*.whl; do
+            produced=1
+            echo "=== Inspecting $whl ==="
+            # `unzip -l` prints the wheel manifest. A leaked reference
+            # would show as `tests/reference/...` or
+            # `tinyquant_py_reference/...` inside the archive.
+            if unzip -l "$whl" | grep -E '(^|/)(tests/reference|tinyquant_py_reference)(/|$)'; then
+              echo "LEAK: wheel $whl contains reference-implementation files."
+              exit 1
+            fi
+          done
+          if [ "$produced" = "0" ]; then
+            echo "No wheel produced — Phase 23 hard-fail contract held."
+          else
+            echo "Wheel produced but contains no reference-implementation files — Phase 23 leakage contract held."
+          fi

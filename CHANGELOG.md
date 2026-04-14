@@ -5,6 +5,107 @@ All notable changes to TinyQuant will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Phase 25.1 scaffolding: `rust/crates/tinyquant-js/` napi-rs crate
+  (exporting only `version()`) and `javascript/@tinyquant/core/` npm
+  package skeleton with the runtime loader and build config. No public
+  value-object surface yet.
+- Phase 25.2 codec parity + round-trip: `CodecConfig`, `Codebook`,
+  `CompressedVector`, `RotationMatrix` exposed via napi-rs with
+  byte-identical `config_hash` against the Python reference, plus
+  `Codec.compress` / `Codec.decompress` covered by a 10,000-vector
+  seeded round-trip test with `MSE < 1e-2`. Parity fixtures generated
+  by `scripts/packaging/generate_js_parity_fixtures.py`.
+- Phase 25.3 corpus + backend + TS types: `Corpus`, `CompressionPolicy`,
+  `VectorEntry`, `BruteForceBackend`, and `SearchResult` exposed as
+  napi-rs classes with camelCase wrappers and hand-written JSDoc.
+  `scripts/build.mjs` orchestrates the full build pipeline
+  (napi → rename → tsc ESM → emit-cjs-types → emit-cjs-bundle);
+  `dist/` ships matching `.js`, `.cjs`, `.d.ts`, `.d.cts`, and source
+  maps for six modules. `TinyQuantError.fromNative` parses the Rust
+  message-prefix class name so structured error handling survives the
+  FFI boundary. 142/142 tests across the parity, round-trip, corpus,
+  backend, types, and CJS-smoke suites.
+- Phase 25.4 npm release chain: `.github/workflows/js-ci.yml` matrix
+  CI (build-native × 5 triples + assemble-tarball + install-test
+  5 runners × 3 runtimes + pnpm smoke + test-source) and
+  `.github/workflows/js-release.yml` tag-triggered publish workflow
+  with `release-gate`, `verify-version` (tag == rust == npm),
+  `--provenance`, `gh` CLI GitHub Release upload, and
+  `dry_run` workflow_dispatch input defaulting `true`. Publishes
+  `@tinyquant/core` once the first `v<semver>` tag is pushed; this
+  branch does not itself invoke the release.
+- Phase 25 implementation notes at
+  `docs/design/rust/phase-25-implementation-notes.md` (AC trace,
+  declared deviations, slice provenance).
+- `javascript/@tinyquant/core/README.md`, `AGENTS.md`, and `CLAUDE.md`
+  filled in with the canonical elevator pitch, install / quickstart /
+  API surface, and agent invariants (binary layout, math delegation,
+  CJS bundle integrity, napi-rs v2 deviation, version lockstep).
+- "Language bindings" table in `.github/README.md` cross-linking
+  Python, Rust, and TypeScript packages with live version badges and
+  lockstep-version guarantee.
+- `markdownlint-obsidian` pre-commit hook (`.pre-commit-config.yaml`)
+  scoped to `docs/**/*.md` except `docs/research/`, gated at
+  `alisonaquinas/markdownlint-obsidian@markdownlint-obsidian-cliv1.0.6`
+- `.github/workflows/docs-lint.yml` CI job running
+  `markdownlint-obsidian-cli` against the docs vault on every push and
+  pull request that touches `docs/` or the lint configuration
+- `.obsidian-linter.jsonc` root config shared by the pre-commit hook and
+  the CI job, excluding `docs/research/`, `docs/.obsidian/`, and
+  `.worktrees/`
+- Module-level `//!` docstrings on the four Rust integration-test files
+  that were missing them (`tinyquant-core/tests/codec_fixture_parity.rs`,
+  `codec_service.rs`, `compressed_vector.rs`, `residual.rs`)
+- Module docstring on `scripts/verify_pre_commit.py`
+- Full-maturity `README.md`, `AGENTS.md`, and `CLAUDE.md` stubs across
+  every code and test subtree so the `/well-documented` audit now maps
+  the actual repository layout rather than reporting empty subtrees
+- Hand-refined `AGENTS.md` for each top-level code subtree (`rust/`,
+  `src/`, `tests/`, `scripts/`) with real responsibilities, layout, and
+  invariants
+- PyO3 wheel + C ABI + CLI surfaces (Phase 22.A–C) under
+  `rust/crates/tinyquant-{py,sys,cli}/`, with maturin abi3-py312
+  packaging, cbindgen-generated `tinyquant.h`, and a `tinyquant`
+  CLI exposing `codec train/compress/decompress`, `corpus
+  ingest/search`, `info`, and `verify`
+- `.github/workflows/rust-release.yml` matrix release workflow plus
+  `rust/Dockerfile` distroless container image and
+  `COMPATIBILITY.md` ledger for cross-package version pairing
+  (Phase 22.D)
+- `tests/reference/tinyquant_py_reference/` cross-implementation
+  parity scaffold (`tests/parity/conftest.py`) with `rs` and `py`
+  fixtures, ready for the Phase 24 fat wheel to plug in
+- `src/tinyquant_cpu/` developer shim plus
+  `scripts/packaging/templates/` and
+  `scripts/packaging/assemble_fat_wheel.py` that fold the five
+  per-arch wheels from Phase 22.A into a single
+  `tinyquant_cpu-0.2.0-py3-none-any.whl` (Phase 24.1–24.2)
+- `.github/workflows/python-fatwheel.yml` dry-run-by-default release
+  workflow with a `release-gate` job and a publish-job byte-identical
+  guard enforced by `cargo xtask check-publish-guards` (Phase 24.3)
+- Phase 24.4 design note at
+  `docs/design/rust/phase-24-implementation-notes.md` recording the
+  parity-audit wiring, AC trace, and 6 declared deviations from
+  `phase-24-python-fat-wheel-official.md`.
+
+### Changed
+
+- Pure-Python implementation demoted to a test-only reference at
+  `tests/reference/tinyquant_py_reference/`. It is no longer shipped
+  on PyPI. The last pure-Python release remains `tinyquant-cpu==0.1.1`.
+  Phase 24 reclaims the `tinyquant-cpu` name with a Rust-backed fat
+  wheel at version `0.2.0`.
+- Root `AGENTS.md` now documents the two markdown-lint surfaces (strict
+  markdownlint for non-`docs/` and `markdownlint-obsidian` for the
+  vault), an explicit docstring requirement per language, and the
+  configuration files that back each check
+- `docs/README.md` now describes the automated Obsidian lint layer next
+  to the existing editorial lint guidance
+
 ## [0.1.1] - 2026-04-09
 
 Documentation and CI maintenance release. No user-facing Python API

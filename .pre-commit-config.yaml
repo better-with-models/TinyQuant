@@ -5,6 +5,14 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+  # Obsidian-Flavored Markdown lint for the docs/ vault (excludes raw sources).
+  - repo: https://github.com/alisonaquinas/markdownlint-obsidian
+    rev: markdownlint-obsidian-cliv1.0.6
+    hooks:
+      - id: markdownlint-obsidian
+        name: markdownlint-obsidian (docs/ Obsidian vault)
+        files: ^docs/.*\.md$
+        exclude: ^docs/research/
   - repo: local
     hooks:
       - id: mypy

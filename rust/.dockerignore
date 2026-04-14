@@ -1,0 +1,46 @@
+# Keep the build context small and deterministic.
+# `rust/Dockerfile` only needs the `rust/` subtree — everything else
+# is noise that slows builds and risks busting the layer cache on
+# unrelated changes.
+
+# Build artefacts
+target/
+**/target/
+**/*.rlib
+**/*.rmeta
+**/*.pdb
+
+# VCS / CI metadata (not used inside the build)
+.git/
+.github/
+.gitattributes
+.gitignore
+.githooks/
+.pre-commit-config.yaml
+
+# Python (reference implementation; not consumed by the Rust CLI image)
+.venv/
+venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+src/
+tests/
+pyproject.toml
+experiments/
+scripts/
+
+# Large / non-deterministic artefacts
+docs/
+*.md
+!rust/README.md
+!rust/crates/tinyquant-cli/README.md
+
+# Rust editor / workspace leftovers
+.idea/
+.vscode/
+
+# Cargo config that might leak registry overrides into the image
+.cargo/config.toml
+.cargo/credentials
+.cargo/credentials.toml

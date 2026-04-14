@@ -9,7 +9,7 @@ tags:
   - fat-wheel
   - packaging
 date-created: 2026-04-13
-status: planned
+status: complete
 category: planning
 ---
 
@@ -128,7 +128,7 @@ total compressed:   ~12 MB   (zip DEFLATE; binaries already stripped)
 ### `METADATA` (dist-info)
 
 ```text
-Metadata-Version: 2.3
+Metadata-Version: 2.4
 Name: tinyquant-cpu
 Version: 0.2.0
 Summary: CPU-only vector quantization codec for embedding storage compression (Rust-backed)
@@ -831,6 +831,46 @@ if __name__ == "__main__":
 
 ## CI workflow — `.github/workflows/python-fatwheel.yml`
 
+> [!note] Phase 24.3 declared deviations
+> The committed workflow at `.github/workflows/python-fatwheel.yml`
+> intentionally departs from the literal YAML below in five places.
+> The committed file is authoritative; this block tracks the
+> rationale.
+>
+> 1. **Added `release-gate` job + `dry_run` workflow_dispatch input.**
+>    Mirrors the Phase 22.D pattern from
+>    [`rust-release.yml`](../../../.github/workflows/rust-release.yml).
+>    The shell regex is `^py-v[0-9]+\.[0-9]+\.[0-9]+$` (only the
+>    prefix differs from `rust-v`); workflow_dispatch always sets
+>    `should_publish=false`. The `dry_run` input defaults to `true`
+>    so manual rehearsals never publish.
+> 2. **`publish.if` guard.** Re-uses the Phase 22.D contract
+>    expression byte-for-byte:
+>    `needs.release-gate.outputs.should_publish == 'true' && inputs.dry_run != true`.
+>    Enforced in CI by `cargo xtask check-publish-guards` against
+>    `rust/xtask/src/cmd/guard_sync_python.rs::CONTRACT`.
+> 3. **`fetch-inputs` dry-run fabrication.** When the upstream
+>    `rust-v<version>` release does not exist (manual dispatch
+>    against `main`), the job fabricates five minimal dummy per-arch
+>    wheels with an inline Python script so downstream jobs still
+>    exercise end-to-end. Tag-push runs continue to use
+>    `gh release download` against the real release.
+> 4. **`SOURCE_DATE_EPOCH` resolution in `assemble`.** Derived from
+>    the tagged commit's committer-timestamp on tag-push runs, fixed
+>    to `1776038400` (2026-04-13T00:00:00Z, matching the assembler's
+>    fixed mtime) on dry-run. Ensures the produced fat wheel is
+>    byte-reproducible across re-runs.
+> 5. **Belt-and-braces dry-run guard on the publish step.** The
+>    `pypa/gh-action-pypi-publish` step carries `if: inputs.dry_run != true`
+>    in addition to the job-level guard so a misconfigured downstream
+>    edit still cannot reach PyPI.
+> 6. **`lint-workflow` job.** Wraps `npx --yes @action-validator/cli`
+>    against this workflow and short-circuits to a no-op if `npx` is
+>    absent (Linux GitHub-hosted runners always ship Node).
+>
+> The skeleton below is preserved as the design intent; for the
+> exact shipped YAML see the workflow file directly.
+
 ```yaml
 name: python-fatwheel
 
@@ -840,6 +880,9 @@ on:
       version:
         description: "Version to assemble (must match tag, e.g. 0.2.0)"
         required: true
+      dry_run:           # Phase 24.3 — defaults to true, blocks publish.
+        type: boolean
+        default: true
   push:
     tags:
       - "py-v*"
@@ -980,10 +1023,17 @@ jobs:
 
   # -------------------------------------------------------------------
   # 4. Publish to PyPI via OIDC (guarded).
+  #
+  # Phase 24.3: the `if:` block is byte-identical to the contract in
+  # `rust/xtask/src/cmd/guard_sync_python.rs` and matches the
+  # four `publish-*` jobs in `rust-release.yml`.
   # -------------------------------------------------------------------
   publish:
-    needs: install-test
+    needs: [install-test, release-gate]
     runs-on: ubuntu-22.04
+    if: >-
+      needs.release-gate.outputs.should_publish == 'true'
+      && inputs.dry_run != true
     environment: pypi
     steps:
       - uses: actions/download-artifact@v4

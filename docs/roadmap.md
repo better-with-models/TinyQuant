@@ -102,6 +102,7 @@ gantt
 | 20 | SIMD Kernels & Dispatch | **planned** | tinyquant-core (codec/kernels), tinyquant-bruteforce | Phase 19 | [[plans/rust/phase-20-simd-kernels\|Plan]] |
 | 21 | Rayon Batch Paths & Benches | **planned** | tinyquant-core, tinyquant-bench | Phase 20 | [[plans/rust/phase-21-rayon-batch-benches\|Plan]] |
 | 22 | Pyo3, C ABI, and Release | **planned** | tinyquant-py, tinyquant-sys | Phase 21 | [[plans/rust/phase-22-pyo3-cabi-release\|Plan]] |
+| 23 | Python Reference Demotion | **complete** | tests/reference/tinyquant_py_reference, tests/parity | Phase 22 | [[plans/rust/phase-23-python-reference-demotion\|Plan]] |
 
 ## Design constraints per phase
 

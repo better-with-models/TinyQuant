@@ -1,16 +1,25 @@
-"""TinyQuant codec: compression and decompression primitives."""
+"""TinyQuant codec: compression and decompression primitives (Rust-backed)."""
 
-from tinyquant_cpu.codec._errors import (
-    CodebookIncompatibleError,
-    ConfigMismatchError,
-    DimensionMismatchError,
-    DuplicateVectorError,
-)
-from tinyquant_cpu.codec.codebook import Codebook
-from tinyquant_cpu.codec.codec import Codec, compress, decompress
-from tinyquant_cpu.codec.codec_config import CodecConfig
-from tinyquant_cpu.codec.compressed_vector import CompressedVector
-from tinyquant_cpu.codec.rotation_matrix import RotationMatrix
+from __future__ import annotations
+
+import sys
+
+# Ensure the extension is loaded before we pull sub-attrs off it.
+import tinyquant_cpu  # noqa: F401  -- triggers `_core` registration.
+
+_core_codec = sys.modules["tinyquant_cpu._core"].codec
+
+CodebookIncompatibleError = _core_codec.CodebookIncompatibleError
+ConfigMismatchError = _core_codec.ConfigMismatchError
+DimensionMismatchError = _core_codec.DimensionMismatchError
+DuplicateVectorError = _core_codec.DuplicateVectorError
+Codebook = _core_codec.Codebook
+Codec = _core_codec.Codec
+CodecConfig = _core_codec.CodecConfig
+CompressedVector = _core_codec.CompressedVector
+RotationMatrix = _core_codec.RotationMatrix
+compress = _core_codec.compress
+decompress = _core_codec.decompress
 
 __all__ = [
     "Codebook",

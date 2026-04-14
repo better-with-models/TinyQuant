@@ -1,6 +1,7 @@
-/// End-to-end byte-parity tests: Rust `Codec` vs Python-generated golden fixtures.
-///
-/// Regenerate fixtures via `cargo xtask fixtures refresh-codec`.
+//! End-to-end byte-parity tests: Rust `Codec` vs Python-generated golden fixtures.
+//!
+//! Regenerate fixtures via `cargo xtask fixtures refresh-codec`.
+
 use std::{fs, path::Path};
 use tinyquant_core::codec::{Codebook, Codec, CodecConfig};
 
