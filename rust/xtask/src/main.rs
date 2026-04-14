@@ -11,7 +11,9 @@
 //! * `bench`    — Benchmark budget commands (see subcommands below)
 //! * `bench-budget` — Phase 22.D alias for `bench --check-against main`
 //! * `check-matrix-sync` — Phase 22.D: diff the CLI smoke matrix in the
-//!   plan doc against `rust-release.yml`
+//!   plan doc against `rust-release.yml`, and assert that all four
+//!   `publish-*` jobs in `rust-release.yml` share a byte-identical
+//!   `if:` guard expression (Phase 22.D code-quality follow-up M3)
 //! * `docs`     — Documentation checks (see subcommands below)
 //! * `help`     — Print usage
 //!
@@ -64,6 +66,7 @@
 
 mod cmd {
     pub mod bench;
+    pub mod guard_sync;
     pub mod matrix_sync;
     pub mod simd;
 }
@@ -107,7 +110,14 @@ fn main() {
         // the release workflow can call a single verb without having to
         // encode the flag incantation in YAML.
         Some("bench-budget") => cmd::bench::run(&["--check-against".to_owned(), "main".to_owned()]),
-        Some("check-matrix-sync") => cmd::matrix_sync::run(),
+        Some("check-matrix-sync") => {
+            // Both checks share a single CLI verb so the release workflow
+            // only needs one step. Run them in sequence — matrix first
+            // (docs ↔ release.yml), publish-guards second — and bail on
+            // the first failure so the cause is obvious in CI logs.
+            cmd::matrix_sync::run();
+            cmd::guard_sync::run();
+        }
         Some("docs") => docs(args.get(2).map(String::as_str)),
         Some("help") | None => print_help(),
         Some(t) => {
@@ -511,7 +521,8 @@ fn print_help() {
     );
     println!("  bench-budget        Alias for `bench --check-against main` (Phase 22.D)");
     println!(
-        "  check-matrix-sync   Diff CLI smoke matrix in plan vs rust-release.yml (Phase 22.D)"
+        "  check-matrix-sync   Diff CLI smoke matrix in plan vs rust-release.yml + assert \
+         publish-* guards byte-identical (Phase 22.D)"
     );
     println!("  docs      Documentation checks (check-ci-parity)");
     println!("  simd      SIMD framework tasks (audit)");
