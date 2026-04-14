@@ -13,18 +13,30 @@
 # a clean release tag such as `rust-v0.1.0` triggers the real publish
 # path.
 #
-# The guard lives verbatim on each of the four `publish-*` jobs below:
+# The evaluation lives in a dedicated `release-gate` job that runs a
+# shell step against `github.ref_name` using a POSIX extended regex
+# (`^rust-v[0-9]+\.[0-9]+\.[0-9]+$`) and exports a boolean
+# `should_publish` output. Each of the four `publish-*` jobs below
+# then depends on `release-gate` via `needs:` and guards itself with
+# the identical single-line expression:
 #
-#   if: startsWith(github.ref, 'refs/tags/rust-v')
-#       && !contains(github.ref_name, '-')
-#       && !contains(github.ref_name, '+')
+#   if: needs.release-gate.outputs.should_publish == 'true'
 #       && inputs.dry_run != true
+#
+# The regex approach replaces an earlier attempt that used
+# `!contains(github.ref_name, '-')` — a defect, because the bare tag
+# name (e.g. `rust-v0.1.0`) already contains `-` in its `rust-v`
+# prefix, so the guard blocked **every** tag unconditionally. GitHub
+# Actions' expression language has no `substring` / `regex-match`
+# primitive, so a shell-evaluated gate job is the clean fix.
 #
 # The four copies must stay byte-identical. There is no YAML anchor
 # (GitHub Actions does not reliably expand anchors across jobs), so
 # `cargo xtask check-matrix-sync` parses this file and asserts that
 # all four `publish-*` guard blocks are character-for-character equal.
-# A drift is a hard CI failure.
+# A drift is a hard CI failure. The gate job is intentionally named
+# `release-gate` (not `publish-gate`) so the `publish-*` prefix parser
+# in the xtask does not fold it into the equality check.
 #
 # A `workflow_dispatch` run additionally honours an explicit
 # `inputs.dry_run` toggle (default: true) so operators can invoke the
@@ -141,6 +153,38 @@ jobs:
           workspaces: rust -> target
       - name: cargo xtask check-matrix-sync
         run: cargo run -p xtask -- check-matrix-sync
+
+  # --- Release gate: decide whether this run is allowed to publish -------
+  #
+  # GitHub Actions' expression language has no regex/substring matcher,
+  # so we evaluate the tag name in shell against a POSIX extended regex
+  # that accepts ONLY a clean semver release tag (no `-pre…`, no
+  # `+build…`). The boolean `should_publish` output is consumed by all
+  # four publish-* jobs via a single uniform guard. The job is named
+  # `release-gate` — NOT `publish-gate` — because `cargo xtask
+  # check-matrix-sync` parses `publish-*` prefixed jobs for guard drift.
+  release-gate:
+    name: Release gate
+    runs-on: ubuntu-22.04
+    outputs:
+      should_publish: ${{ steps.evaluate.outputs.should_publish }}
+    steps:
+      - id: evaluate
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          # Must be a tag ref AND match rust-vMAJOR.MINOR.PATCH exactly —
+          # no pre-release (`-…`), no build metadata (`+…`).
+          if [[ "${REF}" == refs/tags/rust-v* ]] \
+             && [[ "${REF_NAME}" =~ ^rust-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "should_publish=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "ref=${REF} ref_name=${REF_NAME} -> should_publish computed"
 
   # --- Stage 2: cross-build wheels, CLI binaries, and the static lib -----
   build:
@@ -407,12 +451,10 @@ jobs:
   # --- Stage 4: publish crates.io (upstream → downstream order) ----------
   publish-crates:
     name: Publish crates.io
-    needs: [build, container-reproducibility]
+    needs: [build, container-reproducibility, release-gate]
     runs-on: ubuntu-22.04
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
       - uses: actions/checkout@v4
@@ -444,12 +486,10 @@ jobs:
   # --- Stage 5: publish Python wheels to PyPI ----------------------------
   publish-pypi:
     name: Publish PyPI
-    needs: [build, container-reproducibility]
+    needs: [build, container-reproducibility, release-gate]
     runs-on: ubuntu-22.04
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     environment:
       name: release
@@ -467,12 +507,10 @@ jobs:
   # --- Stage 6: build + push multi-arch CLI container -------------------
   publish-container:
     name: Publish GHCR image
-    needs: [build, container-reproducibility]
+    needs: [build, container-reproducibility, release-gate]
     runs-on: ubuntu-22.04
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
       - uses: actions/checkout@v4
@@ -536,12 +574,10 @@ jobs:
   # --- Stage 7: assemble GitHub release ---------------------------------
   publish-release:
     name: GitHub release
-    needs: [build, publish-crates, publish-pypi, publish-container]
+    needs: [build, publish-crates, publish-pypi, publish-container, release-gate]
     runs-on: ubuntu-22.04
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
       - uses: actions/checkout@v4

@@ -244,13 +244,19 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - run: echo ok
+  release-gate:
+    name: Release gate
+    runs-on: ubuntu-22.04
+    outputs:
+      should_publish: ${{ steps.evaluate.outputs.should_publish }}
+    steps:
+      - id: evaluate
+        run: echo should_publish=true
   publish-crates:
     name: Publish crates.io
     runs-on: ubuntu-22.04
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
       - run: echo publish
@@ -258,9 +264,7 @@ jobs:
     name: Publish PyPI
     runs-on: ubuntu-22.04
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
       - run: echo publish
@@ -268,9 +272,7 @@ jobs:
     name: Publish GHCR image
     runs-on: ubuntu-22.04
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
       - run: echo publish
@@ -278,9 +280,7 @@ jobs:
     name: GitHub release
     runs-on: ubuntu-22.04
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
       - run: echo publish
@@ -290,33 +290,26 @@ jobs:
 jobs:
   publish-crates:
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
       - run: echo publish
   publish-pypi:
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
+      needs.release-gate.outputs.should_publish == 'true'
       && !contains(github.ref_name, '-alpha')
-      && !contains(github.ref_name, '-rc')
       && inputs.dry_run != true
     steps:
       - run: echo publish
   publish-container:
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
       - run: echo publish
   publish-release:
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
-      && !contains(github.ref_name, '+')
+      needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
       - run: echo publish
@@ -381,12 +374,12 @@ jobs:
 jobs:
   publish-a:
     if: >-
-      startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-')
+      needs.release-gate.outputs.should_publish == 'true'
+      && inputs.dry_run != true
   publish-b:
     if: >-
-      startsWith(github.ref,   'refs/tags/rust-v')
-      && !contains(github.ref_name,    '-')
+      needs.release-gate.outputs.should_publish   ==    'true'
+      && inputs.dry_run    !=   true
 ";
         let result = check(yaml);
         assert!(result.is_ok(), "cosmetic whitespace should be normalised");
