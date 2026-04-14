@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tinyquant_cpu._types import ConfigHash
+    from tinyquant_py_reference._types import ConfigHash
 
 SUPPORTED_BIT_WIDTHS: frozenset[int] = frozenset({2, 4, 8})
 """Bit widths that TinyQuant supports for scalar quantization."""

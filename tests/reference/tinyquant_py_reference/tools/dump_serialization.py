@@ -2,7 +2,7 @@
 
 Usage (from repo root)::
 
-    python src/tinyquant_cpu/tools/dump_serialization.py
+    python src/tinyquant_py_reference/tools/dump_serialization.py
 
 Or via the generate_rust_fixtures.py dispatcher::
 
@@ -72,7 +72,7 @@ def _config_hash_for(bit_width: int, seed: int, dim: int, residual: bool) -> str
 
 def run_case(case: dict[str, Any], out_dir: Path, repo_root: Path) -> dict[str, Any]:
     """Generate one fixture case directory and return its manifest entry."""
-    from tinyquant_cpu.codec.compressed_vector import CompressedVector
+    from tinyquant_py_reference.codec.compressed_vector import CompressedVector
 
     bit_width: int = case["bit_width"]
     dim: int = case["dim"]

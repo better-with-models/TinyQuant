@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from datetime import datetime
 
-    from tinyquant_cpu.codec.codec_config import CodecConfig
-    from tinyquant_cpu.corpus.compression_policy import CompressionPolicy
+    from tinyquant_py_reference.codec.codec_config import CodecConfig
+    from tinyquant_py_reference.corpus.compression_policy import CompressionPolicy
 
 
 @dataclass(frozen=True)
