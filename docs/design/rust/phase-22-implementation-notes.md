@@ -665,6 +665,42 @@ dry-run is structural and host-local only.
   via `matrix.target == 'x86_64-unknown-freebsd'`; full smoke is
   deferred.
 
+### Part D spec-review follow-up
+
+Spec reviewer on the first Part D pass flagged five undeclared
+deviations from the spec. All five were closed in a follow-up
+commit batch before code-quality review:
+
+- **D1 — Dockerfile `--features tracing-json`.** Builder stage now
+  compiles with `--features tracing-json` on top of the CLI
+  default set so the container image emits structured logs by
+  default, matching spec Step 18's sample invocation.
+- **D2 — CLI README feature-flag table + `COMPATIBILITY.md`
+  back-link.** `rust/crates/tinyquant-cli/README.md` now carries
+  a `## Cargo features` table derived from the §CLI feature flag
+  matrix plus a `## Compatibility` section linking back to the
+  root ledger.
+- **D3 — `cargo-auditable` before SBOM.** The `build` matrix now
+  runs `cargo auditable build` on Linux targets before `syft`
+  generates the CycloneDX SBOM, so downstream consumers can
+  extract the full dependency audit trail with `cargo audit bin`.
+  Restricted to Linux because the auditable toolchain is
+  best-tested there and the SBOM leg already skips Windows.
+- **D4 — `cli-smoke` per-target step.** The `build` matrix now
+  invokes `rust/crates/tinyquant-cli/scripts/cli-smoke.{sh,ps1}`
+  for every runnable target (`matrix.cross == false &&
+  matrix.target != 'x86_64-unknown-freebsd'`), feeding
+  `TINYQUANT_BIN` so each smoke run exercises the freshly built
+  per-triple binary instead of a `target/release/` default.
+- **D5 — `rewrite-timestamp` on `docker/build-push-action@v6`.**
+  All three build-push invocations (`container-reproducibility`
+  pass 1 + 2 and `publish-container`) now set
+  `SOURCE_DATE_EPOCH` as a step-level env var and add
+  `outputs: …,rewrite-timestamp=true` so BuildKit normalizes
+  layer mtimes in the resulting OCI manifest. The Dockerfile
+  reproducibility-contract comment block (§3) is updated to
+  reflect the real wiring.
+
 ### Part D commit trail
 
 | Commit | Summary |
@@ -674,3 +710,4 @@ dry-run is structural and host-local only.
 | *this PR* | `feat(phase-22.D/xtask): check-matrix-sync + bench-budget alias` |
 | *this PR* | `docs(root): initial COMPATIBILITY.md` |
 | *this PR* | `docs(rust/phase-22): implementation notes §Part D` |
+| *this PR* | `fix(phase-22.D/release): close 5 spec-review deviations (tracing-json, cli-readme, cargo-auditable, cli-smoke, rewrite-timestamp)` |

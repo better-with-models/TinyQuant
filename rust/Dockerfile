@@ -22,9 +22,14 @@
 #      honour it so the release binary and OCI layer mtimes are
 #      timestamp-stable.
 #
-#   3. `docker buildx build --timestamp=$SOURCE_DATE_EPOCH` normalizes
-#      layer mtimes in the resulting OCI manifest (handled by the CI
-#      workflow — this Dockerfile carries only the build-time half).
+#   3. OCI manifest timestamp normalization. The `rust-release.yml`
+#      workflow sets `SOURCE_DATE_EPOCH` as a step-level env var on
+#      every `docker/build-push-action@v6` invocation and pairs it
+#      with `outputs: …,rewrite-timestamp=true`. BuildKit then
+#      rewrites layer mtimes in the resulting OCI manifest to the
+#      epoch value. This Dockerfile carries only the build-time half
+#      (the `SOURCE_DATE_EPOCH` build-arg + env); the post-build
+#      rewrite lives in the workflow.
 #
 #   4. Deterministic release profile — `codegen-units = 1`,
 #      `lto = "fat"`, `strip = true`, `debug = false` — is set in
@@ -34,6 +39,13 @@
 # Runtime: non-root via distroless `nonroot` user. Default CMD runs
 # `tinyquant info` so a bare `docker run ghcr.io/...` smoke-tests the
 # binary without requiring subcommand args.
+#
+# Feature set: the builder below compiles with `--features tracing-json`
+# on top of the CLI default feature set (`jemalloc`, `rayon`, `simd`,
+# `mmap`, `progress`). The extra feature flips `tracing-subscriber`
+# into JSON mode so `docker logs ghcr.io/...` emits structured records
+# consumable by `jq` / downstream log pipelines. See
+# docs/plans/rust/phase-22-pyo3-cabi-release.md §CLI feature flag matrix.
 
 # --- Stage 1: builder -------------------------------------------------------
 ARG RUST_BUILDER_DIGEST=sha256:REPLACE_WITH_PINNED_DIGEST_RUST_1_81_BOOKWORM
@@ -54,7 +66,8 @@ WORKDIR /build/rust
 RUN cargo build \
         -p tinyquant-cli \
         --release \
-        --locked
+        --locked \
+        --features tracing-json
 
 # Sanity-check the binary exists at the expected path (fails loudly if
 # cargo is reconfigured to a workspace-scoped target-dir). Also

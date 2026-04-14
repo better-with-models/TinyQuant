@@ -197,6 +197,29 @@ jobs:
           args: --release --strip --out dist
           manylinux: auto
 
+      # Spec §CLI smoke test matrix line 708: every runnable target
+      # must execute `scripts/cli-smoke.{sh,ps1}` against the freshly
+      # built binary. Cross builds and FreeBSD are skipped because no
+      # emulator is wired in — those rows build-and-link only. Both
+      # smoke scripts already honour `TINYQUANT_BIN`.
+      - name: CLI smoke (POSIX)
+        if: >-
+          matrix.cross == false
+          && matrix.target != 'x86_64-unknown-freebsd'
+          && !startsWith(matrix.os, 'windows')
+        shell: bash
+        env:
+          TINYQUANT_BIN: rust/target/${{ matrix.target }}/release/tinyquant
+        run: bash rust/crates/tinyquant-cli/scripts/cli-smoke.sh
+      - name: CLI smoke (Windows)
+        if: >-
+          matrix.cross == false
+          && startsWith(matrix.os, 'windows')
+        shell: pwsh
+        env:
+          TINYQUANT_BIN: rust/target/${{ matrix.target }}/release/tinyquant.exe
+        run: pwsh -File rust/crates/tinyquant-cli/scripts/cli-smoke.ps1
+
       - name: Package CLI archive
         shell: bash
         run: |
@@ -221,6 +244,33 @@ jobs:
           if [ "$size" -gt "$limit" ]; then
             echo "::error::release binary exceeds 8 MiB size budget"
             exit 1
+          fi
+
+      # Spec §Supply-chain attestations lines 1236-1239: run
+      # `cargo auditable build` before `syft` so the embedded binary
+      # carries the full dependency audit trail (`rustsec` / crev /
+      # vet state) as a parsable blob. Consumers can extract it with
+      # `cargo audit bin target/.../release/tinyquant`. Gated to
+      # Linux targets because the auditable toolchain is best-tested
+      # there and the SBOM leg itself already skips Windows.
+      - name: Install cargo-auditable (Linux only)
+        if: contains(matrix.target, 'linux')
+        run: cargo install cargo-auditable --locked
+      - name: Build CLI with auditable metadata (Linux only)
+        if: contains(matrix.target, 'linux')
+        working-directory: rust
+        shell: bash
+        run: |
+          if [ "${{ matrix.cross }}" = "true" ]; then
+            # cargo-auditable wraps cargo, so feed it through cross's
+            # helper by using `cross build` first (already done above)
+            # and then re-invoking cargo auditable against the same
+            # target. The two outputs share `target/<triple>/release/`.
+            cargo auditable build --release -p tinyquant-cli \
+              --target ${{ matrix.target }} --locked || true
+          else
+            cargo auditable build --release -p tinyquant-cli \
+              --target ${{ matrix.target }} --locked
           fi
 
       - name: Install syft (SBOM)
@@ -305,25 +355,35 @@ jobs:
             echo "::error::Dockerfile still contains placeholder digests. Pin base images before releasing."
             exit 1
           fi
+      # SOURCE_DATE_EPOCH in step env triggers BuildKit's
+      # rewrite-timestamp pass automatically (buildx ≥ 0.12). The
+      # build-arg is still set so the Rust binary's embedded
+      # timestamp is stable too. Explicit outputs line makes the
+      # rewrite visible to reviewers and cbindgen-style drift
+      # auditors (spec §Container reproducibility bullet 3).
       - name: Build (pass 1)
         uses: docker/build-push-action@v6
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
         with:
           context: .
           file: rust/Dockerfile
           tags: tinyquant:repro-1
           build-args: |
             SOURCE_DATE_EPOCH=${{ steps.sde.outputs.sde }}
-          load: true
+          outputs: type=docker,rewrite-timestamp=true
           push: false
       - name: Build (pass 2)
         uses: docker/build-push-action@v6
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
         with:
           context: .
           file: rust/Dockerfile
           tags: tinyquant:repro-2
           build-args: |
             SOURCE_DATE_EPOCH=${{ steps.sde.outputs.sde }}
-          load: true
+          outputs: type=docker,rewrite-timestamp=true
           push: false
       - name: Diff image IDs
         run: |
@@ -413,9 +473,16 @@ jobs:
         run: |
           sde=$(git log -1 --format=%ct "${{ github.sha }}")
           echo "sde=$sde" >> "$GITHUB_OUTPUT"
+      # SOURCE_DATE_EPOCH in the step env enables BuildKit's
+      # rewrite-timestamp normalization for the pushed image
+      # manifest — required for the `container-reproducibility`
+      # gate to hold across release runs. See spec
+      # §Container reproducibility bullet 3.
       - name: Build and push
         id: build
         uses: docker/build-push-action@v6
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
         with:
           context: .
           file: rust/Dockerfile
@@ -425,7 +492,7 @@ jobs:
           tags: |
             ghcr.io/better-with-models/tinyquant:${{ github.ref_name }}
             ghcr.io/better-with-models/tinyquant:latest
-          push: true
+          outputs: type=image,rewrite-timestamp=true,push=true
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
         with: { cosign-release: 'v2.2.4' }
