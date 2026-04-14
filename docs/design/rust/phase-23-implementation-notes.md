@@ -97,7 +97,6 @@ scaffold).
 > reference paths in any `.whl`", which is the contract Phase 24
 > inherits unchanged.
 
-This is the only declared deviation from the Phase 23 plan.
 Mechanically: the Step 4 local-verification block in the plan
 (`grep -q 'Unable to determine which files to ship' /tmp/phase23-build.log`)
 does not trigger against a real hatchling invocation on the
@@ -113,6 +112,25 @@ shape; the Phase 23.3 docs sweep
 (`docs/CI-plan/workflow-definition.md` and
 `docs/CD-plan/release-workflow.md`) makes the refinement explicit
 in the wiki.
+
+### 2. AC-5 scaffold exception — `tests/parity/conftest.py`
+
+AC-5 ("zero `tinyquant_cpu` references remain in `tests/`") was
+verified at Phase 23.1 tip. Phase 23.3 re-introduces exactly one
+such reference, copied verbatim from the plan's §Cross-impl parity
+harness, inside `tests/parity/conftest.py`:
+
+```python
+import tinyquant_cpu as rs_pkg  # noqa: PLC0415
+```
+
+In Phase 24+ the name `tinyquant_cpu` refers to the Rust-backed fat
+wheel that reclaims the PyPI slot, not the removed Python tree; the
+import is guarded by a `try`/`except ImportError` that calls
+`pytest.skip` so the pure-Python test run is unaffected until the
+Phase 24 wheel is installed. AC-5's spirit ("no residual imports of
+the old Python package") is preserved; this one string is forward-
+reference scaffolding for the cross-impl parity harness.
 
 ## Part A — Import rewrite and package move (slices 23.1 + 23.2)
 
@@ -348,7 +366,7 @@ Cross-referenced against the plan's §Acceptance criteria #1–10:
 | 2 | `python -m build .` fails with hatchling "no packages" and no `.whl` in `dist/` | `build-package-does-not-leak-reference` | **Refined** — see §Declared deviations. Contract now: no reference paths in any produced wheel |
 | 3 | `pytest tests/ -q` passes 214 tests | Local + CI | Verified (214 passed, 24 deselected) |
 | 4 | `pytest tests/parity/ -v -m parity` runs; self passes, cross-impl skips with expected message | Local (clean venv) + CI | Verified in Phase 23.3 |
-| 5 | `grep -R 'tinyquant_cpu' tests/` returns zero matches | `git grep -l 'tinyquant_cpu' -- 'tests/'` | Verified zero in Phase 23.1 |
+| 5 | `grep -R 'tinyquant_cpu' tests/` returns zero matches | `git grep -l 'tinyquant_cpu' -- 'tests/'` | Verified zero in Phase 23.1; Phase 23.3 re-introduces exactly one guarded occurrence in `tests/parity/conftest.py` — see §Declared deviations (AC-5 scaffold exception) |
 | 6 | `grep -R 'tinyquant_cpu' src/` returns zero (src is gone) | `ls src/` → does not exist | Verified in Phase 23.2 |
 | 7 | `build-package-does-not-leak-reference` green on a clean Phase 23 branch, red on reference leak | CI | Green on `1b93b9d` |
 | 8 | `pytest --cov=tinyquant_py_reference --cov-fail-under=90` passes | CI test chunks | Verified |

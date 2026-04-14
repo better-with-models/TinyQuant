@@ -78,7 +78,7 @@ def _repo_root() -> Path:
 
 def _cmd_hashes(_args: argparse.Namespace) -> int:
     repo_root = _repo_root()
-    sys.path.insert(0, str(repo_root / "src"))
+    sys.path.insert(0, str(repo_root / "tests" / "reference"))
 
     from tinyquant_py_reference.codec.codec_config import CodecConfig  # noqa: PLC0415
 
@@ -119,7 +119,7 @@ def _cmd_list(_args: argparse.Namespace) -> int:
 
 def _cmd_codebook(args: argparse.Namespace) -> int:
     repo_root = _repo_root()
-    sys.path.insert(0, str(repo_root / "src"))
+    sys.path.insert(0, str(repo_root / "tests" / "reference"))
 
     import numpy as np  # noqa: PLC0415
 
@@ -159,7 +159,7 @@ def _cmd_codebook(args: argparse.Namespace) -> int:
 
 def _cmd_quantize(args: argparse.Namespace) -> int:
     repo_root = _repo_root()
-    sys.path.insert(0, str(repo_root / "src"))
+    sys.path.insert(0, str(repo_root / "tests" / "reference"))
 
     import numpy as np  # noqa: PLC0415
 
@@ -256,7 +256,7 @@ def _cmd_codec(args: argparse.Namespace) -> int:
     thresholds (MSE, Pearson ρ) derived from the Python reference codec.
     """
     repo_root = _repo_root()
-    sys.path.insert(0, str(repo_root / "src"))
+    sys.path.insert(0, str(repo_root / "tests" / "reference"))
 
     import json  # noqa: PLC0415
     import numpy as np  # noqa: PLC0415
@@ -355,7 +355,7 @@ def _cmd_codec(args: argparse.Namespace) -> int:
 def _cmd_serialization(_args: argparse.Namespace) -> int:
     """Delegate to the dedicated serialization fixture generator."""
     repo_root = _repo_root()
-    sys.path.insert(0, str(repo_root / "src"))
+    sys.path.insert(0, str(repo_root / "tests" / "reference"))
     from tinyquant_py_reference.tools.dump_serialization import main as _ser_main  # noqa: PLC0415
 
     return int(_ser_main())
