@@ -43,6 +43,7 @@ category: design
 | R19 | `faer` parallel kernels produce cross-platform-nondeterministic output on "Rust-canonical" fixtures | **High** | **High** (breaks bit-exact fixture parity across CI and dev machines) | codec lead |
 | R20 | Design docs in `docs/design/rust/` drift from the actual YAML / Rust source until a later phase trips over the gap | Medium | Medium | docs maintainer |
 | R21 | CI workflows that have never been successfully observed get trusted as healthy, hiding latent failures | Medium | Medium | CI lead |
+| R22 | Calibration thresholds were authored as aspirational plan targets, not measurements — ratios in particular are structurally unreachable until a real residual encoder ships | **High** | **Medium** (gate is regression-canary only until Phase 26) | codec lead |
 
 ## Detailed mitigations
 
@@ -515,6 +516,59 @@ contributing root causes (LFS hydration missing, cross-platform
 `faer` QR divergence at `dim=768`) are tracked under R19 and R20
 above, and the remediation commits are `13e888d` and `40f9b87` on
 the Phase 14 PR.
+
+### R22 — Calibration thresholds authored as aspirational targets
+
+**Problem.** The `Threshold` constants in
+`rust/crates/tinyquant-bench/tests/calibration.rs` (Phase 21) were
+written against a plan-doc target table
+(`docs/plans/rust/phase-21-rayon-batch-benches.md` §Calibration
+thresholds) rather than measurements of the actual codec. On the
+first end-to-end exercise of the `rust-calibration.yml` workflow
+(2026-04-14) all five `pr_speed_*` tests failed with bit-identical
+numbers on Windows-MSVC and Linux-glibc. The failures split into
+two structurally different gaps:
+
+- **Gap A** — residual-on compression ratios land at `4 / (bw/8 +
+  2)` (1.33-1.78×) because the codec currently ships raw `f16`
+  residuals. The plan-doc targets (4/7/14×) require a residual
+  encoder that exists in neither the Rust codec nor the Python
+  reference oracle.
+- **Gap B** — residual-off Pearson ρ at `bw=2` lands at 0.51 and
+  `bw=4` at 0.957 on the `openai_1k_d768` fixture. The Python
+  reference produces ρ within 0.022 of those numbers, so Gap B is
+  an inherent scalar-quantizer ceiling for the given fixture
+  distribution, not a Rust regression.
+
+**Mitigation (interim, 2026-04-14).**
+
+1. **Honest thresholds landed** on
+   `calibration-fix/honest-thresholds`: rho/recall floored to
+   measured values minus a small margin; residual-on ratio floors
+   set to 1.50-1.70 (with `TODO(phase-26)` comments to raise them
+   once a real residual encoder ships); residual-off ratios kept
+   at measured `(bw=4 → 7.5, bw=2 → 15.0)` so a structural
+   regression still fails the gate.
+2. **Plan doc (`phase-21-rayon-batch-benches.md` §Calibration
+   thresholds)** updated to match the honest table.
+3. **Investigation record.** Full measurement table, hypothesis
+   posteriors, and Python-reference cross-check recorded in
+   `docs/plans/rust/calibration-threshold-investigation.md` §7
+   and §12.
+
+**Exit (Phase 26).** The correct long-term fix is a residual
+compression step (scalar-quantized residual + per-vector scale, or
+entropy-coded residual). Once that lands, residual-on ratio floors
+raise back toward 4/7/14× and residual-on ρ promotes from `≥0.99`
+to `=1.000`. Tracked in investigation plan §5 B2.
+
+**Concrete incident.** Discovered 2026-04-14 during first dispatch
+of the `rust-calibration.yml` workflow after `c8482fc` on
+`phase-21-rayon-batch`. The workflow had never successfully run
+before (R21 class of problem; the calibration gates used to be a
+matrix job inside `rust-ci.yml` that was gated behind on-demand
+triggers and also never ran). Remediation branch:
+`calibration-fix/honest-thresholds`.
 
 ## Open questions tracked elsewhere
 
