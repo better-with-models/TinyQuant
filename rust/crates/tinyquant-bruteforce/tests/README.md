@@ -7,7 +7,7 @@ API without access to internal modules.
 ## What lives here
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `backend.rs` | Full-cycle integration tests: ingest, search, edge cases |
 | `smoke.rs` | Minimal sanity check that the crate links and returns a result |
 

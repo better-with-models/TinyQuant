@@ -5,7 +5,7 @@ The Level-1 binary wire format for individual `CompressedVector` records. The fo
 ## What lives here
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `header.rs` | 70-byte header encode/decode; defines `FORMAT_VERSION = 0x01` and `HEADER_SIZE = 70` |
 | `pack.rs` | `pack_indices`: LSB-first bit-packing for bit-widths 2, 4, 8 |
 | `unpack.rs` | `unpack_indices`: inverse of `pack_indices` |

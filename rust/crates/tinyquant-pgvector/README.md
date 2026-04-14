@@ -9,7 +9,7 @@ do not need it.
 ## What lives here
 
 | Path | Role |
-|---|---|
+| --- | --- |
 | `src/lib.rs` | Crate root; re-exports `PgvectorAdapter`, `BackendError`, and core traits |
 | `src/adapter.rs` | `PgvectorAdapter` struct and `SearchBackend` impl |
 | `src/errors.rs` | `BackendError` enum for this crate |

@@ -5,7 +5,7 @@ The Level-2 TQCV corpus file container. A TQCV file begins with a fixed 24-byte 
 ## What lives here
 
 | File | Public items |
-|---|---|
+| --- | --- |
 | `header.rs` | `CorpusFileHeader`, encode/decode, `FIXED_HEADER_SIZE = 24`, magic constants |
 | `metadata.rs` | `MetadataBlob<'a>` — opaque borrowed metadata bytes |
 | `reader.rs` | `CodecFileReader<R: Read + Seek>` — streaming reader |

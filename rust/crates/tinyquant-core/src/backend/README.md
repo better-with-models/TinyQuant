@@ -5,7 +5,7 @@ The `backend` module defines the uniform search-backend protocol: the `SearchBac
 ## What lives here
 
 | File | Public items |
-|---|---|
+| --- | --- |
 | `protocol.rs` | `SearchBackend` trait, `SearchResult` |
 | `mod.rs` | Re-exports `protocol::{SearchBackend, SearchResult}` |
 

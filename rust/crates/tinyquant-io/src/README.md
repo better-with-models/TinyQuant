@@ -5,7 +5,7 @@ The full source tree for `tinyquant-io`. The crate root (`lib.rs`) declares five
 ## What lives here
 
 | File/dir | Compiled when | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `lib.rs` | always | Crate root, top-level re-exports |
 | `errors.rs` | always | `IoError` enum |
 | `compressed_vector/` | always | Level-1 wire format encode/decode |

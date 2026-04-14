@@ -5,7 +5,7 @@ The `corpus` module is the aggregate root for named vector collections. It owns 
 ## What lives here
 
 | File | Public items |
-|---|---|
+| --- | --- |
 | `aggregate.rs` | `Corpus`, `BatchReport` |
 | `compression_policy.rs` | `CompressionPolicy`, `StorageTag` |
 | `entry_meta_value.rs` | `EntryMetaValue` |

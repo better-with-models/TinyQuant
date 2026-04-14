@@ -9,7 +9,7 @@ alongside the real codec implementation.
 ## What lives here
 
 | Path | Role |
-|---|---|
+| --- | --- |
 | `src/` | Library crate root (`lib.rs`) and `calibration/` sub-module |
 | `benches/` | Criterion entry points: `batch_parallel.rs`, `simd_kernels.rs`, `smoke.rs` |
 | `tests/` | Quality-gate integration tests: `calibration.rs`, `smoke.rs` |

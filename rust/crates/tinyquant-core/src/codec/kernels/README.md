@@ -5,7 +5,7 @@ Architecture-specific kernel implementations for quantize, dequantize, cosine di
 ## What lives here
 
 | File | Compiled when | Role |
-|---|---|---|
+| --- | --- | --- |
 | `scalar.rs` | always | Canonical reference implementation |
 | `portable.rs` | `feature = "simd"` | `core::simd` fallback; currently delegates to scalar |
 | `avx2.rs` | `feature = "simd"` + `target_arch = "x86_64"` | AVX2 fast path |

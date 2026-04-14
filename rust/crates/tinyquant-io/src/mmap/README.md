@@ -5,7 +5,7 @@ Memory-mapped Level-2 TQCV corpus file reader, compiled only when `feature = "mm
 ## What lives here
 
 | File | Public items |
-|---|---|
+| --- | --- |
 | `corpus_file.rs` | `CorpusFileReader`, `CorpusFileIter` |
 | `mod.rs` | Feature-gated re-exports of the above |
 

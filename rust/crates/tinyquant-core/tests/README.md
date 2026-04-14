@@ -5,7 +5,7 @@ Integration tests for `tinyquant-core`. Each `.rs` file at this level is a stand
 ## What lives here
 
 | File | What it covers |
-|---|---|
+| --- | --- |
 | `smoke.rs` | Basic round-trip sanity |
 | `codebook.rs` | `Codebook` construction and centroid lookup |
 | `codec_config.rs` | `CodecConfig` validation and hash stability |

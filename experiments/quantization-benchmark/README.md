@@ -9,7 +9,7 @@ and TinyQuant at 8-bit, 4-bit, and 2-bit with and without FP16 residuals.
 ## What lives here
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `run_benchmark.py` | Main benchmark driver; imports `tinyquant_cpu.codec` and writes JSON results |
 | `generate_embeddings.py` | Generates synthetic embedding fixtures into `data/` |
 | `generate_plots.py` | Reads JSON results and writes charts into `results/` |

@@ -5,7 +5,7 @@ This directory contains all ten library and binary crates in the TinyQuant Rust 
 ## What lives here
 
 | Crate | Purpose |
-|---|---|
+| --- | --- |
 | `tinyquant-core` | Core codec types: `CodecConfig`, `Codebook`, `RotationMatrix`, `CompressedVector`, `Corpus`, and the backend trait. |
 | `tinyquant-io` | Serialization and file I/O for codec and corpus artefacts (TQCV format, codebook binary). |
 | `tinyquant-bruteforce` | `BruteForceBackend` — exhaustive nearest-neighbour search over a `Corpus`. |

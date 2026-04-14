@@ -7,7 +7,7 @@ codec are implemented.
 ## What lives here
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `lib.rs` | Crate root; will contain `libfuzzer-sys` fuzz target functions |
 
 ## How this area fits the system

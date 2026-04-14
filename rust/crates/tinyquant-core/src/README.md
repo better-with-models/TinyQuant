@@ -5,7 +5,7 @@ This directory contains the full source tree for `tinyquant-core`. The crate roo
 ## What lives here
 
 | File/dir | Purpose |
-|---|---|
+| --- | --- |
 | `lib.rs` | Crate root; `#![no_std]`, deny lints, module declarations |
 | `types.rs` | Primitive type aliases: `VectorId`, `ConfigHash`, `CorpusId`, `Vector`, `VectorSlice` |
 | `errors.rs` | `CodecError`, `CorpusError`, `BackendError` — all `Clone + PartialEq` |

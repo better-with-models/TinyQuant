@@ -5,7 +5,7 @@ The `codec` module is the compression pipeline: deterministic `CodecConfig`, can
 ## What lives here
 
 | File | Public items |
-|---|---|
+| --- | --- |
 | `codec_config.rs` | `CodecConfig`, `SUPPORTED_BIT_WIDTHS` |
 | `rotation_matrix.rs` | `RotationMatrix` |
 | `rotation_cache.rs` | `RotationCache`, `DEFAULT_CAPACITY` |

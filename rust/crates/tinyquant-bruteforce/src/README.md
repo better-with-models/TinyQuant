@@ -7,7 +7,7 @@ from `lib.rs`.
 ## What lives here
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `lib.rs` | Crate root; re-exports public surface and declares modules |
 | `backend.rs` | `BruteForceBackend` struct and `SearchBackend` impl |
 | `errors.rs` | `BackendError` enum |

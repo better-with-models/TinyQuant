@@ -7,7 +7,7 @@ acceptable recall and correlation values.
 ## What lives here
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `calibration.rs` | Asserts neighbor-recall and Pearson ρ exceed defined thresholds |
 | `smoke.rs` | Confirms the test harness links and the calibration helpers are reachable |
 

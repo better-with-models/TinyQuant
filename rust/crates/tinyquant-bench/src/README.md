@@ -7,7 +7,7 @@ quality-gate suite.
 ## What lives here
 
 | Path | Role |
-|---|---|
+| --- | --- |
 | `lib.rs` | Crate root; declares `pub mod calibration` |
 | `calibration/mod.rs` | Module entry; re-exports calibration helpers |
 | `calibration/neighbor_recall.rs` | Top-k neighbor recall metric |

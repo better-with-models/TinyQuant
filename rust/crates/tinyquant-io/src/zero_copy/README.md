@@ -5,7 +5,7 @@ Zero-copy views into Level-1 serialized `CompressedVector` data. `CompressedVect
 ## What lives here
 
 | File | Public items |
-|---|---|
+| --- | --- |
 | `view.rs` | `CompressedVectorView<'a>` — zero-copy parse; `unpack_into` materializes indices |
 | `cursor.rs` | `SliceCursor<'a>` — streaming iterator over a byte slice of packed Level-1 records |
 | `mod.rs` | Re-exports `CompressedVectorView`; `cursor` is crate-internal |

@@ -7,7 +7,7 @@ separate Criterion benchmark binary declared in `Cargo.toml`. Run with
 ## What lives here
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `batch_parallel.rs` | Throughput benchmarks for batched and Rayon-parallel search |
 | `simd_kernels.rs` | Micro-benchmarks for individual SIMD cosine-similarity kernels |
 | `smoke.rs` | Minimal benchmark confirming the harness compiles and runs |

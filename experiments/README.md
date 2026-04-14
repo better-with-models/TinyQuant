@@ -8,7 +8,7 @@ have no impact on the Rust build and are not imported by any crate.
 ## What lives here
 
 | Path | Role |
-|---|---|
+| --- | --- |
 | `quantization-benchmark/` | Python benchmark suite comparing TinyQuant codecs against FP32/FP16/uint8/PQ baselines |
 
 ## How this area fits the system

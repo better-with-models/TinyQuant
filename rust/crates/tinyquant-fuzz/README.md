@@ -8,7 +8,7 @@ normal `cargo test` / `cargo build` pipeline for the rest of the workspace.
 ## What lives here
 
 | Path | Role |
-|---|---|
+| --- | --- |
 | `src/lib.rs` | Crate root; fuzz target implementations added here as serialization surfaces land |
 | `tests/smoke.rs` | Smoke test confirming the crate compiles and links cleanly |
 

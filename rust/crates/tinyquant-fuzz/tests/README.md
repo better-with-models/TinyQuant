@@ -7,7 +7,7 @@ that the fuzz crate compiles correctly in the standard workspace build.
 ## What lives here
 
 | File | Role |
-|---|---|
+| --- | --- |
 | `smoke.rs` | Confirms the `tinyquant-fuzz` crate links and builds without error |
 
 ## How this area fits the system
