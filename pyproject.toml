@@ -84,22 +84,47 @@ ignore_missing_imports = true
 module = "matplotlib.*"
 ignore_missing_imports = true
 
+# Explicitly tell hatchling there are no package sources.
+# Without this, hatchling tries to auto-detect a package under src/
+# and fails the build entirely — which is actually the desired
+# failure mode for Phase 23, because nothing should be built from
+# this tree until Phase 24 introduces the Rust backend.
+[tool.hatch.build.targets.wheel]
+packages = []
+bypass-selection = true
+
+# Keep sdists buildable for local archival, but exclude the reference.
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "tests/reference/",
+    "tests/parity/",
+    "rust/",
+    "experiments/",
+    "scripts/",
+    "docs/",
+]
+
 [tool.coverage.run]
-source = ["tinyquant_cpu"]
+parallel = true
+source = ["tinyquant_py_reference"]
 omit = [
-    "src/tinyquant_cpu/tools/*",
+    "tests/reference/tinyquant_py_reference/tools/*",
 ]
 
 [tool.coverage.paths]
 source = [
-    "src/tinyquant_cpu",
-    "*/src/tinyquant_cpu",
-    "*/site-packages/tinyquant_cpu",
+    "tests/reference/tinyquant_py_reference",
+    "*/tests/reference/tinyquant_py_reference",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# pythonpath is how pytest adds tests/reference to sys.path at
+# collection time. --import-mode=importlib is preserved so that
+# tests/parity and tests/reference do not share a module cache.
+pythonpath = ["tests/reference"]
 addopts = "--import-mode=importlib -x --tb=short"
 markers = [
     "pgvector: requires PostgreSQL with pgvector (PGVECTOR_TEST_DSN)",
+    "parity: cross-implementation parity between Python reference and Rust",
 ]
