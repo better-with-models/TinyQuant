@@ -54,6 +54,7 @@ use clap::{CommandFactory, Parser, Subcommand, ValueEnum};
 
 mod commands;
 mod io;
+mod progress;
 
 /// Global allocator — jemalloc on non-MSVC hosts when the `jemalloc`
 /// feature is enabled. This is a no-op on Windows / MSVC because
@@ -127,6 +128,15 @@ pub struct Cli {
     /// `warn,tinyquant_io=trace`.
     #[arg(long, global = true, env = "TINYQUANT_LOG", default_value = "info")]
     pub log: String,
+
+    /// Suppress `indicatif` progress bars on batch subcommands.
+    ///
+    /// Bars are also suppressed automatically when `TERM=dumb` is set
+    /// or when the `progress` Cargo feature is off. `NO_COLOR=1`
+    /// disables bar colorization but does not hide the bars outright
+    /// (per `indicatif`'s own contract).
+    #[arg(long = "no-progress", global = true)]
+    pub no_progress: bool,
 
     /// Emit shell completions to stdout and exit.
     #[arg(long = "generate-completion", value_enum, value_name = "SHELL")]
@@ -416,7 +426,8 @@ fn real_main(cli: Cli) -> ExitCode {
         return ExitCode::from(2);
     };
 
-    match dispatch(command) {
+    let no_progress = cli.no_progress;
+    match dispatch(command, no_progress) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => report(err),
     }
@@ -424,11 +435,11 @@ fn real_main(cli: Cli) -> ExitCode {
 
 /// Top-level dispatch. Each arm is a thin wrapper over the
 /// corresponding `commands::*::run` entry point.
-fn dispatch(command: Command) -> anyhow::Result<()> {
+fn dispatch(command: Command, no_progress: bool) -> anyhow::Result<()> {
     match command {
         Command::Info => commands::info::run(),
-        Command::Codec { action } => commands::codec::dispatch(action),
-        Command::Corpus { action } => commands::corpus::dispatch(action),
+        Command::Codec { action } => commands::codec::dispatch(action, no_progress),
+        Command::Corpus { action } => commands::corpus::dispatch(action, no_progress),
         Command::Verify { path } => commands::verify::run(&path),
     }
 }

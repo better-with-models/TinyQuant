@@ -24,6 +24,7 @@ use tracing::info;
 use crate::commands::codebook_io::{read_codebook, read_config_json};
 use crate::commands::CliErrorKind;
 use crate::io::write_matrix;
+use crate::progress;
 use crate::VectorFormat;
 
 /// Arguments for `codec decompress`.
@@ -42,6 +43,9 @@ pub struct Args {
     pub threads: usize,
     /// Output matrix format.
     pub format: VectorFormat,
+    /// Suppress `indicatif` progress bar (propagated from the global
+    /// `--no-progress` flag).
+    pub no_progress: bool,
 }
 
 /// Run `tinyquant codec decompress`.
@@ -87,6 +91,14 @@ pub fn run(args: Args) -> Result<()> {
     let codec = Codec::new();
     let mut out: Vec<f32> = vec![0.0; vector_count * dim];
     info!(vector_count, dim, "decompressing corpus");
+    // §Step 14: determinate bar across the streaming decompress.
+    // `vector_count` is known up-front from the corpus header, so a
+    // real bar (not a spinner) is appropriate here.
+    let bar = progress::bar(
+        u64::try_from(vector_count).unwrap_or(u64::MAX),
+        "decompressing",
+        args.no_progress,
+    );
     for i in 0..vector_count {
         let cv = reader
             .next_vector()
@@ -104,7 +116,9 @@ pub fn run(args: Args) -> Result<()> {
             .decompress_into(&cv, &config, &codebook, slice)
             .map_err(|e| anyhow!("{e}"))
             .map_err(|e| e.context(CliErrorKind::Other))?;
+        bar.inc(1);
     }
+    bar.finish();
 
     write_matrix(&args.output, args.format, vector_count, dim, &out)?;
     info!(path = %args.output.display(), "wrote decompressed matrix");

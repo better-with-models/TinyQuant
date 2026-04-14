@@ -21,6 +21,7 @@ use tracing::info;
 use crate::commands::codebook_io::{read_codebook, read_config_json};
 use crate::commands::CliErrorKind;
 use crate::io::read_matrix;
+use crate::progress;
 use crate::VectorFormat;
 
 /// Arguments for `codec compress`.
@@ -42,6 +43,9 @@ pub struct Args {
     pub threads: usize,
     /// Input matrix format.
     pub format: VectorFormat,
+    /// Suppress `indicatif` progress bar (propagated from the global
+    /// `--no-progress` flag).
+    pub no_progress: bool,
 }
 
 /// Run `tinyquant codec compress`.
@@ -93,6 +97,20 @@ pub fn run(args: Args) -> Result<()> {
         .build()
         .context("building rayon thread pool")
         .map_err(|e| e.context(CliErrorKind::Other))?;
+
+    // §Step 14: progress bar on long-running batches. The bar length
+    // is the row count (one tick per per-row compression); tied to
+    // the rayon chunk count is the chunk boundary only, which would
+    // flash the user far too briefly. The driver ticks through the
+    // globally-published handle in `crate::progress`; see that
+    // module's docstring for why we go through a static.
+    let compress_bar = progress::bar(
+        u64::try_from(rows).unwrap_or(u64::MAX),
+        "compressing",
+        args.no_progress,
+    );
+    progress::set_active_compress_bar(Some(&compress_bar));
+
     let compressed = pool
         .install(|| {
             codec.compress_batch_with(
@@ -104,8 +122,10 @@ pub fn run(args: Args) -> Result<()> {
                 Parallelism::Custom(rayon_driver),
             )
         })
-        .map_err(|e| anyhow!("{e}"))
-        .map_err(|e| e.context(CliErrorKind::Other))?;
+        .map_err(|e| anyhow!("{e}"));
+    progress::clear_active_compress_bar();
+    compress_bar.finish();
+    let compressed = compressed.map_err(|e| e.context(CliErrorKind::Other))?;
 
     let mut writer = CodecFileWriter::create(
         &args.output,
@@ -118,12 +138,21 @@ pub fn run(args: Args) -> Result<()> {
     .map_err(|e| anyhow!("{e}"))
     .map_err(|e| e.context(CliErrorKind::Io))?;
 
+    // §Step 14: second bar for the serial writer path. Writer ticks
+    // are coarse (one per record), so this is the right granularity.
+    let write_bar = progress::bar(
+        u64::try_from(compressed.len()).unwrap_or(u64::MAX),
+        "writing",
+        args.no_progress,
+    );
     for cv in &compressed {
         writer
             .append(cv)
             .map_err(|e| anyhow!("{e}"))
             .map_err(|e| e.context(CliErrorKind::Io))?;
+        write_bar.inc(1);
     }
+    write_bar.finish();
     writer
         .finalize()
         .map_err(|e| anyhow!("{e}"))
@@ -150,7 +179,15 @@ fn validate_threads(threads: usize) -> Result<()> {
 /// per-row worker callback. `rayon::scope` ensures every callback
 /// has completed before returning, matching the determinism contract
 /// documented in `tinyquant-core::codec::batch`.
+///
+/// After each row is compressed the driver ticks the active
+/// `indicatif` progress bar installed by [`crate::progress`]. When no
+/// bar is active (or the `progress` feature is off), the tick is a
+/// cheap lock-free check of a `OnceLock`.
 fn rayon_driver(count: usize, body: &(dyn Fn(usize) + Sync + Send)) {
     use rayon::prelude::*;
-    (0..count).into_par_iter().for_each(body);
+    (0..count).into_par_iter().for_each(|i| {
+        body(i);
+        crate::progress::tick_active_compress_bar();
+    });
 }

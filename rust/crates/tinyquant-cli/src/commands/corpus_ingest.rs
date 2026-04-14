@@ -42,6 +42,9 @@ pub struct Args {
     pub threads: usize,
     /// Input matrix format.
     pub format: VectorFormat,
+    /// Suppress `indicatif` progress bar (propagated from the global
+    /// `--no-progress` flag).
+    pub no_progress: bool,
 }
 
 /// Run `tinyquant corpus ingest`.
@@ -70,6 +73,7 @@ pub fn run(args: Args) -> Result<()> {
                 output: args.corpus_path,
                 threads: args.threads,
                 format: args.format,
+                no_progress: args.no_progress,
             })
         }
         IngestPolicy::Passthrough | IngestPolicy::Fp16 => Err(anyhow!(

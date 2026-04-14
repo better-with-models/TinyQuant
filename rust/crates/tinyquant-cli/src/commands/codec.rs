@@ -15,7 +15,7 @@ use super::{codec_compress, codec_decompress, codec_train};
 /// # Errors
 ///
 /// Propagates errors from the underlying `run` function.
-pub fn dispatch(cmd: CodecCmd) -> Result<()> {
+pub fn dispatch(cmd: CodecCmd, no_progress: bool) -> Result<()> {
     match cmd {
         CodecCmd::Train {
             input,
@@ -56,6 +56,7 @@ pub fn dispatch(cmd: CodecCmd) -> Result<()> {
             output,
             threads,
             format,
+            no_progress,
         }),
         CodecCmd::Decompress {
             input,
@@ -71,6 +72,7 @@ pub fn dispatch(cmd: CodecCmd) -> Result<()> {
             output,
             threads,
             format,
+            no_progress,
         }),
     }
 }

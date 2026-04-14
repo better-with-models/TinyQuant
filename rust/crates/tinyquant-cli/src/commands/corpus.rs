@@ -11,7 +11,7 @@ use super::{codec_decompress, corpus_ingest, corpus_search};
 /// # Errors
 ///
 /// Propagates errors from the underlying `run` function.
-pub fn dispatch(cmd: CorpusCmd) -> Result<()> {
+pub fn dispatch(cmd: CorpusCmd, no_progress: bool) -> Result<()> {
     match cmd {
         CorpusCmd::Ingest {
             input,
@@ -33,6 +33,7 @@ pub fn dispatch(cmd: CorpusCmd) -> Result<()> {
             policy,
             threads,
             format,
+            no_progress,
         }),
         CorpusCmd::Decompress {
             corpus_path,
@@ -55,6 +56,7 @@ pub fn dispatch(cmd: CorpusCmd) -> Result<()> {
                 output,
                 threads: 1,
                 format,
+                no_progress,
             };
             codec_decompress::run(args)
         }
@@ -72,6 +74,7 @@ pub fn dispatch(cmd: CorpusCmd) -> Result<()> {
             config_json,
             top_k,
             format,
+            no_progress,
         }),
     }
 }

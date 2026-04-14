@@ -27,6 +27,7 @@ use tracing::info;
 use crate::commands::codebook_io::{read_codebook, read_config_json};
 use crate::commands::CliErrorKind;
 use crate::io::read_vector;
+use crate::progress;
 use crate::SearchOutputFormat;
 
 /// Arguments for `corpus search`.
@@ -44,6 +45,9 @@ pub struct Args {
     pub top_k: usize,
     /// Output format for results.
     pub format: SearchOutputFormat,
+    /// Suppress `indicatif` progress bar (propagated from the global
+    /// `--no-progress` flag).
+    pub no_progress: bool,
 }
 
 /// Run `tinyquant corpus search`.
@@ -91,6 +95,12 @@ pub fn run(args: Args) -> Result<()> {
     let mut backend = BruteForceBackend::new();
     let mut batch: Vec<(VectorId, Vec<f32>)> = Vec::new();
     let mut idx: u64 = 0;
+    // §Step 14: corpus search streams the whole corpus through
+    // decompress before querying. For big corpora this is the
+    // long-running leg, so we show a determinate bar keyed off the
+    // header-declared vector count.
+    let total_records = reader.header().vector_count;
+    let bar = progress::bar(total_records, "loading corpus", args.no_progress);
     while let Some(cv) = reader
         .next_vector()
         .map_err(|e| anyhow!("{e}"))
@@ -103,7 +113,9 @@ pub fn run(args: Args) -> Result<()> {
             .map_err(|e| e.context(CliErrorKind::Other))?;
         batch.push((VectorId::from(idx.to_string()), vec_out));
         idx = idx.saturating_add(1);
+        bar.inc(1);
     }
+    bar.finish();
     backend
         .ingest(&batch)
         .map_err(|e| anyhow!("{e}"))
