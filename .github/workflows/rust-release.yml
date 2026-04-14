@@ -3,20 +3,28 @@
 #
 # ## Dry-run behavior
 #
-# This workflow is tag-triggered on `rust-v*.*.*`. Tags that carry an
-# `-alpha` or `-rc` suffix (e.g. `rust-v0.1.0-alpha.1`,
-# `rust-v0.2.0-rc.2`) exercise the **build + smoke + attestation**
-# stages but skip every **publish** stage. That lets operators
-# rehearse the pipeline end-to-end without touching crates.io, PyPI,
-# GHCR, or the GitHub release surface.
+# This workflow is tag-triggered on `rust-v*.*.*`. Any tag that carries
+# a semver pre-release (`-…`) or build-metadata (`+…`) suffix — e.g.
+# `rust-v0.1.0-alpha.1`, `rust-v0.2.0-rc.2`, `rust-v0.1.0-beta.3`,
+# `rust-v0.1.0-pre`, `rust-v0.1.0+build.42` — exercises the
+# **build + smoke + attestation** stages but skips every **publish**
+# stage. That lets operators rehearse the pipeline end-to-end without
+# touching crates.io, PyPI, GHCR, or the GitHub release surface. Only
+# a clean release tag such as `rust-v0.1.0` triggers the real publish
+# path.
 #
-# The guard is expressed once in the YAML anchor `&publish_guard`
-# below and reused on every publish job:
+# The guard lives verbatim on each of the four `publish-*` jobs below:
 #
 #   if: startsWith(github.ref, 'refs/tags/rust-v')
-#       && !contains(github.ref_name, '-alpha')
-#       && !contains(github.ref_name, '-rc')
+#       && !contains(github.ref_name, '-')
+#       && !contains(github.ref_name, '+')
 #       && inputs.dry_run != true
+#
+# The four copies must stay byte-identical. There is no YAML anchor
+# (GitHub Actions does not reliably expand anchors across jobs), so
+# `cargo xtask check-matrix-sync` parses this file and asserts that
+# all four `publish-*` guard blocks are character-for-character equal.
+# A drift is a hard CI failure.
 #
 # A `workflow_dispatch` run additionally honours an explicit
 # `inputs.dry_run` toggle (default: true) so operators can invoke the
@@ -403,8 +411,8 @@ jobs:
     runs-on: ubuntu-22.04
     if: >-
       startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-alpha')
-      && !contains(github.ref_name, '-rc')
+      && !contains(github.ref_name, '-')
+      && !contains(github.ref_name, '+')
       && inputs.dry_run != true
     steps:
       - uses: actions/checkout@v4
@@ -440,8 +448,8 @@ jobs:
     runs-on: ubuntu-22.04
     if: >-
       startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-alpha')
-      && !contains(github.ref_name, '-rc')
+      && !contains(github.ref_name, '-')
+      && !contains(github.ref_name, '+')
       && inputs.dry_run != true
     environment:
       name: release
@@ -463,8 +471,8 @@ jobs:
     runs-on: ubuntu-22.04
     if: >-
       startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-alpha')
-      && !contains(github.ref_name, '-rc')
+      && !contains(github.ref_name, '-')
+      && !contains(github.ref_name, '+')
       && inputs.dry_run != true
     steps:
       - uses: actions/checkout@v4
@@ -532,8 +540,8 @@ jobs:
     runs-on: ubuntu-22.04
     if: >-
       startsWith(github.ref, 'refs/tags/rust-v')
-      && !contains(github.ref_name, '-alpha')
-      && !contains(github.ref_name, '-rc')
+      && !contains(github.ref_name, '-')
+      && !contains(github.ref_name, '+')
       && inputs.dry_run != true
     steps:
       - uses: actions/checkout@v4
