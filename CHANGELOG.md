@@ -5,6 +5,39 @@ All notable changes to TinyQuant will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- `markdownlint-obsidian` pre-commit hook (`.pre-commit-config.yaml`)
+  scoped to `docs/**/*.md` except `docs/research/`, gated at
+  `alisonaquinas/markdownlint-obsidian@markdownlint-obsidian-cliv1.0.6`
+- `.github/workflows/docs-lint.yml` CI job running
+  `markdownlint-obsidian-cli` against the docs vault on every push and
+  pull request that touches `docs/` or the lint configuration
+- `.obsidian-linter.jsonc` root config shared by the pre-commit hook and
+  the CI job, excluding `docs/research/`, `docs/.obsidian/`, and
+  `.worktrees/`
+- Module-level `//!` docstrings on the four Rust integration-test files
+  that were missing them (`tinyquant-core/tests/codec_fixture_parity.rs`,
+  `codec_service.rs`, `compressed_vector.rs`, `residual.rs`)
+- Module docstring on `scripts/verify_pre_commit.py`
+- Full-maturity `README.md`, `AGENTS.md`, and `CLAUDE.md` stubs across
+  every code and test subtree so the `/well-documented` audit now maps
+  the actual repository layout rather than reporting empty subtrees
+- Hand-refined `AGENTS.md` for each top-level code subtree (`rust/`,
+  `src/`, `tests/`, `scripts/`) with real responsibilities, layout, and
+  invariants
+
+### Changed
+
+- Root `AGENTS.md` now documents the two markdown-lint surfaces (strict
+  markdownlint for non-`docs/` and `markdownlint-obsidian` for the
+  vault), an explicit docstring requirement per language, and the
+  configuration files that back each check
+- `docs/README.md` now describes the automated Obsidian lint layer next
+  to the existing editorial lint guidance
+
 ## [0.1.1] - 2026-04-09
 
 Documentation and CI maintenance release. No user-facing Python API

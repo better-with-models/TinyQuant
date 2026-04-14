@@ -1,3 +1,13 @@
+"""Verify that pre-commit hooks agree with the repository's expectations.
+
+This script runs the configured pre-commit suite against the current
+working tree and reports any hooks that fail or drift from the pinned
+versions declared in ``.pre-commit-config.yaml``. It is intended to be
+invoked manually or from CI as a belt-and-braces check that the hook
+contract stays honest between contributor machines and the gated
+pipeline.
+"""
+
 from __future__ import annotations
 
 import re
