@@ -3,26 +3,30 @@
 //! Phase 25.2 scope: only the codec path. Corpus / backend variants
 //! land in later slices.
 //!
-//! The `code` on the napi `Error` mirrors the Python exception class
-//! name (see `rust/crates/tinyquant-py/src/errors.rs`) so downstream
-//! JS code can discriminate via `err.code === "DimensionMismatchError"`
-//! and match Python's `except DimensionMismatchError:` behavior.
+//! Errors cross the FFI boundary as `napi::Error` whose `message`
+//! starts with `<ClassName>: ` (e.g. `"DimensionMismatchError: expected
+//! 768, got 128"`). The class name is NOT present in `err.code` on
+//! the JS side — that field is napi-rs's internal `Status` enum, which
+//! does not admit custom string codes in v2. Phase 25.4 will add TS
+//! wrapper classes (`TinyQuantError`, `DimensionMismatchError`, …)
+//! that parse the message prefix and re-expose a populated `err.code`.
+//! Until then, consumers that need to switch on the error class
+//! should parse `err.message.split(':', 1)[0]`.
 
 use napi::{Error as NapiError, Status};
 use tinyquant_core::errors::CodecError;
 
-/// Convert a `CodecError` to a napi `Error` whose `code` is the
-/// Python-parity exception class name. The generic reason string is
-/// reused from `CodecError::Display` so stack traces are self-explanatory.
+/// Convert a `CodecError` to a napi `Error` whose `message` is
+/// prefixed with the Python-parity exception class name (e.g.
+/// `"DimensionMismatchError: ..."`). The reason string is reused from
+/// `CodecError::Display` so stack traces stay self-explanatory. See
+/// the module-level doc comment for the full contract — in particular,
+/// the class name lives in `message`, not in `err.code`.
 pub(crate) fn map_codec_error(err: CodecError) -> NapiError {
-    // The napi-rs v2 `Status` enum is the generic error class; we
-    // stash the Python-parity class name inside the reason via the
-    // `GenericFailure` status and decorate the reason string so the
-    // public `err.code` string matches what Python users see.
-    //
-    // We use `Error::new(Status::GenericFailure, reason)` directly
-    // because `from_reason` hard-codes `GenericFailure` and produces
-    // a less precise `code` field in the JS error object.
+    // napi-rs v2's `Status` enum does not admit custom string codes,
+    // so we encode the Python-parity class name as a prefix on the
+    // message. Phase 25.4 will add a TS wrapper that parses this
+    // prefix and re-exposes it via `err.code` for JS consumers.
     let reason = err.to_string();
     let code = match err {
         CodecError::DimensionMismatch { .. } => "DimensionMismatchError",

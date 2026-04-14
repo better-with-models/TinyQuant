@@ -40,7 +40,7 @@
     "native"
   ],
   "scripts": {
-    "build": "napi build --platform --release --output-dir binaries && tsc -p tsconfig.json",
+    "build": "napi build --cwd ../../../rust/crates/tinyquant-js --platform --release --output-dir ../../../javascript/@tinyquant/core/binaries && node scripts/rename-binaries.mjs && tsc -p tsconfig.json",
     "test": "tsc -p tsconfig.test.json && node --test \"dist-tests/tests/**/*.test.js\"",
     "fixtures:generate": "python ../../../scripts/packaging/generate_js_parity_fixtures.py tests/fixtures"
   },
