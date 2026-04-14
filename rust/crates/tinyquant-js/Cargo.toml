@@ -22,6 +22,11 @@ crate-type = ["cdylib"]
 [dependencies]
 napi        = { version = "2", default-features = false, features = ["napi8"] }
 napi-derive = "2"
+tinyquant-core = { workspace = true, features = ["std"] }
+
+[features]
+default = ["simd"]
+simd    = ["tinyquant-core/simd"]
 
 [build-dependencies]
 napi-build = "2"

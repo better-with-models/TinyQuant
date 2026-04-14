@@ -61,12 +61,116 @@ export function binaryKey(): string {
   );
 }
 
-// Phase 25.2+ will extend this type as codec/corpus/backend surfaces
-// are wired through napi-rs. For this slice only `version()` is
-// exported by the native binding.
+// Phase 25.2 surfaces: codec value objects + Codec + module-level
+// compress/decompress. Corpus / backend / TS-wrapper polish land in
+// later slices. The shape below mirrors what `napi build --dts`
+// auto-generates for the `#[napi]` annotations in
+// `rust/crates/tinyquant-js/src/codec.rs`; we type it by hand here
+// so tooling that bypasses the generated `.d.ts` still type-checks.
+
+export interface CodecConfigOpts {
+  bitWidth: number;
+  seed: bigint;
+  dimension: number;
+  residualEnabled?: boolean;
+}
+
+export interface NativeCodecConfig {
+  readonly bitWidth: number;
+  readonly seed: bigint;
+  readonly dimension: number;
+  readonly residualEnabled: boolean;
+  readonly numCodebookEntries: number;
+  readonly configHash: string;
+}
+
+export interface NativeCodebook {
+  readonly bitWidth: number;
+  readonly numEntries: number;
+  readonly entries: Float32Array;
+}
+
+export interface NativeCompressedVector {
+  readonly configHash: string;
+  readonly dimension: number;
+  readonly bitWidth: number;
+  readonly hasResidual: boolean;
+  readonly sizeBytes: number;
+  readonly indices: Uint8Array;
+}
+
+export interface NativeRotationMatrix {
+  readonly seed: bigint;
+  readonly dimension: number;
+}
+
+export interface NativeCodec {
+  compress(
+    vector: Float32Array,
+    config: NativeCodecConfig,
+    codebook: NativeCodebook,
+  ): NativeCompressedVector;
+  decompress(
+    compressed: NativeCompressedVector,
+    config: NativeCodecConfig,
+    codebook: NativeCodebook,
+  ): Float32Array;
+}
+
 type NativeBinding = {
   version: () => string;
+  CodecConfig: new (opts: CodecConfigOpts) => NativeCodecConfig;
+  Codebook: {
+    train(vectors: Float32Array, config: NativeCodecConfig): NativeCodebook;
+  };
+  CompressedVector: unknown;
+  RotationMatrix: {
+    fromConfig(config: NativeCodecConfig): NativeRotationMatrix;
+  };
+  Codec: new () => NativeCodec;
+  compress: (
+    vector: Float32Array,
+    config: NativeCodecConfig,
+    codebook: NativeCodebook,
+  ) => NativeCompressedVector;
+  decompress: (
+    compressed: NativeCompressedVector,
+    config: NativeCodecConfig,
+    codebook: NativeCodebook,
+  ) => Float32Array;
 };
+
+// Walk up from `start` until we find a directory containing
+// `package.json` whose `name` is `@tinyquant/core`. This keeps the
+// loader robust regardless of how the source is packaged:
+//
+//   - published wheel:   dist/_loader.cjs     → pkg root  is `..`
+//   - tsc dev build:     dist/_loader.js      → pkg root  is `..`
+//   - test build:        dist-tests/src/_loader.js → pkg root is `../..`
+//
+// Instead of hard-coding any of those, anchor on the marker file.
+function findPackageRoot(start: string): string {
+  let dir = start;
+  // Cap iteration so a mis-configured install can't spin forever.
+  for (let i = 0; i < 8; i++) {
+    const pjson = path.join(dir, "package.json");
+    if (fs.existsSync(pjson)) {
+      try {
+        const parsed = JSON.parse(fs.readFileSync(pjson, "utf8")) as {
+          name?: string;
+        };
+        if (parsed.name === "@tinyquant/core") return dir;
+      } catch {
+        // ignore malformed package.json on the walk up
+      }
+    }
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  // Fallback: the published-wheel layout (dist/ sibling of binaries/).
+  return path.resolve(start, "..");
+}
 
 function loadNative(): NativeBinding {
   const key = binaryKey();
@@ -74,7 +178,8 @@ function loadNative(): NativeBinding {
   // `require()` on Windows accepts either separator but
   // `path.join` produces the platform-native form, which shows up
   // cleanly in stack traces.
-  const candidate = path.join(HERE, "..", "binaries", `${key}.node`);
+  const root = findPackageRoot(HERE);
+  const candidate = path.join(root, "binaries", `${key}.node`);
 
   if (!fs.existsSync(candidate)) {
     throw new Error(

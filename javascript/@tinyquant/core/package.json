@@ -41,7 +41,7 @@
   ],
   "scripts": {
     "build": "napi build --platform --release --output-dir binaries && tsc -p tsconfig.json",
-    "test": "tsc -p tsconfig.test.json && node --test dist-tests/**/*.test.js",
+    "test": "tsc -p tsconfig.test.json && node --test \"dist-tests/tests/**/*.test.js\"",
     "fixtures:generate": "python ../../../scripts/packaging/generate_js_parity_fixtures.py tests/fixtures"
   },
   "devDependencies": {
