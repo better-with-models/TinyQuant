@@ -774,6 +774,30 @@ scope and deeper refactors (e.g. collapsing the four `if:` blocks
 into a reusable composite action) would leak outside that scope.
 They are backlogged for the next Rust phase.
 
+- **M2 regression repair (release-gate job).** The M2 fix above
+  tightened the guard to
+  `!contains(github.ref_name, '-') && !contains(github.ref_name, '+')`.
+  That was broken: for a tag push `github.ref_name` is the bare tag
+  (e.g. `rust-v0.1.0`), and that string literally contains `-` in
+  its `rust-v` prefix, so the guard evaluated `false` on *every*
+  release tag and the publish pipeline was unreachable. GitHub
+  Actions' expression language has no `substring` / `regex-match`
+  primitive, so there is no way to fix this inline without more
+  `contains()` gymnastics that would stay error-prone. The repair is
+  a dedicated `release-gate` job that evaluates
+  `github.ref_name` against a POSIX extended regex
+  (`^rust-v[0-9]+\.[0-9]+\.[0-9]+$`) in bash and exports a
+  `should_publish` output. All four `publish-*` jobs depend on
+  `release-gate` via `needs:` and share the simplified guard
+  `needs.release-gate.outputs.should_publish == 'true' && inputs.dry_run != true`.
+  The gate job is deliberately named `release-gate` (not
+  `publish-gate`) so the `publish-*` prefix parser in
+  `rust/xtask/src/cmd/guard_sync.rs` does not fold it into the
+  equality check. **M3 fixture follow-on:** the `FOUR_JOBS_AGREE` /
+  `ONE_JOB_DIFFERS` / whitespace-insensitivity fixtures in
+  `cmd::guard_sync::tests` were updated to encode the new simplified
+  guard verbatim; all five existing unit tests still pass.
+
 ### Part D commit trail
 
 | Commit | Summary |
