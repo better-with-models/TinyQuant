@@ -117,6 +117,7 @@ jobs:
       - name: action-validator
         shell: bash
         run: |
+          set -euo pipefail
           if command -v npx >/dev/null 2>&1; then
             npx --yes @action-validator/cli \
               .github/workflows/python-fatwheel.yml
@@ -138,6 +139,7 @@ jobs:
         name: Resolve version
         shell: bash
         run: |
+          set -euo pipefail
           if [[ "${{ github.event_name }}" == "push" ]]; then
             echo "version=${GITHUB_REF_NAME#py-v}" >> "$GITHUB_OUTPUT"
           else
@@ -146,39 +148,36 @@ jobs:
       # On tag pushes, fetch the real per-arch wheels from the matching
       # rust-release.yml artefact. On dry-run (workflow_dispatch) runs
       # the upstream release may not exist; fabricate dummy wheels so
-      # downstream jobs can still exercise end-to-end. The 5-line
-      # inline Python fabricator mirrors
-      # `tests/packaging/test_assemble_fat_wheel.py::_make_dummy_arch_wheel`.
+      # downstream jobs can still exercise end-to-end. The fabricator
+      # lives in `scripts/packaging/fabricate_dummy_wheels.py` and
+      # mirrors `tests/packaging/test_assemble_fat_wheel.py::_make_dummy_arch_wheel`.
+      # This step must NEVER run on a real push event — if the upstream
+      # `actions/download-artifact` step finishes with zero wheels we
+      # want a hard CI failure, not silent fallback to dummy data.
       - name: Download per-arch wheels from prior release
         if: github.event_name == 'push'
+        shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -euo pipefail
           mkdir -p dist/input
           gh release download "rust-v${{ steps.resolve.outputs.version }}" \
               --repo "${{ github.repository }}" \
               --dir dist/input \
               --pattern 'tinyquant_rs-*.whl'
       - name: Fabricate dummy per-arch wheels (dry-run only)
-        if: github.event_name != 'push' || inputs.dry_run == true
+        if: github.event_name != 'push'
         shell: bash
-        env:
-          FW_VERSION: ${{ steps.resolve.outputs.version }}
         run: |
+          set -euo pipefail
           mkdir -p dist/input
           # Skip when real wheels were already fetched above.
           if ls dist/input/tinyquant_rs-*.whl >/dev/null 2>&1; then
             echo "real wheels present; skipping fabrication"; exit 0
           fi
-          python - <<'PY'
-          import os, zipfile
-          ver=os.environ["FW_VERSION"]
-          PLATS=[("manylinux_2_17_x86_64","_core.abi3.so"),("manylinux_2_28_aarch64","_core.abi3.so"),("macosx_10_14_x86_64","_core.abi3.so"),("macosx_11_0_arm64","_core.abi3.so"),("win_amd64","_core.pyd")]
-          for tag,ext in PLATS:
-              di=f"tinyquant_rs-{ver}.dist-info"
-              with zipfile.ZipFile(f"dist/input/tinyquant_rs-{ver}-cp312-abi3-{tag}.whl","w",zipfile.ZIP_DEFLATED) as z:
-                  z.writestr("tinyquant_rs/__init__.py",b"# dry-run\n"); z.writestr(f"tinyquant_rs/{ext}",f"dry-{tag}".encode()+b"\0"*64); z.writestr(f"{di}/METADATA",f"Metadata-Version: 2.1\nName: tinyquant-rs\nVersion: {ver}\n".encode()); z.writestr(f"{di}/WHEEL",f"Wheel-Version: 1.0\nGenerator: dry-run\nRoot-Is-Purelib: false\nTag: cp312-abi3-{tag}\n".encode()); z.writestr(f"{di}/RECORD",b"")
-          PY
+          python scripts/packaging/fabricate_dummy_wheels.py \
+            dist/input "${{ steps.resolve.outputs.version }}"
       - uses: actions/upload-artifact@v4
         with:
           name: input-wheels
@@ -214,6 +213,7 @@ jobs:
         id: sde
         shell: bash
         run: |
+          set -euo pipefail
           if [[ "${{ github.event_name }}" == "push" ]]; then
             sde=$(git log -1 --format=%ct "${{ github.sha }}")
           else
@@ -222,9 +222,11 @@ jobs:
           fi
           echo "sde=$sde" >> "$GITHUB_OUTPUT"
       - name: Assemble
+        shell: bash
         env:
           SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
         run: |
+          set -euo pipefail
           python scripts/packaging/assemble_fat_wheel.py \
             --input-dir dist/input \
             --version "${{ needs.fetch-inputs.outputs.version }}" \
@@ -232,12 +234,14 @@ jobs:
       - name: Size gate (< 50 MB)
         shell: bash
         run: |
+          set -euo pipefail
           size=$(stat -c '%s' dist/tinyquant_cpu-*.whl)
           echo "fat wheel size: $size bytes"
           test "$size" -lt 52428800 || { echo "fat wheel exceeds 50 MB"; exit 1; }
       - name: Binary-count gate (exactly 5)
         shell: bash
         run: |
+          set -euo pipefail
           count=$(python -m zipfile -l dist/tinyquant_cpu-*.whl \
                   | grep -cE '_core\.(abi3\.so|pyd)$')
           echo "bundled binaries: $count"
@@ -280,14 +284,24 @@ jobs:
       - name: Install fat wheel into fresh venv
         shell: bash
         run: |
+          set -euo pipefail
           python -m venv .venv
-          source .venv/bin/activate || source .venv/Scripts/activate
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
           pip install --upgrade pip
           pip install dist/tinyquant_cpu-*-py3-none-any.whl numpy pytest hypothesis
       - name: Smoke import + key detection
         shell: bash
         run: |
-          source .venv/bin/activate || source .venv/Scripts/activate
+          set -euo pipefail
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
           python -c "
           import tinyquant_cpu
           from tinyquant_cpu._selector import detect_platform_key
@@ -297,7 +311,12 @@ jobs:
       - name: Run parity suite against reference
         shell: bash
         run: |
-          source .venv/bin/activate || source .venv/Scripts/activate
+          set -euo pipefail
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
           pip install -e .[dev]   # pulls in tinyquant_py_reference
           pytest tests/parity/test_cross_impl.py -v
 
@@ -327,6 +346,7 @@ jobs:
       - name: Verify version > 0.1.1
         shell: bash
         run: |
+          set -euo pipefail
           wheel=$(ls dist/tinyquant_cpu-*.whl | head -n1)
           ver=$(basename "$wheel" | sed 's/tinyquant_cpu-\([^-]*\).*/\1/')
           python - "$ver" <<'PY'
