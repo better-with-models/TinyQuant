@@ -8,6 +8,7 @@ license.workspace      = true
 repository.workspace   = true
 readme                 = "README.md"
 default-run            = "tinyquant"
+build                  = "build.rs"
 
 [[bin]]
 name = "tinyquant"
@@ -15,7 +16,7 @@ path = "src/main.rs"
 
 [dependencies]
 tinyquant-core       = { workspace = true, features = ["std", "simd"] }
-tinyquant-io         = { workspace = true, features = ["simd", "mmap", "rayon"] }
+tinyquant-io         = { workspace = true, features = ["simd", "mmap"] }
 tinyquant-bruteforce = { workspace = true, features = ["simd", "std"] }
 
 anyhow             = "1"
@@ -50,14 +51,17 @@ rand_chacha = { workspace = true, features = ["std"] }
 tempfile    = "=3.14.0"
 
 [features]
-# Phase 22.C §CLI feature flag matrix. Note: the `rayon` feature only
-# propagates into `tinyquant-io` — `tinyquant-core` and
-# `tinyquant-bruteforce` do not expose a `rayon` feature in this
-# release. See docs/design/rust/phase-22-implementation-notes.md
-# §Part C Deviation 1.
+# Phase 22.C §CLI feature flag matrix. Note: the `rayon` feature here
+# is a CLI-local knob — it toggles whether the CLI drives the batch
+# pipeline through a rayon pool (`codec_compress::run`). We intentionally
+# do NOT forward `tinyquant-io/rayon` because `tinyquant-io`'s rayon
+# helper uses a lint pattern that trips the workspace `-D warnings`
+# gate under clippy 1.81. The CLI uses its own `Parallelism::Custom`
+# driver, so the helper is not needed. See
+# docs/design/rust/phase-22-implementation-notes.md §Part C Deviation 1.
 default      = ["jemalloc", "rayon", "simd", "mmap", "progress"]
 jemalloc     = ["dep:jemallocator"]
-rayon        = ["tinyquant-io/rayon"]
+rayon        = []
 simd         = ["tinyquant-core/simd", "tinyquant-io/simd", "tinyquant-bruteforce/simd"]
 mmap         = ["tinyquant-io/mmap"]
 progress     = ["dep:indicatif"]

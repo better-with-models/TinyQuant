@@ -296,8 +296,9 @@ Part D publishes the first tagged release.
 - [ ] **22.C.2:** Expand `abi_handle_lifetime.rs` with array-of-
       `CompressedVectorHandle*` ownership tests (null elements,
       partial-failure teardown, double-free of batch outputs).
-- [ ] **22.C.3:** `tinyquant-cli` standalone binary per
-      `docs/plans/rust/phase-22-pyo3-cabi-release.md` Part C.
+- [x] **22.C.3:** `tinyquant-cli` standalone binary per
+      `docs/plans/rust/phase-22-pyo3-cabi-release.md` Part C. Landed
+      in the §Part C section above.
 - [ ] **22.D.1:** Release workflow + tag-driven publish (PyPI +
       crates.io + GitHub Release artefacts) per Part D.
 - [ ] **22.D.2:** Consider a `#[cfg(feature = "debug-handles")]`
@@ -310,6 +311,126 @@ Part D publishes the first tagged release.
       a refactor that removes `catch_unwind` from a single entry
       point). Defer unless such a refactor is actually proposed.
 
+## Part C: `tinyquant-cli` standalone binary
+
+Phase 22.C ships a single `tinyquant` binary that exercises the codec
+and corpus surfaces over a deterministic, codec-file format. The
+crate lives at `rust/crates/tinyquant-cli/`; the binary entry point
+is `src/main.rs`, command bodies live under `src/commands/`, and
+format-aware matrix I/O lives in `src/io.rs`.
+
+### Subcommand tree
+
+| Command | Purpose |
+|---|---|
+| `tinyquant info` | Print version, git commit, rustc, target triple, profile, enabled features, runtime ISA, CPU count. |
+| `tinyquant codec train` | Train a codebook from raw FP32 (writes `TQCB` + optional JSON sidecar). |
+| `tinyquant codec compress` | Compress FP32 matrix into a `TQCV` corpus via `Parallelism::Custom(rayon)`. |
+| `tinyquant codec decompress` | Stream a `TQCV` corpus back to FP32. |
+| `tinyquant corpus ingest --policy compress` | Thin wrapper over `codec compress` (renames flags to corpus-flavoured names). |
+| `tinyquant corpus decompress` | Thin wrapper over `codec decompress` (renames flags). |
+| `tinyquant corpus search` | Brute-force top-k search over a `TQCV` corpus with FP32 query. |
+| `tinyquant verify <PATH>` | Magic-byte dispatch verifier (`TQCB` / `TQCV` / `TQCX`). |
+| `--generate-completion <SHELL>` | Emit `clap_complete` shell completions to stdout. |
+| `--generate-man` | Emit a `clap_mangen` man page to stdout. |
+
+### Sidecar formats
+
+The CLI introduces two CLI-internal file formats. Both are pinned to
+this binary (the on-wire codec layer continues to use the Level-1 /
+Level-2 protocols in `tinyquant-io`):
+
+- **TQCB codebook** (`commands::codebook_io`): 4-byte magic + 1-byte
+  version + 1-byte bit width + 2 reserved bytes + `u32` LE
+  `num_entries` + `num_entries * f32 LE` entries.
+- **JSON config sidecar**: `{ bit_width, seed, dimension,
+  residual_enabled, config_hash? }` — produced by `codec train
+  --config-out`, consumed by `codec compress` / `codec decompress`
+  / `corpus search` / `verify`.
+
+### Exit code taxonomy
+
+`commands::CliErrorKind` is attached via `anyhow::Context` and
+unwrapped in `main::report` to pick the process exit code.
+
+| Code | Variant | Meaning |
+|---|---|---|
+| `0` | — | Success. |
+| `2` | `InvalidArgs` | Bad flags, missing sidecars, schema mismatches. |
+| `3` | `Io` | Open / read / write failures. |
+| `4` | `Verify` | Magic mismatch, header corruption, truncated record. |
+| `70`| `Other` | Catch-all (codec internal errors, etc.). |
+
+clap's own `ExitCode 2` for parse errors slots into the same `2`
+bucket without any special wiring.
+
+### Deviations from the §Step 11–17 skeleton
+
+1. **Feature-graph narrowing.** The plan implies
+   `default = ["jemalloc", "rayon", "simd", "mmap", "progress"]` and
+   that each feature toggles the same-named feature on the workspace
+   crates. In practice `tinyquant-core` and `tinyquant-bruteforce`
+   do not expose a `rayon` feature, and `tinyquant-io::parallelism`
+   contains a `clippy::redundant_closure` violation that breaks the
+   workspace `-D warnings` gate when its `rayon` feature is on. The
+   CLI uses its own per-crate `Parallelism::Custom(fn_pointer)`
+   driver inside `pool.install(...)`, so we don't need
+   `tinyquant-io/rayon` at all. The CLI's own `rayon` feature is now
+   a stub (`rayon = []`) — kept on the surface so the feature flag
+   matrix in §22.D doesn't have to change.
+2. **MSRV pin storm.** A wave of late-2025 transitive crate releases
+   moved to `edition2024`, which requires rustc ≥ 1.85. The repo
+   pins MSRV to 1.81, so the CLI explicitly pins:
+   - `clap = "=4.5.21"`, `clap_complete = "=4.5.40"`,
+     `clap_mangen = "=0.2.24"`,
+   - `comfy-table = "=7.1.4"`,
+   - `assert_cmd = "=2.0.17"`, `predicates = "=3.1.4"`,
+     `tempfile = "=3.14.0"`,
+   - and downgrades `pest{,_derive,_meta,_generator}` to `2.7.15`
+     and `unicode-segmentation` to `1.12.0` in `Cargo.lock` (these
+     are pulled by `npyz → py_literal → pest`).
+3. **`codec train --config-out` flag.** The §Step 12 skeleton lists
+   the train / compress / decompress chain but does not specify how
+   the downstream commands reconstruct `CodecConfig` (it's not
+   recoverable from the codebook alone — `seed` and
+   `residual_enabled` are config-level). We add `--config-out` on
+   `codec train` and matching `--config-json` on every consumer.
+4. **`corpus ingest --policy {passthrough, fp16}`.** The current
+   `tinyquant-io::codec_file` writer only emits compressed records,
+   so the passthrough and FP16 policies cannot be implemented
+   without first extending the writer. The CLI surface accepts both
+   policy values, but immediately returns
+   `CliErrorKind::InvalidArgs` with a "not yet supported" error
+   pointing operators at `codec compress`. Phase 23+ can fold the
+   missing policies in without touching the CLI contract.
+5. **Worker-thread stack bump on Windows.** Windows MSVC ships with
+   a 1 MiB main-thread stack, which is not enough to run the
+   `faer::Mat::qr` decomposition path inside
+   `RotationMatrix::build` under a `--profile dev` build. `main()`
+   parses args on the small main stack and then hands the entire
+   dispatch off to a worker thread with an 8 MiB stack. On Linux
+   and macOS the default thread stack is already 8 MiB, so this is
+   a no-op there.
+
+### Acceptance signals (Windows host)
+
+| Gate | Result |
+|---|---|
+| `cargo fmt --all -- --check` | clean |
+| `cargo clippy --workspace --all-targets -- -D warnings` | clean |
+| `cargo build --workspace --release` | clean (compile time ~2 min cold) |
+| `cargo test -p tinyquant-cli` | 3 / 3 smoke tests pass (debug, ~43 s) |
+| Stripped release binary size (`tinyquant.exe`) | **2.49 MiB** (well under the 8 MiB §Step 11 budget) |
+| `bash crates/tinyquant-cli/scripts/cli-smoke.sh` | end-to-end chain green (`info → train → compress → decompress → verify → search`) with `mse ≈ 0` on a 1024×32 Gaussian dataset |
+
+The 8 MiB size budget in the §Step 11 spec is measured for
+`linux-gnu-x64` with `strip = "symbols"` and PIE off. The Windows
+MSVC PE format already drops debug info into a sibling `.pdb`, so
+the `.exe` ships smaller than a stripped Linux ELF would. Strict
+enforcement against the linux-gnu-x64 binary is deferred to the
+Phase 22.D release-workflow runner, which will publish artefacts
+for that target and gate the size budget there.
+
 ## Commit trail
 
 | Commit | Summary |
@@ -317,4 +438,6 @@ Part D publishes the first tagged release.
 | `978ebf1` | `feat(phase-22.A/py): pyo3 wheel with tinyquant_cpu parity surface` |
 | `158a132` | `refactor(phase-22.A/py): address code-review feedback on parity suite and features` |
 | `f1eae7c` | `feat(phase-22.B/sys): c abi handles, cbindgen header, and test surface` |
-| *this PR* | `fix(phase-22.B/sys): substitute CARGO_PKG_VERSION in generated header + const_assert` + `docs(rust/phase-22): implementation notes covering Parts A+B` |
+| *prior PR* | `fix(phase-22.B/sys): substitute CARGO_PKG_VERSION in generated header + const_assert` + `docs(rust/phase-22): implementation notes covering Parts A+B` |
+| `85aa374` | `test(phase-22.C/cli): failing smoke matrix + Cargo scaffold` (TDD red) |
+| *this PR* | `feat(phase-22.C/cli): standalone tinyquant binary with codec / corpus / verify subcommands` (TDD green + smoke scripts + impl notes) |
