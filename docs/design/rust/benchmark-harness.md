@@ -167,30 +167,53 @@ criterion, parses the JSON output, and compares to a baseline.
 
 ### Baseline file
 
+Phase 21 settled on a **relative** budget schema (`budget_pct`
+against the captured `median_ns`) rather than the absolute
+`budget_ns` form an earlier draft of this document used. The
+relative form survives rustc upgrades and CPU refreshes without
+requiring a by-hand re-tune of every entry, and it matches what
+the xtask commands (`cargo xtask bench --capture-baseline main`,
+`cargo xtask bench --check-against main`) actually emit and
+consume. See
+[[plans/rust/phase-21-rayon-batch-benches|Phase 21 plan]] for the
+full rollout.
+
 ```json
 // rust/crates/tinyquant-bench/baselines/main.json
 {
-  "generated_at": "2026-04-10T00:00:00Z",
-  "host": "ci-x86_64-avx2",
-  "rust_version": "1.78.0",
-  "measurements": {
-    "codec/compress/single/d1536_bw4": { "median_ns": 18000, "budget_ns": 20000 },
-    "codec/compress/single/d1536_bw8": { "median_ns": 22000, "budget_ns": 25000 },
-    "codec/decompress/single/d1536_bw4": { "median_ns": 9000, "budget_ns": 10000 },
-    "codec/compress/batch/n10000_d1536_bw4": { "median_ns": 80_000_000, "budget_ns": 120_000_000 },
-    "codec/decompress/batch/n10000_d1536_bw4": { "median_ns": 40_000_000, "budget_ns": 60_000_000 },
-    "serialization/to_bytes/d1536_bw4": { "median_ns": 150, "budget_ns": 250 },
-    "serialization/from_bytes/d1536_bw4": { "median_ns": 200, "budget_ns": 300 },
-    "rotation/build/cold/d1536": { "median_ns": 35_000_000, "budget_ns": 50_000_000 },
-    "rotation/build/warm/d1536": { "median_ns": 40, "budget_ns": 80 },
-    "codebook/train/n100000_bw4": { "median_ns": 5_000_000, "budget_ns": 8_000_000 }
+  "schema_version": 1,
+  "captured_at": "2026-04-10T00:00:00Z",
+  "git_commit": "abcdef123",
+  "host": {
+    "os": "linux",
+    "arch": "x86_64",
+    "cpu_model": "Intel(R) Xeon(R) Platinum 8370C",
+    "rustc": "1.81.0"
+  },
+  "bench_groups": {
+    "codec/compress/single/d1536_bw4": { "median_ns": 18000, "p99_ns": 21000, "budget_pct": 110 },
+    "codec/compress/single/d1536_bw8": { "median_ns": 22000, "p99_ns": 26000, "budget_pct": 110 },
+    "codec/decompress/single/d1536_bw4": { "median_ns": 9000, "p99_ns": 10500, "budget_pct": 110 },
+    "codec/compress/batch/n10000_d1536_bw4": { "median_ns": 80000000, "p99_ns": 95000000, "budget_pct": 115 },
+    "codec/decompress/batch/n10000_d1536_bw4": { "median_ns": 40000000, "p99_ns": 48000000, "budget_pct": 115 },
+    "codec/compress/batch_parallel/threads_8/dim_1536_n_10000": { "median_ns": 4200000, "p99_ns": 5000000, "budget_pct": 115 },
+    "codec/decompress/batch_parallel/threads_8/dim_1536_n_10000": { "median_ns": 2300000, "p99_ns": 2800000, "budget_pct": 115 },
+    "serialization/to_bytes/d1536_bw4": { "median_ns": 150, "p99_ns": 210, "budget_pct": 110 },
+    "serialization/from_bytes/d1536_bw4": { "median_ns": 200, "p99_ns": 270, "budget_pct": 110 },
+    "rotation/build/cold/d1536": { "median_ns": 35000000, "p99_ns": 45000000, "budget_pct": 115 },
+    "rotation/build/warm/d1536": { "median_ns": 40, "p99_ns": 70, "budget_pct": 110 },
+    "codebook/train/n100000_bw4": { "median_ns": 5000000, "p99_ns": 7000000, "budget_pct": 110 }
   }
 }
 ```
 
-`budget_ns` is the "must not exceed" value that CI enforces. It's
-typically 1.5× the observed median to allow for CI noise without
-false positives. `median_ns` is an informational anchor.
+`budget_pct` is the multiplier that CI enforces: a run fails when
+`new_median > baseline_median * (budget_pct / 100)`. Default
+`budget_pct` is **110** (10% regression allowed) for single-vector
+and serial paths; parallel-path groups use **115** to absorb the
+extra scheduling jitter. `median_ns` is the committed anchor from
+the on-CI capture; `p99_ns` is informational only (for PR
+comments).
 
 ### CI gate mechanics
 

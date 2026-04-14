@@ -122,7 +122,9 @@ Phase 21 exits.
 | `rust/crates/tinyquant-bench/fixtures/calibration/openai_10k_d1536.f32.bin` | LFS-tracked fixture | data, **LFS** |
 | `rust/crates/tinyquant-bench/fixtures/calibration/openai_1k_d768.f32.bin` | PR-speed LFS fixture | data, **LFS** |
 | `rust/crates/tinyquant-bench/fixtures/calibration/manifest.json` | SHA256 manifest for drift detection | data |
-| `rust/crates/tinyquant-bench/benches/batch_parallel.rs` | Scaling criterion bench | bench binary |
+| `rust/crates/tinyquant-bench/benches/codec_compress_batch_parallel.rs` | Scaling criterion bench (group: `codec/compress/batch_parallel`) | bench binary |
+| `rust/crates/tinyquant-bench/benches/codec_decompress_batch_parallel.rs` | Scaling criterion bench (group: `codec/decompress/batch_parallel`) | bench binary |
+| `rust/crates/tinyquant-bench/benches/memory_compress_batch.rs` | dhat memory gates (peak RSS, alloc count) | bench binary |
 | `rust/xtask/src/cmd/bench.rs` | `--capture-baseline`, `--check-against`, `--diff`, `--validate` | xtask |
 | `scripts/calibration/gen_openai_sample.py` | Advisory fixture regen script | Python, advisory |
 | `.github/workflows/rust-ci.yml` | `rust-ci/bench-budget` + `rust-ci/calibration` jobs | CI |
@@ -258,12 +260,31 @@ Tests that need a specific thread count build a local pool (see
 **R21.6**): `ThreadPoolBuilder::new().num_threads(n).build().unwrap()`
 and call `pool.install(|| rayon_parallelism())`.
 
-- [ ] **Step 3: Wire parallel path into `compress_batch`**
+- [ ] **Step 3: Consolidate batch API and wire parallel path**
 
-Use the `MaybeUninit` + `SyncPtr` recipe above. Land a `batch.rs`
-module with the sketch, a narrow `#[allow(unsafe_code)]` on the
-impl block, and a module-level `// SAFETY:` doc comment covering
-the invariants listed in the §Parallelism determinism contract.
+Phase 15 shipped `Codec::compress_batch` (5-arg, serial) plus
+`Codec::compress_batch_with` (6-arg, takes `Parallelism`) as an
+interim split. The design docs
+([[design/rust/parallelism|Parallelism]] and
+[[design/rust/ffi-and-bindings|FFI and Bindings]]) both assume a
+single 6-arg `compress_batch(..., parallelism)` signature. Phase 21
+is the right time to consolidate:
+
+- `Codec::compress_batch` takes `Parallelism` as its final
+  argument (matching the design sketch in
+  [[design/rust/parallelism|parallelism.md §The `Parallelism`
+  type]]).
+- `compress_batch_with` is removed; every in-tree caller is
+  updated to pass `Parallelism::Serial` (or `rayon_parallelism()`
+  when the caller lives in a `rayon`-enabled crate).
+- The 5-arg convenience wrapper is gone — the argument is
+  explicit, so no caller accidentally opts out of parallelism.
+
+Land the parallel implementation in a new `batch.rs` module using
+the `MaybeUninit` + `SyncPtr` recipe above, with a narrow
+`#[allow(unsafe_code)]` on the impl block and a module-level
+`// SAFETY:` doc comment covering the invariants listed in the
+§Parallelism determinism contract.
 
 - [ ] **Step 3b: `PartialInit<T>` helper for safe drop on error**
 
@@ -292,10 +313,65 @@ all codes into a single contiguous buffer at known offsets, so the
 parallel path writes into pre-sliced `&mut [u8]` segments and
 doesn't need `PartialInit` at all.
 
+- [ ] **Step 5b: Wire parallel path into `decompress_batch_into`**
+
+[[design/rust/parallelism|Parallelism]] §Principles #2 requires
+**both** `compress_batch` and `decompress_batch_into` to use rayon.
+`decompress_batch_into` writes into `&mut [f32]` — the caller owns
+the output buffer, so parallelism is simpler than the compress
+path: no `MaybeUninit` / `SyncPtr` / `PartialInit` dance, just a
+per-row `split_at_mut` over the output chunks.
+
+```rust
+pub fn decompress_batch_into(
+    &self,
+    compressed: &[CompressedVector],
+    config: &CodecConfig,
+    codebook: &Codebook,
+    output: &mut [f32],
+    parallelism: Parallelism,
+) -> Result<(), CodecError> {
+    let cols = config.dimension() as usize;
+    // Pre-chunk the output so workers write disjoint slices.
+    let chunks: Vec<&mut [f32]> = output.chunks_mut(cols).collect();
+    let first_error = std::sync::Mutex::new(None);
+    parallelism.for_each_row(compressed.len(), |i| {
+        if first_error.lock().unwrap().is_some() { return; }
+        // SAFETY argument: `chunks[i]` is disjoint per index.
+        // The closure captures `chunks` by &mut; since rayon
+        // borrows &mut [&mut [f32]] is not `Sync`, we instead
+        // pass indexed ptr writes via the same SyncPtr trick.
+        // See Step 5b note on Sync-shape.
+        if let Err(e) = self.decompress_into(
+            &compressed[i], config, codebook, chunks_ptr_at(i),
+        ) {
+            let mut slot = first_error.lock().unwrap();
+            if slot.is_none() { *slot = Some(e); }
+        }
+    });
+    if let Some(e) = first_error.into_inner().unwrap() {
+        return Err(e);
+    }
+    Ok(())
+}
+```
+
+The same determinism contract (byte-identical output regardless of
+thread count) applies. Add a companion test
+`tests/batch_determinism.rs::decompress_deterministic_across_threads`
+that asserts `decompress_batch_into` produces byte-identical `f32`
+slices across `[1, 2, 4, rayon::current_num_threads()]` threads.
+
+The 5-arg `decompress_batch_into` is consolidated the same way
+`compress_batch` is: parallelism becomes the sixth required
+argument, no `_with` split.
+
 - [ ] **Step 6: Batch bench scaling**
 
 ```rust
-// benches/batch_parallel.rs
+// benches/codec_compress_batch_parallel.rs
+// Group name: "codec/compress/batch_parallel"
+// (pinned so baseline keys are stable; matches benchmark-harness.md)
 for &threads in &[1, 2, 4, 8, 16] {
     let pool = rayon::ThreadPoolBuilder::new()
         .num_threads(threads)
@@ -316,6 +392,57 @@ for &threads in &[1, 2, 4, 8, 16] {
 }
 ```
 
+- [ ] **Step 6b: Decompress batch bench scaling**
+
+Same structure as Step 6 but for `decompress_batch_into`:
+
+```rust
+// benches/codec_decompress_batch_parallel.rs
+// Group name: "codec/decompress/batch_parallel"
+for &threads in &[1, 2, 4, 8, 16] {
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(threads)
+        .build()
+        .unwrap();
+    group.bench_with_input(
+        BenchmarkId::from_parameter(threads),
+        &threads,
+        |b, _| {
+            pool.install(|| {
+                b.iter(|| {
+                    let par = rayon_parallelism();
+                    codec.decompress_batch_into(&cvs, &cfg, &cb, &mut out, par)
+                })
+            });
+        },
+    );
+}
+```
+
+- [ ] **Step 6c: Memory benches (dhat)**
+
+[[design/rust/benchmark-harness|Benchmark Harness]] §Memory
+benchmarks specifies allocation-count and peak-heap gates that
+Phase 21 must land alongside the throughput benches (without them,
+the `compress_batch_packed` claim of "single contiguous buffer"
+has no regression guard).
+
+`tinyquant-bench/benches/memory_compress_batch.rs` uses
+`dhat::DhatAlloc` as a per-bench `#[global_allocator]` and asserts
+the following gates on the committed
+`openai_10k_d1536.f32.bin` fixture:
+
+| Benchmark | Peak heap | Max allocs |
+| --- | --- | --- |
+| `compress_batch_10000_bw4_res_on` | ≤ 250 MiB | ≤ 20 015 |
+| `compress_batch_10000_bw4_res_on` (packed) | ≤ 220 MiB | ≤ 15 |
+| `decompress_batch_10000_bw4_res_on` | ≤ 120 MiB | ≤ 20 005 |
+
+These numbers are copied verbatim from benchmark-harness.md so the
+two docs stay aligned; the packed-mode `≤ 15 allocs` is the
+regression guard proving the `MaybeUninit` path avoids per-row
+allocation. Failure of either gate blocks `rust-ci/bench-budget`.
+
 ### Part B — Calibration suite
 
 - [ ] **Step 7: Failing score fidelity test**
@@ -332,7 +459,9 @@ fn pearson_rho_4bit_with_residuals_meets_threshold() {
     // reconstructed pairwise cosine, then Pearson correlation
     // via Welford's algorithm (see R21.3).
     let rho = compute_pearson_correlation(&corpus);
-    assert!(rho >= 0.998, "rho={rho}");
+    // Threshold matches goals-and-non-goals.md §Fidelity goals
+    // (VAL-01): Pearson ρ, 4-bit + residual >= 0.995.
+    assert!(rho >= 0.995, "rho={rho}");
 }
 ```
 
@@ -379,14 +508,32 @@ Thresholds are asserted `>=` (not `==`) so ISA-level numerical
 nondeterminism (Phase 14 L4) does not flake the gates. Bit-exact
 gates live in the fixture parity tests from Phase 16.
 
-| Config | ρ lower bound | Top-10 recall | Ratio lower bound | Mirrored Python test |
-|--------|---------------|---------------|-------------------|----------------------|
-| bw=4, residual=on, d=1536 | ≥ 0.998 | ≥ 95% | ≥ 7.0 | `tests/calibration/test_score_fidelity.py::test_pearson_4bit_residual_d1536` |
-| bw=4, residual=off | ≥ 0.98 | ≥ 85% | ≥ 8.0 | `test_pearson_4bit_no_residual` |
-| bw=2, residual=on | ≥ 0.95 | ≥ 80% | ≥ 14.0 | `test_pearson_2bit_residual` |
-| bw=8, residual=on | ≥ 0.999 | ≥ 98% | ≥ 4.0 | `test_pearson_8bit_residual` |
-| Passthrough | `== 1.0` exact | `== 100%` exact | `== 1.0` exact | `test_passthrough_identity` |
-| Fp16 | ≥ 0.9999 | n/a | `== 2.0` exact | `test_fp16_halfprecision` |
+All thresholds below are sourced from
+[[design/rust/goals-and-non-goals|goals-and-non-goals.md §Fidelity
+goals]] (VAL-01 for ρ, behavior-layer for recall, VAL-02 for
+ratio). Plan-only deviations are **tighter** thresholds than the
+goals doc; they are called out in the `Source` column. Any
+threshold that is tighter than the goals doc is either (a) matched
+by a commit that raises the goals doc in the same PR, or (b)
+footnoted as an aspirational calibration floor not binding the
+parity gate.
+
+| Config | ρ lower bound | Top-10 recall | Ratio lower bound | Source | Mirrored Python test |
+| --- | --- | --- | --- | --- | --- |
+| bw=4, residual=on, d=1536 | ≥ 0.995 | ≥ 80% | ≥ 5.0 | VAL-01, VAL-02 | `tests/calibration/test_score_fidelity.py::test_pearson_4bit_residual_d1536` |
+| bw=4, residual=off | ≥ 0.98 | ≥ 80% | ≥ 7.0 | VAL-01, VAL-02 (4-bit row) | `test_pearson_4bit_no_residual` |
+| bw=2, residual=on | ≥ 0.95 | ≥ 80% | ≥ 14.0 | VAL-01 (2-bit + residual), ratio derived | `test_pearson_2bit_residual` |
+| bw=8, residual=on | ≥ 0.999 | ≥ 80% | ≥ 4.0 | plan-only (aspirational; not a parity gate) | `test_pearson_8bit_residual` |
+| Passthrough | `== 1.0` exact | `== 100%` exact | `== 1.0` exact | VAL-03 round-trip determinism | `test_passthrough_identity` |
+| Fp16 | ≥ 0.9999 | n/a | `== 2.0` exact | plan-only (aspirational) | `test_fp16_halfprecision` |
+
+**Calibration vs parity gate.** These thresholds are the
+**calibration** floor — evaluated `>=` to tolerate ISA-level
+numerical drift (Phase 14 Lesson L4). The bit-exact **parity**
+gate from Phase 16
+(`Rust::compress(...).to_bytes() == Python::compress(...).to_bytes()`)
+is the hard fidelity contract; calibration is the numerical safety
+net.
 
 > [!warning] Parallel Python deliverable
 > At the time of writing, `tests/calibration/test_pearson_2bit_residual`
@@ -413,6 +560,8 @@ fn compression_ratio_4bit_meets_threshold() {
     let corpus = GoldCorpus::load_openai_10k_d1536();
     let total_raw = corpus.vectors.len() * 1536 * 4;
     let codec = Codec::new();
+    // Consolidated 6-arg signature from Step 3 — parallelism is
+    // now a required argument on compress_batch.
     let cvs = codec.compress_batch(
         &corpus.vectors, 10_000, 1536,
         &corpus.config, &corpus.codebook,
@@ -420,7 +569,8 @@ fn compression_ratio_4bit_meets_threshold() {
     ).unwrap();
     let total_compressed: usize = cvs.iter().map(|cv| cv.size_bytes()).sum();
     let ratio = total_raw as f64 / total_compressed as f64;
-    assert!(ratio >= 7.0, "ratio={ratio}");
+    // VAL-02: 4-bit + residual >= 5.0 (goals-and-non-goals.md).
+    assert!(ratio >= 5.0, "ratio={ratio}");
 }
 ```
 
@@ -595,12 +745,59 @@ Ported from Phase 14; these lints bite during Phase 21 work:
   over the threshold table will trip this lint. Split into small
   private fns per threshold row.
 
+## Phase 18 deferral: `IndexMap`
+
+[[design/rust/phase-18-implementation-notes|Phase 18 Implementation
+Notes]] D18.2 deferred `IndexMap` integration "to Phase 21 per the
+plan's own recommendation." The Phase 21 scope (rayon batch paths,
+calibration, bench budgets) does **not** benefit from switching the
+corpus's `VectorIdMap` to `IndexMap`: the parallel batch path writes
+through a raw `Vec<MaybeUninit<_>>` and never touches the
+insertion-order map, and the calibration / bench suites read the
+corpus sequentially.
+
+**Decision: re-defer `IndexMap` to Phase 22 or later.** The
+`VectorIdMap` (pure `no_std`, `BTreeMap` + `Vec` slab) already meets
+Phase 18's functional contract, and adopting `IndexMap` would
+introduce an external dependency whose default hasher
+(`RandomState`) requires `std` — incompatible with the
+`tinyquant-core` `no_std` charter. If a future phase needs
+O(1) lookup by string key in a `std`-enabled context, revisit under
+that phase's explicit plan. The Phase 18 D18.2 note should be
+updated to point at this re-deferral rather than leaving a stale
+"deferred to Phase 21" claim.
+
+## Rayon pool contention with downstream consumers (R8)
+
+[[design/rust/risks-and-mitigations|Risks and Mitigations]] §R8
+flags that when downstream consumers (better-router Rust agents,
+other `rayon`-using services) install their own
+`rayon::ThreadPoolBuilder`, our batch operations can fight over the
+global pool. Phase 21 honors this by **never constructing a pool
+inside the library**: `rayon_parallelism()` uses whatever pool the
+caller already installed (`rayon::current_num_threads()` sees the
+caller's pool inside a `pool.install(...)` scope). The library
+ships no `OnceCell<ThreadPool>` — pool ownership belongs to the
+caller, exactly as [[design/rust/parallelism|parallelism.md §Thread
+pool configuration defaults]] prescribes.
+
+The integration documentation added in Phase 21 (a new §"Bringing
+your own rayon pool" block in
+[[design/rust/parallelism|parallelism.md]]) tells downstream
+consumers to wrap batch calls in their own `pool.install(...)`
+scope when they have one, so TinyQuant inherits rather than
+contends. This closes R8 for the CPU-bound codec path.
+
 ## Acceptance criteria
 
-- Parallel batch compress matches serial byte-for-byte on the
-  thread-count sweep test (Step 10).
+- Parallel batch compress **and decompress** match serial
+  byte-for-byte on the thread-count sweep test (Step 10).
 - Pearson ρ, top-k recall, compression ratio, and determinism gates
   all green on the committed LFS fixture.
+- Memory benches (Step 6c) meet the dhat gates from
+  benchmark-harness.md §Memory benchmarks, in particular
+  `compress_batch_packed` ≤ 15 allocations on a 10 000-vector
+  batch.
 - `xtask bench --check-against main` fails on a synthetic
   regression (covered by an xtask unit test) and passes on clean
   main.
@@ -688,6 +885,7 @@ of bug that bit Phase 14 twice.
 | R21.6 | Rayon global thread pool state interacts with other tests in the same binary | Every determinism test builds a local `ThreadPoolBuilder::new().build().unwrap()` and runs via `pool.install(...)` |
 | R21.7 | Cross-runner SIMD flake in calibration (Lesson L4 repeat) | Thresholds are `>=` not `==`; parity tests are the byte-level gate, calibration is the numerical gate |
 | R21.8 | Baseline drift between dev-laptop captures and CI captures | **Only commit baselines captured on a CI runner.** Baselines captured locally are for diagnosis, never committed. `xtask bench --capture-baseline` emits a warning when it detects it is not running under GitHub Actions. |
+| R21.9 | Rayon pool contention with downstream consumers (re-cites R8 from risks-and-mitigations.md) | Library never builds or owns a rayon pool; `rayon_parallelism()` inherits the caller's `pool.install(...)` scope. Documentation in parallelism.md §Bringing your own rayon pool tells consumers how to install their pool once and have TinyQuant follow. See §"Rayon pool contention with downstream consumers (R8)" above. |
 
 ## Out of scope
 

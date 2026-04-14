@@ -84,7 +84,16 @@ storage slab instead.
 (`RandomState`) and adds an external dependency. `VectorIdMap` is pure `no_std`,
 uses only `alloc`, and satisfies the Phase 18 requirements (insertion-order
 iteration, O(log n) lookup by string key, O(1) push). `IndexMap` integration
-is deferred to Phase 21 per the plan's own recommendation.
+was initially deferred to Phase 21.
+
+**Re-deferred in Phase 21** (see
+[[plans/rust/phase-21-rayon-batch-benches|Phase 21 plan]] §Phase 18
+deferral: `IndexMap`): Phase 21's scope — rayon batch paths, calibration,
+bench budgets — does not touch the corpus's insertion-order map, and
+adopting `IndexMap` would violate `tinyquant-core`'s `no_std` charter. The
+`VectorIdMap` remains the corpus's storage map; revisit `IndexMap` only
+under a future `std`-enabled phase that has a concrete need for O(1)
+string-key lookup.
 
 ### D18.3 — Module file named `aggregate.rs`, not `corpus.rs`
 

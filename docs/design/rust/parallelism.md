@@ -176,6 +176,45 @@ A future optimization (phase-16) switches to faer's internal
 parallelism for batch sizes above a threshold where row-splitting is
 suboptimal.
 
+## Bringing your own rayon pool
+
+TinyQuant never builds or owns a `rayon::ThreadPool`. Every parallel
+entry point (`compress_batch`, `decompress_batch_into`,
+`compress_batch_packed`) is driven by the `Parallelism::Custom`
+closure, and `tinyquant-io::rayon_parallelism()` simply calls
+`(0..n).into_par_iter()` on whatever pool is current at the call
+site. This means downstream consumers that already have a
+`rayon::ThreadPool` (better-router Rust agents, other rayon-using
+services) should install their pool **once** and wrap batch calls in
+a single `pool.install(...)` scope:
+
+```rust
+use rayon::ThreadPoolBuilder;
+use tinyquant_io::rayon_parallelism;
+
+let pool = ThreadPoolBuilder::new()
+    .num_threads(num_cpus::get_physical())
+    .thread_name(|i| format!("better-router-rayon-{i}"))
+    .build()?;
+
+let cvs = pool.install(|| {
+    codec.compress_batch(
+        &vectors, rows, cols, &cfg, &cb, rayon_parallelism(),
+    )
+})?;
+```
+
+This closes **R8** (rayon pool contention) from
+[[design/rust/risks-and-mitigations|risks-and-mitigations.md]]: the
+consumer's pool serves both its own workloads and TinyQuant's batch
+paths, so nothing in the codec can fight with the host process over
+CPU affinity or worker counts.
+
+If no pool is installed, `rayon_parallelism()` falls back to the
+global rayon pool (logical-core count), which is fine for ad-hoc
+scripts, benchmarks, and the standalone CLI — but production
+services that already embed `rayon` should not rely on that fallback.
+
 ## Thread pool configuration defaults
 
 | Context | Default threads |
