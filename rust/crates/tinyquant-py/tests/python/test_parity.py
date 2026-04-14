@@ -113,19 +113,27 @@ def test_compressed_vector_to_bytes_parity() -> None:
     """`compress(...).to_bytes()` emits a Python-compatible wire format.
 
     Full byte-level parity of the *packed indices* with the Python reference
-    is out of scope at this phase — the Rust rotation kernel uses the
-    ``faer`` QR decomposition whose column-sign convention differs from
-    NumPy's, so the rotated vectors diverge deterministically from the
-    Python output (see commit 600bc16 — codec fixture parity tests are
-    marked ignored for the same reason).
+    is intentionally weakened at this phase. The Rust rotation kernel uses
+    the ``faer`` QR decomposition whose column-sign convention differs
+    deterministically from NumPy's LAPACK ``dgeqrf`` (see
+    `docs/design/rust/numerical-semantics.md` §"R19 — three-step
+    determinism plan for rotations" and `docs/design/rust/risks-and-mitigations.md`
+    §R2 "QR sign conventions" / §R19 "faer kernel nondeterminism"). Because
+    the rotated vectors diverge by the QR column-sign flip, the packed
+    indices in the payload region of the wire format also diverge — but
+    that is a *correctness-preserving* divergence, not a wire-format bug.
 
-    What we *do* guarantee at Phase 22.A:
+    What we *do* guarantee at Phase 22.A (50 vectors per the Step 6 spec):
 
     * the 70-byte wire-format header (magic + 64-char hex hash + dim + bw +
-      residual flag) is byte-identical to Python for the same config;
-    * Python can deserialize Rust bytes via `from_bytes` (and vice versa)
-      and round-trip them losslessly;
-    * Rust's own ``to_bytes → from_bytes`` round-trip is stable.
+      residual flag) is byte-identical to Python for the same config — the
+      header is independent of the rotation kernel, so R19/R2 do not
+      apply here;
+    * Rust's ``to_bytes → from_bytes`` round-trip is stable;
+    * Rust's ``from_bytes`` accepts Python-emitted bytes and round-trips
+      them losslessly (forward wire compat);
+    * Python's ``from_bytes`` accepts Rust-emitted bytes and round-trips
+      them losslessly (reverse wire compat).
     """
     rng = np.random.default_rng(7)
     bw, dim = 4, 384
@@ -136,7 +144,7 @@ def test_compressed_vector_to_bytes_parity() -> None:
     py_cb = py.codec.Codebook.train(training, py_cfg)
     rs_cb = rs.codec.Codebook.train(training, rs_cfg)
 
-    for i in range(20):
+    for i in range(50):
         vec = rng.standard_normal(dim).astype(np.float32)
         py_cv = py.codec.compress(vec, py_cfg, py_cb)
         rs_cv = rs.codec.compress(vec, rs_cfg, rs_cb)
@@ -150,13 +158,23 @@ def test_compressed_vector_to_bytes_parity() -> None:
         # Bytes have the same overall length (same dim, bw, residual flag).
         assert len(py_bytes) == len(rs_bytes), f"length mismatch at row {i}"
 
-        # Rust bytes round-trip through `from_bytes`.
+        # Rust bytes round-trip through Rust's from_bytes.
         rs_round = rs.codec.CompressedVector.from_bytes(rs_bytes)
         assert rs_round.to_bytes() == rs_bytes, f"Rust round-trip at row {i}"
 
-        # Python bytes are accepted by Rust's from_bytes (wire compat).
+        # Forward wire compat: Python bytes are accepted by Rust's from_bytes.
         py_via_rs = rs.codec.CompressedVector.from_bytes(py_bytes)
-        assert py_via_rs.to_bytes() == py_bytes, f"cross-impl round-trip at row {i}"
+        assert py_via_rs.to_bytes() == py_bytes, (
+            f"forward wire-compat (py->rs) round-trip at row {i}"
+        )
+
+        # Reverse wire compat: Rust bytes are accepted by Python's from_bytes
+        # and round-trip back to the same wire payload. This closes the
+        # bidirectional contract demanded by the Step 6 review.
+        rs_via_py = py.codec.CompressedVector.from_bytes(rs_bytes)
+        assert rs_via_py.to_bytes() == rs_bytes, (
+            f"reverse wire-compat (rs->py) round-trip at row {i}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -166,13 +184,30 @@ def test_compressed_vector_to_bytes_parity() -> None:
 
 def test_corpus_lifecycle_parity() -> None:
     """Corpus `insert / vector_count / decompress_all / remove / contains`
-    behave the same shape-wise across both implementations, and the Rust
-    corpus preserves numerical identity through its own compress-decompress
-    round-trip (MSE gate).
+    behave the same shape-wise across both implementations.
 
-    Cross-implementation bit parity of decompressed vectors is not asserted
-    here — the rotation-kernel divergence documented in
-    `test_compressed_vector_to_bytes_parity` also affects decompress output.
+    Two fidelity gates run side by side:
+
+    1. **Cross-impl decompress closeness (`np.testing.assert_allclose`).**
+       The decompress paths are not bit-identical between Rust and Python —
+       the QR sign-convention divergence documented in
+       `docs/design/rust/numerical-semantics.md` and §R19 / §R2 of
+       `docs/design/rust/risks-and-mitigations.md` propagates from the
+       rotation kernel through compress→decompress. The R19 mitigation
+       pins parity at the *effect* level, not the byte level.
+
+       The chosen budget is ``rtol=1e-3, atol=1e-3``. Calibration: an
+       empirical sweep across 6 outer seeds (3, 7, 11, 17, 42, 99) at
+       bw=4, dim=128, n=100 standard-normal vectors measured a worst-case
+       ``max |py - rs| ≈ 3.15e-4`` per vector. The chosen ``atol`` is
+       ~3.2× the worst observed divergence, satisfying the "set the
+       budget to 2× observed" guidance from the Step 6 footer while
+       leaving headroom for unobserved seeds. ``rtol=1e-3`` is dominated
+       by ``atol`` because standard-normal magnitudes hover around 1.0.
+
+    2. **Rust-internal MSE gate (kept as a regression net).**
+       Even if (1) is forgiving, this catches Rust-only fidelity
+       regressions because both arms come from Rust.
     """
     rng = np.random.default_rng(11)
     bw, dim, n = 4, 128, 100
@@ -210,8 +245,28 @@ def test_corpus_lifecycle_parity() -> None:
         assert py_corpus.contains(vid)
         assert rs_corpus.contains(vid)
 
-    # Rust-internal round-trip fidelity (MSE gate).
+    # Cross-impl decompress closeness — see docstring for tolerance rationale.
+    py_all = py_corpus.decompress_all()
     rs_all = rs_corpus.decompress_all()
+    # Documented R19/R2 budget — see test docstring for empirical calibration.
+    cross_rtol = 1e-3
+    cross_atol = 1e-3
+    for vid in originals:
+        py_decompressed = np.asarray(py_all[vid], dtype=np.float32)
+        rs_decompressed = np.asarray(rs_all[vid], dtype=np.float32)
+        assert py_decompressed.shape == rs_decompressed.shape
+        np.testing.assert_allclose(
+            py_decompressed,
+            rs_decompressed,
+            rtol=cross_rtol,
+            atol=cross_atol,
+            err_msg=(
+                f"cross-impl decompress for {vid} exceeds R19/R2 budget "
+                f"(rtol={cross_rtol}, atol={cross_atol})"
+            ),
+        )
+
+    # Rust-internal round-trip fidelity (MSE gate).
     mses: list[float] = []
     for vid, original in originals.items():
         reconstructed = np.asarray(rs_all[vid], dtype=np.float32)

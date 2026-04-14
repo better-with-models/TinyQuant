@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 use std::sync::{Arc, Mutex};
 
 use numpy::{PyArray1, PyReadonlyArray1};
-use pyo3::exceptions::{PyKeyError, PyValueError};
+use pyo3::exceptions::{PyKeyError, PyNotImplementedError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList, PyTuple};
+use pyo3::types::{PyDict, PyList};
 
 use tinyquant_core::corpus::{
     CompressionPolicy as CoreCompressionPolicy, Corpus as CoreCorpus,
@@ -229,13 +229,19 @@ impl PyCorpus {
         compression_policy: PyCompressionPolicy,
         metadata: Option<Bound<'_, PyDict>>,
     ) -> PyResult<Self> {
+        // Metadata lowering is deferred until a downstream consumer needs
+        // it. Until then we refuse the kwarg explicitly rather than silently
+        // discarding caller intent — silent acceptance is a parity-divergence
+        // hazard against the Python reference (per Phase 22.A code review).
+        if metadata.is_some() {
+            return Err(PyNotImplementedError::new_err(
+                "Corpus(metadata=...) is not yet supported in the pyo3 wheel; \
+                 pass metadata=None or omit the kwarg.",
+            ));
+        }
         let cfg_ref = codec_config.borrow(py);
         let cb_ref = codebook.borrow(py);
         let meta = BTreeMap::new();
-        let _ = metadata; // Metadata lowering beyond an empty map is deferred;
-                          // the corpus accepts arbitrary keys but Python's
-                          // `tinyquant_cpu` does not inspect entry metadata
-                          // in the parity paths exercised here.
         let core = CoreCorpus::new(
             VectorId::from(corpus_id.as_str()),
             cfg_ref.inner.clone(),
@@ -275,11 +281,14 @@ impl PyCorpus {
     }
 
     #[getter]
-    fn metadata<'py>(&self, py: Python<'py>) -> Bound<'py, PyDict> {
-        // Metadata surface is a read-only empty dict in this pyo3 binding —
-        // `tinyquant_cpu` accepts per-corpus metadata but none of the parity
-        // tests drive that field, so we expose an empty dict for API shape.
-        PyDict::new_bound(py)
+    fn metadata(&self) -> PyResult<()> {
+        // Refuse the read just like we refuse the write (see Corpus::new).
+        // Returning an empty dict here would let callers believe metadata
+        // round-trips; raise instead so the contract is unambiguous until
+        // the lowering is implemented end-to-end.
+        Err(PyNotImplementedError::new_err(
+            "Corpus.metadata is not yet supported in the pyo3 wheel.",
+        ))
     }
 
     #[getter]
@@ -321,8 +330,13 @@ impl PyCorpus {
         vector: PyReadonlyArray1<'py, f32>,
         metadata: Option<Bound<'_, PyDict>>,
     ) -> PyResult<PyVectorEntry> {
-        let _ = metadata; // same note as Corpus::new — metadata pass-through
-                          // is preserved by the core but not surfaced here.
+        // Refuse the kwarg explicitly — see Corpus::new for rationale.
+        if metadata.is_some() {
+            return Err(PyNotImplementedError::new_err(
+                "Corpus.insert(metadata=...) is not yet supported in the pyo3 \
+                 wheel; pass metadata=None or omit the kwarg.",
+            ));
+        }
         let slice = array1_as_slice(&vector)?;
         let buf: Vec<f32> = slice.to_vec();
         let id: VectorId = VectorId::from(vector_id.as_str());
@@ -471,11 +485,4 @@ fn event_to_py(
         .into_py(py),
     };
     Ok(obj)
-}
-
-// Silence an unused-import warning when the helper is used only in tuple
-// conversions above.
-#[allow(dead_code)]
-fn _unused_tuple(py: Python<'_>) -> Bound<'_, PyTuple> {
-    PyTuple::empty_bound(py)
 }
