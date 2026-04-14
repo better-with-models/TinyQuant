@@ -1,11 +1,12 @@
 [package]
 name         = "tinyquant-js"
 description  = "napi-rs N-API bindings for TinyQuant (published as @tinyquant/core)."
-version      = "0.1.0"
-edition      = "2021"
-license      = "Apache-2.0"
-repository   = "https://github.com/better-with-models/TinyQuant"
-publish      = false
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+publish                = false
 
 # Phase 25.1 scaffolding note:
 # This crate currently exports only `version()` as a façade over the workspace

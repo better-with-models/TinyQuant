@@ -1431,6 +1431,53 @@ is effectively permanent. The playbook:
    the signing key. Users who verify provenance will see the
    revocation.
 
+## Phase 25.1 declared deviations
+
+The scaffold that landed at commit `a6c80cd` (plus the
+workspace-inheritance follow-up) intentionally diverges from the
+specification in three places. Each is a forward-compatible
+substitution that the remaining sub-slices (25.2–25.4) inherit
+transparently.
+
+### 1. napi-rs v2 instead of v3
+
+§`tinyquant-js` crate module map (`Cargo.toml` block at plan
+§115–165) pins `napi = "=3.0"` with feature `napi9` and
+`napi-derive = "=3.0"`. The scaffold pins `napi = "2"` with
+feature `napi8` and `napi-derive = "2"` instead. Rationale: napi-rs
+v3 was pre-release at plan-authoring time; v2 is the stable line
+that `@napi-rs/cli` 2.x ships against and matches the Node ≥ 20
+baseline in §API surface. When napi-rs v3 is GA and passes CI, a
+separate maintenance slice can bump the pin — no API change is
+required because `#[napi]` attribute macros are stable across v2/v3.
+
+### 2. `moduleResolution: Bundler` instead of `NodeNext`
+
+§`tsconfig.json` (plan §444–475) specifies
+`"module": "NodeNext", "moduleResolution": "NodeNext"`. The
+scaffold uses `"module": "ESNext", "moduleResolution": "Bundler"`.
+Rationale: the Bundler resolution mode was designed precisely for
+libraries that ship both ESM and CJS via the `exports` field and is
+the setting most downstream TypeScript + bundler toolchains
+(`tsup`, `esbuild`, `vite`, `rolldown`) expect to see on a library
+published to npm. The `exports` block — which drives runtime
+resolution — is unchanged, so Node and Bun see the same entry
+points regardless of what this package's own `tsconfig.json` says
+for its internal build.
+
+### 3. `./dist/index.cjs` instead of `./dist/index.js` for the CJS entry
+
+§`package.json` (plan §371–443) names the CJS artefact
+`./dist/index.js` and the ESM artefact `./dist/index.mjs`. The
+scaffold uses `./dist/index.cjs` for CJS and `./dist/index.mjs` for
+ESM. Rationale: the explicit `.cjs` extension makes Node's
+module-system classification unambiguous under `"type": "module"`
+and avoids the class of bug where a consumer-set `"type": "module"`
+overrides the per-file default on a file named `index.js`. The
+`exports` map still points `require:` at the `.cjs` entry and
+`import:` at the `.mjs` entry, so downstream consumers see no
+surface change.
+
 ## Steps (TDD order)
 
 - [ ] **Step 1: Scaffold `tinyquant-js` crate.**
