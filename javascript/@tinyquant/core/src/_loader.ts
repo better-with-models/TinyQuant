@@ -1,4 +1,12 @@
 // src/_loader.ts
+//
+// Binary layout (npm package, authoritative):
+//   binaries/<triple>.node    (e.g. binaries/linux-x64-gnu.node)
+// This is distinct from the Python fat wheel's `_lib/<key>/` layout
+// because the npm package publishes one tarball per platform via
+// `optionalDependencies`, whereas the Python wheel bundles every
+// supported arch into a single fat tarball. Both layouts are
+// intentional — do not unify them.
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -53,22 +61,11 @@ export function binaryKey(): string {
   );
 }
 
+// Phase 25.2+ will extend this type as codec/corpus/backend surfaces
+// are wired through napi-rs. For this slice only `version()` is
+// exported by the native binding.
 type NativeBinding = {
   version: () => string;
-  // Codec
-  CodecConfig: unknown;
-  Codebook: unknown;
-  CompressedVector: unknown;
-  RotationMatrix: unknown;
-  compress: unknown;
-  decompress: unknown;
-  // Corpus
-  Corpus: unknown;
-  VectorEntry: unknown;
-  CompressionPolicy: unknown;
-  // Backend
-  BruteForceBackend: unknown;
-  SearchResult: unknown;
 };
 
 function loadNative(): NativeBinding {
