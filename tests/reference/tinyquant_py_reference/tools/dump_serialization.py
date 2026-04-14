@@ -2,7 +2,7 @@
 
 Usage (from repo root)::
 
-    python src/tinyquant_py_reference/tools/dump_serialization.py
+    python tests/reference/tinyquant_py_reference/tools/dump_serialization.py
 
 Or via the generate_rust_fixtures.py dispatcher::
 
@@ -127,7 +127,7 @@ def run_case(case: dict[str, Any], out_dir: Path, repo_root: Path) -> dict[str, 
 def main() -> int:
     """Generate all serialization fixtures."""
     repo_root = _repo_root()
-    sys.path.insert(0, str(repo_root / "src"))
+    sys.path.insert(0, str(repo_root / "tests" / "reference"))
 
     out_dir = _serialization_fixture_dir(repo_root)
     out_dir.mkdir(parents=True, exist_ok=True)
