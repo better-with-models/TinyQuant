@@ -1,0 +1,68 @@
+{
+  "name": "@tinyquant/core",
+  "version": "0.1.0",
+  "description": "CPU-only vector quantization codec for embedding storage compression.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/better-with-models/TinyQuant.git",
+    "directory": "javascript/@tinyquant/core"
+  },
+  "engines": {
+    "node": ">=20.10.0",
+    "bun": ">=1.1.0"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./codec": {
+      "types": "./dist/codec.d.ts",
+      "import": "./dist/codec.mjs",
+      "require": "./dist/codec.cjs"
+    },
+    "./corpus": {
+      "types": "./dist/corpus.d.ts",
+      "import": "./dist/corpus.mjs",
+      "require": "./dist/corpus.cjs"
+    },
+    "./backend": {
+      "types": "./dist/backend.d.ts",
+      "import": "./dist/backend.mjs",
+      "require": "./dist/backend.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/",
+    "binaries/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "vector",
+    "quantization",
+    "embedding",
+    "compression",
+    "tinyquant",
+    "rust",
+    "native"
+  ],
+  "scripts": {
+    "build": "napi build --platform --release --output-dir binaries && tsc -p tsconfig.json",
+    "test": "node --test tests/**/*.test.ts",
+    "fixtures:generate": "python ../../../scripts/packaging/generate_js_parity_fixtures.py tests/fixtures"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "3.0.0",
+    "@types/node": "^20.10.0",
+    "typescript": "^5.4.0",
+    "detect-libc": "^2.0.3"
+  }
+}

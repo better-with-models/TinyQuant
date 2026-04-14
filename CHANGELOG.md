@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Phase 25.1 scaffolding: `rust/crates/tinyquant-js/` napi-rs crate
+  (exporting only `version()`) and `javascript/@tinyquant/core/` npm
+  package skeleton with the runtime loader and build config. No public
+  value-object surface yet.
 - `markdownlint-obsidian` pre-commit hook (`.pre-commit-config.yaml`)
   scoped to `docs/**/*.md` except `docs/research/`, gated at
   `alisonaquinas/markdownlint-obsidian@markdownlint-obsidian-cliv1.0.6`
