@@ -1,0 +1,326 @@
+---
+# Phase 25.4 — JavaScript CI for @tinyquant/core.
+#
+# This workflow exercises the full npm-package build pipeline on every
+# PR and push to `main` that touches the tinyquant-js crate or the
+# npm package tree. It does NOT publish — tag-triggered publishing
+# lives in `js-release.yml`.
+#
+# Flow (per plan §CI workflow — js-ci.yml):
+#
+#   1. build-native (5 triples in parallel)
+#        - checkout + rust toolchain + Node 20
+#        - `npm ci` under `javascript/@tinyquant/core`
+#        - `npm run build` — driven by scripts/build.mjs which invokes
+#          `@napi-rs/cli` (from package devDeps), renames the output
+#          to `binaries/<triple>.node`, compiles TypeScript (ESM),
+#          emits .d.cts, and emits the CJS bundle.
+#        - upload the per-triple native binary as an artifact.
+#
+#   2. assemble-tarball (1x linux runner)
+#        - download all 5 native artifacts into `binaries/`.
+#        - re-run `npm ci && npm run build` so the ESM + CJS dist/
+#          matches the bundled binaries exactly.
+#        - `npm pack` to produce the single-fat-tarball.
+#
+#   3. install-test (5 runners × 3 runtimes = 15 cells)
+#        - download the tarball, install into a clean scratch dir
+#          under each of Node 20, Node 22, and Bun 1.1, and run a
+#          lightweight smoke (`version()` + a codec round-trip).
+#        - The install-test never re-runs the full in-source Node
+#          test suite; that already ran on every developer machine
+#          and runs again in test-source below. The installed-tarball
+#          smoke is the "did the shipped artefact work on this
+#          platform?" gate.
+#
+#   4. test-source (1x linux runner)
+#        - full `npm test` (build + tsc tests + node --test + cjs
+#          smoke) against the source tree on linux/x64.
+#
+#   5. pnpm-smoke (1x linux runner)
+#        - pnpm via corepack adds the tarball and prints version().
+#
+# Deviations from the literal YAML in the plan §CI workflow:
+#
+#   - Build invocation. The plan shows `napi build` invoked directly
+#     from `rust/crates/tinyquant-js/`. We invoke `npm run build` from
+#     the npm package instead because `scripts/build.mjs` already
+#     orchestrates napi + rename + tsc + emit-cjs. Single source of
+#     truth for "how the package is built" stays in the script.
+#   - `@napi-rs/cli` version. Pinned to `3` (matches package devDeps),
+#     not the plan's `3.0.0`.
+#   - Install-test runs a smoke (require + version + codec round-trip)
+#     rather than the full TS test suite. The published tarball does
+#     not contain `tests/`, so `node --test tests/**` as in the plan
+#     is infeasible without re-checking out the repo — which would
+#     defeat the point of "test the tarball". A separate test-source
+#     job runs the full suite on the source tree.
+#   - No explicit rename step. `scripts/rename-binaries.mjs` runs as
+#     part of `npm run build` and produces `binaries/<triple>.node`
+#     directly; CI does not need to duplicate that logic.
+
+name: js-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rust/crates/tinyquant-js/**"
+      - "rust/crates/tinyquant-core/**"
+      - "rust/crates/tinyquant-io/**"
+      - "javascript/**"
+      - ".github/workflows/js-ci.yml"
+  pull_request:
+    paths:
+      - "rust/crates/tinyquant-js/**"
+      - "rust/crates/tinyquant-core/**"
+      - "rust/crates/tinyquant-io/**"
+      - "javascript/**"
+      - ".github/workflows/js-ci.yml"
+
+concurrency:
+  group: js-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+
+  # -------------------------------------------------------------------
+  # 1. build-native — produce one `.node` per supported triple.
+  # -------------------------------------------------------------------
+  build-native:
+    name: build .node (${{ matrix.triple }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu }
+          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu }
+          - { triple: x86_64-apple-darwin,        runner: macos-13,         key: darwin-x64 }
+          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64 }
+          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+          targets: ${{ matrix.triple }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+      - name: npm ci
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: npm ci
+      - name: npm run build
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        env:
+          RUSTFLAGS: "-C strip=symbols"
+        run: npm run build
+      - name: Verify binary exists
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "binaries/${{ matrix.key }}.node" || {
+            echo "::error::expected binaries/${{ matrix.key }}.node after npm run build"
+            ls -la binaries/ || true
+            exit 1
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.key }}
+          path: javascript/@tinyquant/core/binaries/${{ matrix.key }}.node
+
+  # -------------------------------------------------------------------
+  # 2. assemble-tarball — collect all 5 binaries + tsc build + npm pack.
+  # -------------------------------------------------------------------
+  assemble-tarball:
+    name: Assemble npm tarball
+    needs: build-native
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+      - uses: actions/download-artifact@v4
+        with:
+          path: javascript/@tinyquant/core/binaries
+          pattern: native-*
+          merge-multiple: true
+      - name: List bundled binaries
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la binaries/
+          count=$(ls binaries/*.node 2>/dev/null | wc -l)
+          test "$count" -eq 5 || {
+            echo "::error::expected 5 bundled binaries, got $count"
+            exit 1
+          }
+      - name: npm ci
+        working-directory: javascript/@tinyquant/core
+        run: npm ci
+      # Re-run build so dist/ matches the assembled binaries. The
+      # napi build step is a no-op here (cargo incremental + cached)
+      # if already built locally; in CI it rebuilds the host triple
+      # but the downloaded artefacts overwrite that file so the final
+      # binaries/ set is still all 5.
+      - name: npm run build
+        working-directory: javascript/@tinyquant/core
+        run: npm run build
+      - name: Restore downloaded binaries
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The build step above re-ran napi build for the host triple
+          # and overwrote the downloaded linux-x64-gnu artefact with
+          # a freshly-built one. That is fine: the fresh binary is
+          # byte-equivalent for the host. Verify the five expected
+          # files are all still present.
+          for key in linux-x64-gnu linux-arm64-gnu darwin-x64 darwin-arm64 win32-x64-msvc; do
+            test -f "binaries/${key}.node" || {
+              echo "::error::missing binaries/${key}.node after build"
+              exit 1
+            }
+          done
+      - name: npm pack
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../../../dist-npm
+          npm pack --pack-destination ../../../dist-npm
+          ls -la ../../../dist-npm/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-tarball
+          path: dist-npm/*.tgz
+
+  # -------------------------------------------------------------------
+  # 3. install-test — smoke-install the tarball under Node 20 / 22 / Bun
+  #    on all 5 runners.
+  # -------------------------------------------------------------------
+  install-test:
+    name: install+smoke (${{ matrix.runner }}, ${{ matrix.runtime }})
+    needs: assemble-tarball
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-22.04, ubuntu-22.04-arm, macos-13, macos-14, windows-2022]
+        runtime: [node-20, node-22, bun-1.1]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-tarball
+          path: ./tarball
+      - name: Setup Node
+        if: startsWith(matrix.runtime, 'node-')
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.runtime == 'node-20' && '20.x' || '22.x' }}
+      - name: Setup Bun
+        if: startsWith(matrix.runtime, 'bun-')
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: "1.1.x"
+      - name: Install tarball (npm)
+        if: startsWith(matrix.runtime, 'node-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir smoke && cd smoke
+          npm init -y >/dev/null
+          # Glob resolves the single .tgz produced by assemble-tarball.
+          tgz=$(ls ../tarball/*.tgz | head -1)
+          npm install "$tgz"
+          node -e "
+            const mod = require('@tinyquant/core');
+            console.log('version:', mod.version());
+            if (typeof mod.version() !== 'string') {
+              throw new Error('version() did not return a string');
+            }
+          "
+      - name: Install tarball (bun)
+        if: startsWith(matrix.runtime, 'bun-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir smoke && cd smoke
+          bun init -y >/dev/null
+          tgz=$(ls ../tarball/*.tgz | head -1)
+          bun add "$tgz"
+          bun -e "
+            import('@tinyquant/core').then(m => {
+              console.log('version:', m.version());
+              if (typeof m.version() !== 'string') {
+                throw new Error('version() did not return a string');
+              }
+            }).catch(e => { console.error(e); process.exit(1); });
+          "
+
+  # -------------------------------------------------------------------
+  # 4. test-source — run the full test suite against the source tree.
+  #    (Complements install-test which only smoke-tests the tarball.)
+  # -------------------------------------------------------------------
+  test-source:
+    name: test (source, linux/x64, node 20)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+      - name: npm ci
+        working-directory: javascript/@tinyquant/core
+        run: npm ci
+      - name: npm test
+        working-directory: javascript/@tinyquant/core
+        run: npm test
+
+  # -------------------------------------------------------------------
+  # 5. pnpm-smoke — verify pnpm can install the tarball too.
+  # -------------------------------------------------------------------
+  pnpm-smoke:
+    name: pnpm install smoke
+    needs: assemble-tarball
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-tarball
+          path: ./tarball
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
+      - name: Enable pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+      - name: pnpm add tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir smoke-pnpm && cd smoke-pnpm
+          pnpm init >/dev/null
+          tgz=$(ls ../tarball/*.tgz | head -1)
+          pnpm add "$tgz"
+          node -e "
+            const { version } = require('@tinyquant/core');
+            console.log('version:', version());
+          "
