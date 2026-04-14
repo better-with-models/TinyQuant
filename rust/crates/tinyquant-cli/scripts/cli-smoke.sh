@@ -95,9 +95,13 @@ assert len(orig) == len(back), f"length mismatch {len(orig)} vs {len(back)}"
 sq = sum((a - b) ** 2 for a, b in zip(orig, back))
 mse = sq / len(orig)
 print(f"mse={mse:.6f}")
-# Loose bound — random inputs + 4-bit PQ-style codec typically sit well
-# under 1e-1. Tighter bounds live in the unit + integration tests.
-assert mse < 1.0, f"mse {mse} too large"
+# Release gate threshold — pinned by
+# docs/plans/rust/phase-22-pyo3-cabi-release.md §CLI smoke test matrix.
+# The seed / dataset combination (rows=1024, cols=32, bit_width=4, seed=7
+# with residual) is chosen to stay well under this bound; Phase 22.A
+# parity tests observed MSE ~3e-4 cross-impl, and the CLI drives the
+# exact same codec.
+assert mse < 1e-2, f"mse {mse} too large"
 PY
 else
     # Degraded path: byte-length parity.
