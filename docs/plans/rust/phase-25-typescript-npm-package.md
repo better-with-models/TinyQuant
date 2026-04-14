@@ -785,7 +785,12 @@ export declare class Corpus {
   contains(vectorId: string): boolean;
   decompress(vectorId: string): Float32Array;
   decompressAll(): Record<string, Float32Array>;
-  remove(vectorId: string): void;
+  // `remove` returns `true` if the vector was removed, `false` if it
+  // was not present — mirrors Python's
+  // `dict.pop(vector_id, None) is not None` semantics used by the
+  // reference oracle. Reconciled with implementation in the
+  // Phase 25.3 spec-review fix pass (see `src/corpus.ts:328`).
+  remove(vectorId: string): boolean;
 
   pendingEvents(): CorpusEvent[];
 }
