@@ -17,6 +17,17 @@ category: qa
 > one-to-one with a class in [[classes/README|Class Specifications]] and a
 > test file in the `tests/` directory.
 
+> [!note] Reference location (Phase 23+)
+> The pure-Python implementation under test lives at
+> `tests/reference/tinyquant_py_reference/`, not `src/tinyquant_cpu/`.
+> The `tests/` suite imports it as `tinyquant_py_reference` via the
+> `pythonpath` extension in `pyproject.toml`. See
+> [[entities/python-reference-implementation|Python Reference Implementation]]
+> and [[plans/rust/phase-23-python-reference-demotion|Phase 23]] for
+> the rename rationale. A sibling `tests/parity/` suite (run via
+> `pytest -m parity`) covers cross-implementation parity and is
+> documented in [[design/rust/testing-strategy|Testing Strategy]].
+
 ## Test file index
 
 ### Codec package — `tests/codec/`
@@ -58,11 +69,14 @@ category: qa
 
 ## Coverage targets
 
+Floors apply to the reference implementation at
+`tests/reference/tinyquant_py_reference/`:
+
 | Package | Floor |
 |---------|-------|
-| `tinyquant_cpu/codec/` | 95% |
-| `tinyquant_cpu/corpus/` | 90% |
-| `tinyquant_cpu/backend/` | 80% |
+| `tinyquant_py_reference/codec/` | 95% |
+| `tinyquant_py_reference/corpus/` | 90% |
+| `tinyquant_py_reference/backend/` | 80% |
 | Overall | 90% |
 
 ## See also

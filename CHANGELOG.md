@@ -5,6 +5,16 @@ All notable changes to TinyQuant will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Pure-Python implementation demoted to a test-only reference at
+  `tests/reference/tinyquant_py_reference/`. It is no longer shipped
+  on PyPI. The last pure-Python release remains `tinyquant-cpu==0.1.1`.
+  Phase 24 will reclaim the `tinyquant-cpu` name with a Rust-backed
+  fat wheel at version `0.2.0`.
+
 ## [0.1.1] - 2026-04-09
 
 Documentation and CI maintenance release. No user-facing Python API

@@ -19,9 +19,14 @@ GitHub auto-prefers for the repo landing page.
 ## Repository overview
 
 TinyQuant uses an LLM-maintained documentation vault under `docs/`. The
-repository is currently documentation-first: research inputs live alongside a
-structured wiki that can later grow into product specs, design notes, behavior
-specifications, and implementation guidance.
+repository is documentation-first and implementation-plural: the shipping
+engine is the Rust workspace under `rust/`, and a pure-Python reference
+implementation lives under `tests/reference/tinyquant_py_reference/` as a
+test-only differential oracle. The legacy `src/tinyquant_cpu/` tree is
+gone as of Phase 23 — no source is shipped to PyPI from this branch; the
+`tinyquant-cpu==0.1.1` wheel on PyPI remains as the last pure-Python
+release. Phase 24 will reclaim the `tinyquant-cpu` name on PyPI with a
+Rust-backed fat wheel.
 
 The documentation system is explicitly based on the ideas in
 `docs/research/llm-wiki.md`. Treat that file as the conceptual source for how
@@ -31,6 +36,9 @@ the repo's knowledge base should operate.
 
 | Path | Purpose |
 | ------ | ------- |
+| `rust/` | Cargo workspace for the shipping Rust implementation (tinyquant-core, tinyquant-py, tinyquant-sys, tinyquant-cli). |
+| `tests/reference/tinyquant_py_reference/` | Pure-Python reference implementation. Test-only oracle; never installed by end users. Frozen at `v0.1.1` behavior. |
+| `tests/parity/` | Cross-implementation parity suite (`pytest -m parity`). Self-parity lives now; Rust-side parity is wired on in Phase 24. |
 | `docs/` | LLM-maintained wiki (Obsidian vault). All markdown here uses Obsidian-flavored syntax unless explicitly exempted. |
 | `docs/research/` | Raw source material. The LLM reads from these but never modifies them after placement. |
 | `docs/entities/` | Wiki pages for concrete systems, datasets, services, libraries, or tools. |

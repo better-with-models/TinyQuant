@@ -5,7 +5,7 @@ Subcommands
 -----------
 
 * ``hashes``   — Emit the canonical 120-triple ``config_hashes.json`` file by
-  instantiating ``tinyquant_cpu.codec.CodecConfig`` for every triple and
+  instantiating ``tinyquant_py_reference.codec.CodecConfig`` for every triple and
   recording its ``config_hash``. This is the only fixture that anchors Rust
   to Python byte-for-byte (SHA-256 of a deterministic canonical string).
 * ``codebook`` — Emit the 10 000 × 64 f32 training corpus and the trained
@@ -37,7 +37,7 @@ Usage
 ``python scripts/generate_rust_fixtures.py quantize --seed 7 --count 10000 --codebook-seed 42``
 ``python scripts/generate_rust_fixtures.py residual --seed 19 --rows 1000 --cols 64``
 
-Run from the repository root so imports of ``tinyquant_cpu`` resolve.
+Run from the repository root so imports of ``tinyquant_py_reference`` resolve.
 """
 
 from __future__ import annotations
@@ -80,7 +80,7 @@ def _cmd_hashes(_args: argparse.Namespace) -> int:
     repo_root = _repo_root()
     sys.path.insert(0, str(repo_root / "src"))
 
-    from tinyquant_cpu.codec.codec_config import CodecConfig  # noqa: PLC0415
+    from tinyquant_py_reference.codec.codec_config import CodecConfig  # noqa: PLC0415
 
     entries: list[dict[str, Any]] = []
     for bit_width, seed, dimension, residual_enabled in _triples():
@@ -123,8 +123,8 @@ def _cmd_codebook(args: argparse.Namespace) -> int:
 
     import numpy as np  # noqa: PLC0415
 
-    from tinyquant_cpu.codec.codebook import Codebook  # noqa: PLC0415
-    from tinyquant_cpu.codec.codec_config import CodecConfig  # noqa: PLC0415
+    from tinyquant_py_reference.codec.codebook import Codebook  # noqa: PLC0415
+    from tinyquant_py_reference.codec.codec_config import CodecConfig  # noqa: PLC0415
 
     seed = int(args.seed)
     rows = int(args.rows)
@@ -163,7 +163,7 @@ def _cmd_quantize(args: argparse.Namespace) -> int:
 
     import numpy as np  # noqa: PLC0415
 
-    from tinyquant_cpu.codec.codebook import Codebook  # noqa: PLC0415
+    from tinyquant_py_reference.codec.codebook import Codebook  # noqa: PLC0415
 
     seed = int(args.seed)
     count = int(args.count)
@@ -261,9 +261,9 @@ def _cmd_codec(args: argparse.Namespace) -> int:
     import json  # noqa: PLC0415
     import numpy as np  # noqa: PLC0415
 
-    from tinyquant_cpu.codec.codec import Codec  # noqa: PLC0415
-    from tinyquant_cpu.codec.codec_config import CodecConfig  # noqa: PLC0415
-    from tinyquant_cpu.codec.codebook import Codebook  # noqa: PLC0415
+    from tinyquant_py_reference.codec.codec import Codec  # noqa: PLC0415
+    from tinyquant_py_reference.codec.codec_config import CodecConfig  # noqa: PLC0415
+    from tinyquant_py_reference.codec.codebook import Codebook  # noqa: PLC0415
 
     input_seed = int(args.input_seed)
     codec_seed = int(args.codec_seed)
@@ -356,7 +356,7 @@ def _cmd_serialization(_args: argparse.Namespace) -> int:
     """Delegate to the dedicated serialization fixture generator."""
     repo_root = _repo_root()
     sys.path.insert(0, str(repo_root / "src"))
-    from tinyquant_cpu.tools.dump_serialization import main as _ser_main  # noqa: PLC0415
+    from tinyquant_py_reference.tools.dump_serialization import main as _ser_main  # noqa: PLC0415
 
     return int(_ser_main())
 

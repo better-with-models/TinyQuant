@@ -95,16 +95,27 @@ TinyQuant is published on PyPI as `tinyquant-cpu` and imports as
 `tinyquant_cpu` (following the convention used by `torch-cpu`,
 `tensorflow-cpu`, and `onnxruntime-gpu`).
 
-| I want to...                             | Install command                           |
-| :--------------------------------------- | :---------------------------------------- |
-| Try it out                               | `pip install tinyquant-cpu`               |
-| Use it with PostgreSQL + pgvector        | `pip install "tinyquant-cpu[pgvector]"`   |
-| Contribute or run the full test suite    | `pip install "tinyquant-cpu[dev]"`        |
+> [!IMPORTANT]
+> **Phase 23 reference demotion.** `tinyquant-cpu==0.1.1` is the **last
+> pure-Python release**. The pure-Python implementation has been demoted
+> to a test-only reference under `tests/reference/tinyquant_py_reference/`
+> and is no longer shipped from this tree. Phase 24 reclaims the
+> `tinyquant-cpu` name on PyPI with a Rust-backed fat wheel at
+> `0.2.0+` — same import path (`import tinyquant_cpu`), same public API
+> surface, different engine.
+
+| I want to...                                   | Install command                                    |
+| :--------------------------------------------- | :------------------------------------------------- |
+| Pin the last pure-Python release               | `pip install tinyquant-cpu==0.1.1`                 |
+| Use PostgreSQL + pgvector on the `0.1.x` line  | `pip install "tinyquant-cpu[pgvector]==0.1.1"`     |
+| Phase 24 Rust-backed fat wheel (when released) | `pip install 'tinyquant-cpu>=0.2.0'`               |
+| Work on this repository                        | see the [Development](#development) section below  |
 
 > [!TIP]
-> The `[pgvector]` extra pulls in `psycopg[binary]>=3.1` for talking to
-> a live PostgreSQL database. The `[dev]` extra adds pytest, hypothesis,
-> mypy, ruff, build, and twine. Python **3.12+** is required for both.
+> The `[pgvector]` extra on `0.1.1` pulls in `psycopg[binary]>=3.1` for
+> talking to a live PostgreSQL database. Python **3.12+** is required.
+> The repository itself is no longer a buildable package — dev
+> dependencies are installed directly.
 
 ---
 
@@ -382,14 +393,14 @@ implementation:
 
 ## Repository layout
 
-| Path                         | Purpose                                                              |
-| :--------------------------- | :------------------------------------------------------------------- |
-| `src/tinyquant_cpu/codec/`   | Codec, config, codebook, compressed vector, rotation                 |
-| `src/tinyquant_cpu/corpus/`  | Corpus aggregate, compression policies, domain events                |
-| `src/tinyquant_cpu/backend/` | Search backend protocol, brute-force impl, pgvector adapter          |
-| `tests/`                     | Unit, integration, E2E, architecture, and calibration suites         |
-| `experiments/`               | Benchmarks and empirical evaluations                                 |
-| `docs/`                      | Obsidian wiki: design docs, research, SDLC plans, CI/CD specs        |
+| Path                                          | Purpose                                                              |
+| :-------------------------------------------- | :------------------------------------------------------------------- |
+| `rust/`                                       | Cargo workspace for the shipping Rust implementation                 |
+| `tests/reference/tinyquant_py_reference/`     | Pure-Python reference implementation — test-only oracle (Phase 23+)  |
+| `tests/parity/`                               | Cross-impl parity suite (`pytest -m parity`); Phase 24 wires `rs`    |
+| `tests/`                                      | Unit, integration, E2E, architecture, and calibration suites         |
+| `experiments/`                                | Benchmarks and empirical evaluations                                 |
+| `docs/`                                       | Obsidian wiki: design docs, research, SDLC plans, CI/CD specs        |
 
 ---
 
@@ -398,7 +409,9 @@ implementation:
 ```bash
 git clone https://github.com/better-with-models/TinyQuant.git
 cd TinyQuant
-pip install -e ".[dev]"
+
+# Install dev dependencies directly — the tree is no longer a buildable package.
+pip install pytest pytest-cov hypothesis numpy ruff mypy build
 
 # Lint and format
 ruff check . && ruff format --check .
@@ -406,15 +419,18 @@ ruff check . && ruff format --check .
 # Strict type check
 mypy --strict .
 
-# Run the full test suite with coverage
-pytest --cov=tinyquant_cpu
+# Run the full suite against tests/reference/tinyquant_py_reference.
+pytest --cov=tinyquant_py_reference
+
+# Cross-impl parity scaffold (rs side skipped until Phase 24 fat wheel).
+pytest -m parity -v
 ```
 
-The test suite includes **208 tests** covering unit, integration,
-end-to-end, calibration, and architecture-enforcement scenarios.
-Coverage is held above **90%** by CI (currently **90.95%**). Live
-PostgreSQL + pgvector tests run against a Docker container in CI via
-`testcontainers`.
+The test suite includes **214 tests** covering unit, integration,
+end-to-end, calibration, and architecture-enforcement scenarios
+against the reference implementation. Coverage is held above **90%**
+by CI. Live PostgreSQL + pgvector tests run against a Docker container
+in CI via `testcontainers`.
 
 > [!TIP]
 > CI enforces three strict gates: `ruff check` / `ruff format --check`,

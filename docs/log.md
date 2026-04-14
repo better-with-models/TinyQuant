@@ -739,3 +739,36 @@ correct and not misleading.
 
 All pages now have zero orphans and zero broken wikilinks (scanner + manual
 review).
+
+## [2026-04-13] operation | Phase 23 — Python reference demotion landed
+
+Executed Phase 23 of the Rust port
+([[plans/rust/phase-23-python-reference-demotion|plan]]) across three
+commit slices. Step 1 rewrote test imports from `tinyquant_cpu` to
+`tinyquant_py_reference` (red snapshot — no source moved yet). Step 2
+`git mv`'d `src/tinyquant_cpu/` to
+`tests/reference/tinyquant_py_reference/` with history preserved,
+leaving no shipping source under `src/`. Step 3 updated
+`pyproject.toml` — cleared `[tool.hatch.build.targets.wheel].packages`,
+extended `pythonpath` to `tests/reference`, and rewrote coverage paths
+— bringing the full 214-test suite back to green under the new name.
+Step 4 added the `build-package-does-not-leak-reference` CI job to
+`.github/workflows/ci.yml`; with hatchling `≥ 1.25` + `bypass-selection
+= true` the `python -m build` invocation emits an empty metadata-only
+wheel rather than failing, so the guard was structured as a
+leakage-check on any produced wheel rather than a fail-on-success
+assertion. Step 5 scaffolded `tests/parity/` (three files — empty
+`__init__.py`, `conftest.py` with session-scoped `ref` / `rs`
+fixtures, `test_cross_impl.py` with four classes and eight tests
+under `pytestmark = pytest.mark.parity`). The `rs` fixture skips with
+`Rust-backed tinyquant_cpu not installed` until Phase 24 installs the
+fat wheel. Step 6 updated the prose surface: `AGENTS.md`, `CLAUDE.md`,
+`README.md`, `.github/README.md`, [[entities/TinyQuant]], this log,
+[[roadmap]], [[design/rust/testing-strategy]],
+[[qa/unit-tests/README|qa/unit-tests]],
+[[CI-plan/workflow-definition]], [[CD-plan/release-workflow]],
+`scripts/ci_local_simulate.sh`, `scripts/generate_rust_fixtures.py`,
+`CHANGELOG.md`, and added
+[[entities/python-reference-implementation|python-reference-implementation]]
+and [[design/rust/phase-23-implementation-notes]]. Phase 23 is a pure
+refactor — no PyPI publish, no tag, version string stays at `0.1.1`.

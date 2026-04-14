@@ -54,12 +54,27 @@ env:
 
 ```yaml
 jobs:
-  lint:           # Stage 1a — parallel
-  markdown-lint:  # Stage 1b — parallel
-  typecheck:      # Stage 2 — needs: [lint]
-  test:           # Stage 3+4 — needs: [typecheck, markdown-lint]
-  build-artifact: # Stage 6 — needs: [test]
+  lint:                                   # Stage 1a — parallel
+  markdown-lint:                          # Stage 1b — parallel
+  typecheck:                              # Stage 2 — needs: [lint]
+  test:                                   # Stage 3+4 — needs: [typecheck, markdown-lint]
+  build-artifact:                         # Stage 6 — needs: [test]
+  build-package-does-not-leak-reference:  # Stage 6b — needs: [test]
 ```
+
+> [!note] Phase 23 wheel-leak guard
+> The `build-package-does-not-leak-reference` job, added in Phase 23,
+> defends the reference-demotion contract: `python -m build` on this
+> tree must not emit a wheel that contains
+> `tests/reference/tinyquant_py_reference/`. Because hatchling `≥ 1.25`
+> with `bypass-selection = true` produces an empty metadata-only wheel
+> rather than failing outright (see
+> [[design/rust/phase-23-implementation-notes|Phase 23 Implementation Notes]]),
+> this job is structured as a **leakage check on any produced wheel**,
+> not a fail-on-success assertion: if a wheel appears, it is unzipped
+> and scanned for reference paths; any hit fails the job. Phase 24
+> extends the same guard to the Rust-backed fat wheel so the pure-Python
+> reference can never silently ride along.
 
 ## Job specifications
 
@@ -240,6 +255,7 @@ Configure in GitHub branch protection for `main`:
 | `Test (Python 3.12)` | Yes |
 | `Test (Python 3.13)` | Yes |
 | `Build Package` | Yes |
+| `Build Package Does Not Leak Reference` | Yes |
 
 All checks must pass before a PR can merge.
 

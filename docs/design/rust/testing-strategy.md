@@ -431,6 +431,45 @@ human review.
   `assert_eq!(f32, f32)` on computed values.
 - No `sleep`, `Instant::now`, or wall-clock-dependent assertions.
 
+## Reference as oracle
+
+> [!info] Since Phase 23
+> The pure-Python implementation lives under
+> `tests/reference/tinyquant_py_reference/`, not under `src/`. It is a
+> test-only differential oracle for the Rust core and the Phase 24
+> fat wheel — it is never installed by end users. See
+> [[entities/python-reference-implementation|Python Reference Implementation]]
+> and [[plans/rust/phase-23-python-reference-demotion|Phase 23]].
+
+Every parity gate in the Rust port anchors to this reference:
+
+- **Fixture generation.** `scripts/generate_rust_fixtures.py` imports
+  `tinyquant_py_reference` to emit `config_hashes.json`, the codebook
+  fixtures, the quantize fixtures, and the residual fixtures consumed
+  by the Rust tests under `rust/crates/tinyquant-core/tests/fixtures/`.
+  Re-running the generator after a Python-side change is the
+  authoritative way to refresh Rust fixtures; there is no independent
+  Rust source of truth.
+- **Cross-language parity (pyo3).** The `tests/parity/` suite —
+  introduced in Phase 23 alongside the rename — runs under
+  `pytest -m parity`. It exposes a session-scoped `ref` fixture
+  (always the reference) and an `rs` fixture (the Rust-backed
+  `tinyquant_cpu` fat wheel once Phase 24 installs it). Self-parity
+  tests are live in Phase 23; cross-impl tests skip with message
+  `Rust-backed tinyquant_cpu not installed` until Phase 24 flips the
+  fixture on.
+- **Behavior freeze.** The reference's public surface is pinned to the
+  `v0.1.1` PyPI behavior. Any byte-level or numerics-level change is
+  a contract break against the Rust core and is coordinated across
+  both implementations in lockstep.
+
+The reference is **not** measured as part of the Rust coverage gates.
+It has its own coverage floor — `--cov=tinyquant_py_reference
+--cov-fail-under=90` — enforced by the Python CI chunks, and its
+source is explicitly excluded from any wheel built from this tree via
+`[tool.hatch.build.targets.wheel].packages = []` and the
+`build-package-does-not-leak-reference` CI guard.
+
 ## Test ordering and isolation
 
 - Tests within a file run in parallel by default.
