@@ -389,12 +389,19 @@ bucket without any special wiring.
    - and downgrades `pest{,_derive,_meta,_generator}` to `2.7.15`
      and `unicode-segmentation` to `1.12.0` in `Cargo.lock` (these
      are pulled by `npyz → py_literal → pest`).
-3. **`codec train --config-out` flag.** The §Step 12 skeleton lists
-   the train / compress / decompress chain but does not specify how
-   the downstream commands reconstruct `CodecConfig` (it's not
-   recoverable from the codebook alone — `seed` and
-   `residual_enabled` are config-level). We add `--config-out` on
-   `codec train` and matching `--config-json` on every consumer.
+3. **`codec train --config-out` flag and `CodecCmd::Train { format }`.**
+   The §Step 12 skeleton lists the train / compress / decompress chain
+   but does not specify how the downstream commands reconstruct
+   `CodecConfig` (it's not recoverable from the codebook alone — `seed`
+   and `residual_enabled` are config-level). We add `--config-out` on
+   `codec train` and matching `--config-json` on every consumer. We
+   also surface `--format` on `codec train` so that operators can feed
+   the command `.npy` / `.csv` / `.jsonl` training corpora without a
+   pre-processing step; this is spec-compliant under §CLI I/O format
+   specification, which pins `--format` to every I/O-touching
+   subcommand. The §Step 13 Rust code skeleton is illustrative and
+   does not enumerate every flag; the §CLI I/O format specification
+   table is the authoritative surface.
 4. **`corpus ingest --policy {passthrough, fp16}`.** The current
    `tinyquant-io::codec_file` writer only emits compressed records,
    so the passthrough and FP16 policies cannot be implemented
@@ -411,6 +418,42 @@ bucket without any special wiring.
    dispatch off to a worker thread with an 8 MiB stack. On Linux
    and macOS the default thread stack is already 8 MiB, so this is
    a no-op there.
+6. **`build.rs` emits `TINYQUANT_`-prefixed env vars** instead of the
+   bare `GIT_COMMIT`, `RUSTC_VERSION`, `TARGET`, `PROFILE` names that
+   the §Step 15 Rust code skeleton shows (`option_env!("GIT_COMMIT")`).
+   `src/commands/info.rs` reads the same prefixed names
+   (`option_env!("TINYQUANT_GIT_COMMIT")` etc.). Rationale: the bare
+   names collide with CI-injected environment variables during Cargo
+   builds — GitHub Actions and many self-hosted runners set
+   `GIT_COMMIT` / `TARGET` globally, which would make `build.rs` bake
+   the wrong values into the binary (the CI job's commit, not the
+   crate's; the wrapper's target, not Cargo's). The prefix is a
+   defensive decision: it scopes the env-var contract to this crate
+   and keeps the `info` output honest on shared runners. `build.rs`
+   also emits `cargo:rerun-if-env-changed=TINYQUANT_GIT_COMMIT` so
+   an operator override of the commit string rebuilds the binary.
+   The §Step 15 skeleton is illustrative code; the header prose that
+   describes "git commit / rustc / target / profile" is the authoritative
+   contract, and the output format matches it verbatim.
+7. **`indicatif` progress bars wired into the batch paths in a follow-up
+   commit, not the initial scaffold.** §Step 14 mandates
+   `indicatif::ProgressBar` on long-running batches. The initial
+   Phase 22.C landing shipped the `progress` Cargo feature and the
+   `indicatif = "0.17"` optional dependency but did not instantiate
+   a bar in any subcommand body (the feature was a no-op stub). The
+   follow-up commit adds `crate::progress`, a global `--no-progress`
+   flag on `Cli`, and determinate bars in `codec_compress::run`
+   (rayon-driven `compressing` bar ticking per row; serial `writing`
+   bar ticking per record), `codec_decompress::run` (`decompressing`,
+   per-record), and `corpus_search::run` (`loading corpus`,
+   per-record in the pre-query decompress sweep). The `rayon_driver`
+   `fn` pointer cannot close over per-call state, so the compress
+   bar is published through a `static OnceLock<Mutex<Option<ProgressBar>>>`
+   in `crate::progress` (`set_active_compress_bar` before
+   `pool.install`, `clear_active_compress_bar` after). The module
+   honours `--no-progress`, `TERM=dumb`, and, via `indicatif`'s own
+   detection, `NO_COLOR=1`. Corpus ingest delegates to
+   `codec_compress::run` and inherits the bar automatically.
 
 ### Acceptance signals (Windows host)
 
@@ -421,7 +464,7 @@ bucket without any special wiring.
 | `cargo build --workspace --release` | clean (compile time ~2 min cold) |
 | `cargo test -p tinyquant-cli` | 3 / 3 smoke tests pass (debug, ~43 s) |
 | Stripped release binary size (`tinyquant.exe`) | **2.49 MiB** (well under the 8 MiB §Step 11 budget) |
-| `bash crates/tinyquant-cli/scripts/cli-smoke.sh` | end-to-end chain green (`info → train → compress → decompress → verify → search`) with `mse ≈ 0` on a 1024×32 Gaussian dataset |
+| `bash crates/tinyquant-cli/scripts/cli-smoke.sh` | end-to-end chain green (`info → train → compress → decompress → verify → search`) with `MSE ≈ 1.6e-9` on the pinned 1024×32 Gaussian dataset — ~6×10⁶ under the 1e-2 release-gate threshold declared in §CLI smoke test matrix |
 
 The 8 MiB size budget in the §Step 11 spec is measured for
 `linux-gnu-x64` with `strip = "symbols"` and PIE off. The Windows
