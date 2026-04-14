@@ -7,5 +7,23 @@
     // That is idiomatic, not a mistake — only flag duplicates at the
     // same heading level with the same parent.
     "MD024": { "siblings_only": true }
-  }
+  },
+  // Surfaces with their own contracts:
+  // - docs/**         : Obsidian vault, gated by markdownlint-obsidian.
+  // - .github/**      : GitHub-flavored markdown that intentionally uses
+  //                     inline HTML (<picture>, <details>, alert
+  //                     admonitions). .github/README.md is the rich
+  //                     landing page GitHub auto-prefers.
+  // - .venv/**        : throwaway virtualenvs; vendor LICENSE.md files
+  //                     are upstream and not subject to our rules.
+  // - .worktrees/**   : separate branch worktrees; gated by their own
+  //                     branch's pre-commit hook.
+  // - node_modules/** : third-party packages.
+  "ignores": [
+    "docs/**",
+    ".github/**",
+    ".venv/**",
+    ".worktrees/**",
+    "node_modules/**"
+  ]
 }

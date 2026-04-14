@@ -172,17 +172,15 @@ def check_wiki_frontmatter() -> bool:
 
 
 def run_markdownlint() -> bool:
-    files = markdown_files_outside_docs()
-    if not files:
-        ok("no markdown files outside docs/ to lint")
-        return True
-
     npx = shutil.which("npx.cmd") or shutil.which("npx")
     if not npx:
         fail("npx was not found, so markdownlint could not run")
         return False
 
-    command = [npx, "markdownlint-cli2", *[str(path) for path in files]]
+    # Drive scope from .markdownlint-cli2.jsonc `ignores` rather than an
+    # explicit file list — Windows command-line length caps out around a
+    # few hundred paths once the bootstrap subtree docs are included.
+    command = [npx, "markdownlint-cli2", "**/*.md"]
     result = subprocess.run(command, cwd=REPO_ROOT, check=False)
     if result.returncode == 0:
         ok("markdownlint passed for markdown outside docs/")
