@@ -128,7 +128,7 @@ total compressed:   ~12 MB   (zip DEFLATE; binaries already stripped)
 ### `METADATA` (dist-info)
 
 ```text
-Metadata-Version: 2.3
+Metadata-Version: 2.4
 Name: tinyquant-cpu
 Version: 0.2.0
 Summary: CPU-only vector quantization codec for embedding storage compression (Rust-backed)

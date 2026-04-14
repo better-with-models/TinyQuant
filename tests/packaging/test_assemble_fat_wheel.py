@@ -448,23 +448,6 @@ def test_twine_check_passes(
         [sys.executable, "-m", "twine", "check", str(output)],
         capture_output=True, text=True, check=False,
     )
-    # Known Phase 24.1 template issue: METADATA declares
-    # `Metadata-Version: 2.3` but also uses `License-Expression:`,
-    # which was only introduced in metadata 2.4. Templates are
-    # out-of-scope for Phase 24.2 (see declared deviations in the
-    # Phase 24.4 implementation notes). Recognise the specific error
-    # and xfail rather than failing the suite; any OTHER twine error
-    # remains a hard failure.
-    if (
-        rc.returncode != 0
-        and "license-expression" in rc.stdout.lower()
-        and "metadata version 2.4" in rc.stdout.lower()
-    ):
-        pytest.xfail(
-            "Phase 24.1 METADATA template uses License-Expression with "
-            "Metadata-Version 2.3; templates are frozen in Phase 24.2. "
-            "Bump template to Metadata-Version: 2.4 in a follow-up slice."
-        )
     assert rc.returncode == 0, (
         f"twine check failed:\nstdout:\n{rc.stdout}\nstderr:\n{rc.stderr}"
     )
