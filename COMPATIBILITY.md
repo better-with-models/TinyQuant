@@ -12,7 +12,7 @@ this file is the data side of that contract.
 
 | `tinyquant_cpu` | `tinyquant_rs` | Known drift | Notes |
 | --- | --- | --- | --- |
-| 0.1.1 | 0.1.0 | R19 / R2 rotation kernel: MSE ≈ 3.15e-4 (below the 1e-3 parity-suite tolerance) | First Rust release. Parity covers `config_hash`, `Codebook.train` bytes, `CompressedVector.to_bytes` bytes, corpus lifecycle, batch methods, and the exception hierarchy. The rotation drift is tracked in [numerical-semantics.md](docs/design/rust/numerical-semantics.md) §R19. |
+| 0.1.1 | 0.1.0 | R19 / R2 rotation kernel: max \|py − rs\| ≈ 3.15e-4 (below the 1e-3 parity-suite tolerance) | First Rust release. Parity covers `config_hash`, `Codebook.train` bytes, `CompressedVector.to_bytes` bytes, corpus lifecycle, batch methods, and the exception hierarchy. The rotation drift is tracked in [numerical-semantics.md](docs/design/rust/numerical-semantics.md) §R19. |
 
 ## Update cadence
 

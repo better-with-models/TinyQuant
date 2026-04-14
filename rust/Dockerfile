@@ -6,15 +6,23 @@
 # docs/plans/rust/phase-22-pyo3-cabi-release.md §Container reproducibility):
 #
 #   1. Base images are pinned by **digest** (sha256), not by tag alone.
-#      The sentinels below are resolved to real digests by the
-#      `rust-release.yml` workflow's `resolve-base-digests` step before
-#      `docker buildx build` runs. The sentinels exist so that this
-#      file is self-documenting and builds on an operator's laptop can
-#      optionally supply `--build-arg` overrides.
+#      The `ARG RUST_BUILDER_DIGEST` / `ARG RUNTIME_DIGEST` sentinels
+#      below carry a `REPLACE_WITH_PINNED_DIGEST_*` placeholder string
+#      that is intended to be replaced with a real digest either by a
+#      committed edit to this Dockerfile or by a `--build-arg` supplied
+#      at invocation time. There is no automated resolver step in the
+#      workflow — operators are responsible for pinning before tagging.
 #
-#      During local / dry-run builds the placeholder `@sha256:dry-run`
-#      value is accepted — Docker resolves the tag on pull. CI enforces
-#      real digests via an awk guard in `rust-release.yml`.
+#      The `rust-release.yml` workflow's `Guard against placeholder
+#      digests` step (stage `container-reproducibility`) runs
+#      `grep -n 'REPLACE_WITH_PINNED_DIGEST' rust/Dockerfile` before
+#      the two reproducibility build passes and `exit 1`s if the
+#      placeholder string still appears, ensuring no release tag can
+#      ship with unpinned base images. Local / dry-run builds that
+#      want to skip the pin can supply
+#      `--build-arg RUST_BUILDER_DIGEST=sha256:<real-digest>` on the
+#      command line; the Dockerfile itself does not carry any dry-run
+#      escape hatch.
 #
 #   2. `SOURCE_DATE_EPOCH` is exported by the workflow from the tagged
 #      commit's author date (`git log -1 --format=%ct`) and passed into
