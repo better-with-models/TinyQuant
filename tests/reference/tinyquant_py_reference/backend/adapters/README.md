@@ -1,4 +1,4 @@
-# src/tinyquant_cpu/backend/adapters
+# tests/reference/tinyquant_py_reference/backend/adapters
 
 **BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
 

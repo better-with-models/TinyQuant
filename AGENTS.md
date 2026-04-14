@@ -22,11 +22,14 @@ TinyQuant uses an LLM-maintained documentation vault under `docs/`. The
 repository is documentation-first and implementation-plural: the shipping
 engine is the Rust workspace under `rust/`, and a pure-Python reference
 implementation lives under `tests/reference/tinyquant_py_reference/` as a
-test-only differential oracle. The legacy `src/tinyquant_cpu/` tree is
-gone as of Phase 23 — no source is shipped to PyPI from this branch; the
-`tinyquant-cpu==0.1.1` wheel on PyPI remains as the last pure-Python
-release. Phase 24 will reclaim the `tinyquant-cpu` name on PyPI with a
-Rust-backed fat wheel.
+test-only differential oracle. The legacy in-tree pure-Python package was
+removed in Phase 23; what now lives at `src/tinyquant_cpu/` is a Phase
+24.1 developer shim that re-exports the Rust extension (`tinyquant_rs`)
+under the `tinyquant_cpu` import name so editor IDEs and the Phase 24
+fat-wheel templates have a single source of truth for the public API
+surface. The `tinyquant-cpu==0.1.1` wheel on PyPI remains as the last
+pure-Python release; Phase 24 reclaims the `tinyquant-cpu` name on PyPI
+with a Rust-backed fat wheel at version `0.2.0`.
 
 The documentation system is explicitly based on the ideas in
 `docs/research/llm-wiki.md`. Treat that file as the conceptual source for how

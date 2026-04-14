@@ -1,4 +1,4 @@
-# AGENTS.md — Guide for AI Agents Working in `src/tinyquant_cpu/tools`
+# AGENTS.md — Guide for AI Agents Working in `tests/reference/tinyquant_py_reference/tools`
 
 **BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
 

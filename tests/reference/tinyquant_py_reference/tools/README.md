@@ -1,4 +1,4 @@
-# src/tinyquant_cpu/tools
+# tests/reference/tinyquant_py_reference/tools
 
 **BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
 
