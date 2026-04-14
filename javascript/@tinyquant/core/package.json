@@ -48,7 +48,7 @@
     "clean": "node -e \"for (const d of ['dist','dist-cjs','dist-tests','src-cjs-staging']) require('fs').rmSync(d,{recursive:true,force:true})\"",
     "clean:tests": "node -e \"require('fs').rmSync('dist-tests', {recursive:true, force:true})\"",
     "build:cjs": "node scripts/emit-cjs-bundle.mjs",
-    "build": "npm run clean && napi build --cwd ../../../rust/crates/tinyquant-js --platform --release --output-dir ../../../javascript/@tinyquant/core/binaries && node scripts/rename-binaries.mjs && tsc -p tsconfig.json && node scripts/emit-cjs-types.mjs && npm run build:cjs",
+    "build": "node scripts/build.mjs",
     "test": "npm run build && npm run clean:tests && tsc -p tsconfig.test.json && node --test \"dist-tests/**/*.test.js\" \"tests/**/*.test.cjs\"",
     "fixtures:generate": "python ../../../scripts/packaging/generate_js_parity_fixtures.py tests/fixtures"
   },

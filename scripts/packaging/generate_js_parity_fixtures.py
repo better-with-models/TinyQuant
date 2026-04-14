@@ -61,6 +61,15 @@ _SEEDS: tuple[int, ...] = (0, 1, 42, 999, (1 << 64) - 1)
 _DIMENSIONS: tuple[int, ...] = (64, 384, 768, 1536)
 _RESIDUALS: tuple[bool, ...] = (False, True)
 
+# Fixed RNG seeds for fixture reproducibility. The exact values are
+# arbitrary — we just need them stable across regenerations so the TS
+# parity suite always runs against the same ground-truth bytes. Two
+# different seeds are used so that corpus-generation noise does not
+# correlate with backend-generation noise; both suites exercise
+# distinct code paths and we want them independently sampled.
+_CORPUS_FIXTURE_SEED = 20260414
+_BACKEND_FIXTURE_SEED = 20260501
+
 
 def _config_hash_cases() -> list[dict[str, object]]:
     out: list[dict[str, object]] = []
@@ -103,7 +112,7 @@ def _corpus_scenarios() -> list[dict[str, object]]:
     the TS round-trip test.
     """
     scenarios: list[dict[str, object]] = []
-    rng = np.random.default_rng(seed=20260414)
+    rng = np.random.default_rng(seed=_CORPUS_FIXTURE_SEED)
 
     policy_cases: list[tuple[str, object]] = [
         ("insert-3-vectors-policy-compress", CompressionPolicy.COMPRESS),
@@ -223,7 +232,7 @@ def _backend_scenarios() -> list[dict[str, object]]:
     and score floats (within 1e-6) against the Python oracle.
     """
     scenarios: list[dict[str, object]] = []
-    rng = np.random.default_rng(seed=20260501)
+    rng = np.random.default_rng(seed=_BACKEND_FIXTURE_SEED)
 
     for scenario_id, dim in (
         ("bruteforce-dim16-topk3", 16),

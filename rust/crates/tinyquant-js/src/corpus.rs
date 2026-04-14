@@ -20,12 +20,13 @@ use std::sync::{Arc, Mutex};
 use napi::bindgen_prelude::Float32Array;
 use napi::{Error as NapiError, Status};
 use napi_derive::napi;
-use serde_json::{json, Value as JsonValue};
+use serde_json::json;
 
 use tinyquant_core::corpus::{
     CompressionPolicy as CoreCompressionPolicy, Corpus as CoreCorpus,
     CorpusEvent as CoreCorpusEvent, VectorEntry as CoreVectorEntry,
 };
+use tinyquant_core::errors::CorpusError as CoreCorpusError;
 use tinyquant_core::types::VectorId;
 
 use crate::codec::{Codebook, CodecConfig, CompressedVector};
@@ -161,23 +162,20 @@ impl VectorEntry {
     }
 
     /// Entry metadata serialised as a JSON string, or `null` when empty.
-    /// The TS wrapper parses this into `Record<string, unknown> | null`.
+    ///
+    /// Phase 25.3 deviation: metadata is not yet threaded through
+    /// `CoreCorpus` end-to-end. `EntryMetaValue` is not `serde`-serializable
+    /// from this crate (it is `no_std + alloc` and avoids a `serde_json`
+    /// dependency) and the PyO3 binding takes the same stance — it raises
+    /// `NotImplementedError` on metadata reads/writes. Rather than render
+    /// a lossy `format!("{v:?}")` shape that silently corrupts
+    /// `Integer(5)` → `"Integer(5)"`, this getter unconditionally returns
+    /// `None`. Inputs to `insert` / `insertBatch` are documented no-ops;
+    /// Phase 25.4 or beyond wires metadata through properly once the core
+    /// lands a JSON round-trip for `EntryMetaValue`.
     #[napi(getter)]
     pub fn metadata_json(&self) -> Option<String> {
-        let map = self.inner.metadata();
-        if map.is_empty() {
-            return None;
-        }
-        // EntryMetaValue is not serde-serializable from this crate, so
-        // render it via its Display impl wrapped as JSON strings.
-        // Until a richer serialisation lands we expose metadata keys
-        // with their Debug-string value — good enough for the TS
-        // wrapper to round-trip as `Record<string, unknown>`.
-        let obj: serde_json::Map<String, JsonValue> = map
-            .iter()
-            .map(|(k, v)| (k.clone(), JsonValue::String(format!("{v:?}"))))
-            .collect();
-        Some(JsonValue::Object(obj).to_string())
+        None
     }
 }
 
@@ -291,9 +289,10 @@ impl Corpus {
         Ok(guard.iter().map(|(id, _)| id.to_string()).collect())
     }
 
-    /// Insert a single vector.  `metadata_json`, when present, is
-    /// parsed from a JSON string; the TS wrapper stringifies an
-    /// optional `Record<string, unknown>` before calling.
+    /// Insert a single vector.  The `_metadata_json` parameter is
+    /// accepted for API-shape parity but ignored until the core lands
+    /// a `serde` round-trip for `EntryMetaValue` (see `metadata_json`
+    /// getter docstring for the Phase 25.3 deviation rationale).
     #[napi]
     pub fn insert(
         &self,
@@ -302,21 +301,29 @@ impl Corpus {
         _metadata_json: Option<String>,
     ) -> napi::Result<VectorEntry> {
         let slice: &[f32] = vector.as_ref();
+        // napi Float32Array borrow dies at call return; own the buffer.
         let buf = slice.to_vec();
         let id = VectorId::from(vector_id.as_str());
         let id_for_lookup = id.clone();
-        {
-            let mut guard = self.inner.lock().map_err(lock_err)?;
-            guard
-                .insert(id, &buf, None, timestamp_now_nanos())
-                .map_err(map_corpus_error)?;
-        }
-        let guard = self.inner.lock().map_err(lock_err)?;
+        // Hold the lock across both the mutation and the read-back so
+        // no other call can observe / mutate the corpus between the two
+        // steps. `&self` methods serialise through this single mutex;
+        // napi-rs v2 will only marshal one JS call at a time, but being
+        // explicit here costs nothing and documents the invariant.
+        let mut guard = self.inner.lock().map_err(lock_err)?;
+        guard
+            .insert(id, &buf, None, timestamp_now_nanos())
+            .map_err(map_corpus_error)?;
         let entry = guard
             .iter()
             .find(|(eid, _)| eid.as_ref() == id_for_lookup.as_ref())
             .map(|(_, e)| e.clone())
-            .ok_or_else(|| NapiError::new(Status::GenericFailure, "insert succeeded but entry missing".to_string()))?;
+            .ok_or_else(|| {
+                NapiError::new(
+                    Status::GenericFailure,
+                    "insert succeeded but entry missing".to_string(),
+                )
+            })?;
         Ok(VectorEntry { inner: entry })
     }
 
@@ -332,6 +339,7 @@ impl Corpus {
     ) -> napi::Result<Vec<VectorEntry>> {
         // Stage owned copies first so we can form `(VectorId, &[f32])`
         // tuples that live for the duration of the core call.
+        // napi Float32Array borrow dies at call return; own the buffer.
         let mut owned: Vec<(VectorId, Vec<f32>)> = Vec::with_capacity(vectors.len());
         for (k, v) in vectors {
             let s: &[f32] = v.as_ref();
@@ -344,15 +352,20 @@ impl Corpus {
             .map(|(id, v)| (id.clone(), v.as_slice(), None))
             .collect();
 
-        {
-            let mut guard = self.inner.lock().map_err(lock_err)?;
-            guard
-                .insert_batch(&batch, timestamp_now_nanos())
-                .map_err(map_corpus_error)?;
-        }
+        // Hold the lock across the insert AND the read-back so callers
+        // never observe a half-committed corpus. `CoreCorpus::insert_batch`
+        // returns a `BatchReport` (counts only, not the inserted entries)
+        // so we still need to walk the map once per id to clone each
+        // `VectorEntry`.  That walk stays O(n·m) in the worst case but
+        // it runs under a single lock and matches the PyO3 binding's
+        // shape; the typical batch size for JS consumers (few hundred
+        // vectors) keeps this well inside acceptable latency.
+        let mut guard = self.inner.lock().map_err(lock_err)?;
+        guard
+            .insert_batch(&batch, timestamp_now_nanos())
+            .map_err(map_corpus_error)?;
 
         // Collect entries in the order the caller passed them.
-        let guard = self.inner.lock().map_err(lock_err)?;
         let mut out: Vec<VectorEntry> = Vec::with_capacity(ids_for_lookup.len());
         for id in ids_for_lookup {
             let entry = guard
@@ -381,10 +394,11 @@ impl Corpus {
             .map(|(_, e)| e.clone());
         match entry {
             Some(e) => Ok(VectorEntry { inner: e }),
-            None => Err(NapiError::new(
-                Status::GenericFailure,
-                format!("UnknownVectorError: {vector_id:?}"),
-            )),
+            // Route through `map_corpus_error` so the
+            // `"<ClassName>: reason"` contract stays centralised.
+            None => Err(map_corpus_error(CoreCorpusError::UnknownVectorId {
+                id: Arc::clone(&id),
+            })),
         }
     }
 

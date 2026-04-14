@@ -16,6 +16,7 @@
 // logic lives here.
 import { native } from "./_loader.js";
 import type { Codebook, CodecConfig, CompressedVector, ConfigHash } from "./codec.js";
+import { TinyQuantError } from "./_errors.js";
 
 /**
  * Canonical compression-policy tag: `"compress"`, `"passthrough"`,
@@ -144,6 +145,14 @@ export class VectorEntry {
   readonly vectorId: string;
   readonly compressed: CompressedVector;
   readonly insertedAt: Date;
+  /**
+   * Phase 25.3 deviation: the native side does not yet thread
+   * metadata through `CoreCorpus`, so this getter always returns
+   * `null` regardless of what was passed to `insert` / `insertBatch`.
+   * Tracked for Phase 25.4 or beyond — see
+   * `rust/crates/tinyquant-js/src/corpus.rs` `metadata_json` getter
+   * for the rationale.
+   */
   readonly metadata: Record<string, unknown> | null;
   readonly configHash: ConfigHash;
   readonly dimension: number;
@@ -267,9 +276,13 @@ export class Corpus {
   }
 
   /**
-   * Set of vector ids currently stored. Lookup is O(1) via the
-   * underlying `Set`; iteration order matches insertion order in the
-   * Rust core up to the native-side `HashMap` conversion.
+   * Returns a fresh snapshot `Set` built from the native vector-id
+   * list. **O(n) to construct**; O(1) per `.has()` lookup thereafter.
+   * **Cache the result if iterating** — re-accessing the getter
+   * rebuilds the set from the native list on every call.
+   *
+   * Iteration order matches insertion order in the Rust core up to
+   * the native-side `HashMap` conversion.
    */
   get vectorIds(): ReadonlySet<string> {
     return new Set(this.#native.vectorIds);
@@ -342,15 +355,33 @@ function parseMetadataJson(raw: string | null): Record<string, unknown> | null {
   if (raw === null || raw === undefined) return null;
   try {
     return JSON.parse(raw) as Record<string, unknown>;
-  } catch {
-    return null;
+  } catch (err) {
+    // Silently falling back to `null` on malformed JSON would hide
+    // schema drift between the native side and the TS wrapper — a
+    // genuine bug that's worth surfacing. Escalate to a typed error.
+    throw new TinyQuantError(
+      "MetadataParseError",
+      `@tinyquant/core: failed to parse metadata JSON from the native side: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+      err,
+    );
   }
 }
 
 function parseEventJson(raw: string): CorpusEvent {
   const parsed = JSON.parse(raw) as Record<string, unknown>;
   const millis = parsed["timestampMillis"];
-  const timestamp = new Date(typeof millis === "number" ? millis : 0);
+  if (typeof millis !== "number") {
+    // Silently substituting epoch 1970 would make a schema drift
+    // between the Rust event emitter and this parser look like a
+    // legitimate (but very stale) event. Escalate instead.
+    throw new TinyQuantError(
+      "CorpusEventSchemaError",
+      `@tinyquant/core: corpus event is missing a numeric timestampMillis field: ${JSON.stringify(parsed["type"])}`,
+    );
+  }
+  const timestamp = new Date(millis);
   const base = {
     corpusId: String(parsed["corpusId"] ?? ""),
     timestamp,
@@ -385,7 +416,8 @@ function parseEventJson(raw: string): CorpusEvent {
     default:
       // Surface the unknown type so the TS union stays honest; this
       // only fires on a schema drift between Rust and TS.
-      throw new Error(
+      throw new TinyQuantError(
+        "CorpusEventSchemaError",
         `@tinyquant/core: unknown CorpusEvent type ${JSON.stringify(parsed["type"])}`,
       );
   }

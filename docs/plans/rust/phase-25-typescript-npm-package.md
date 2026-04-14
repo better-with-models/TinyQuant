@@ -1483,6 +1483,35 @@ overrides the per-file default on a file named `index.js`. The
 `import:` at the `.mjs` entry, so downstream consumers see no
 surface change.
 
+## Phase 25.3 declared deviations
+
+### 1. `VectorEntry.metadata` is a no-op in 25.3
+
+§`Corpus.insert(vector_id, vector, metadata=None)` and
+§`VectorEntry.metadata` (plan §§916, 925) describe metadata as a
+round-trippable `Record<string, unknown>`. In 25.3 the napi-rs
+binding accepts the `metadata_json` parameter on the constructor,
+`insert`, and `insertBatch` for API-shape parity, but the value is
+silently dropped: `EntryMetaValue` (the core's no_std `serde_json`
+substitute) is not serde-serialisable from the `tinyquant-js`
+crate, and the original `format!("{v:?}")` path in the
+`metadata_json` getter produced a data-corrupting rendering
+(`{count: 5}` read back as `{"count": "Integer(5)"}`).
+
+Rather than ship that corruption, the getter unconditionally
+returns `None` / `null`, matching the PyO3 binding's stance
+(`tinyquant_py/src/corpus.rs` raises `NotImplementedError` on
+metadata reads/writes, see lines 284–290). The TS wrapper's
+`VectorEntry.metadata` getter documents the no-op and returns
+`null` regardless of input. Phase 25.4 or beyond wires metadata
+through once the core lands a canonical JSON round-trip for
+`EntryMetaValue` (either a `serde` impl behind a `alloc-json`
+feature flag or a hand-rolled `to_json_string` method on the enum).
+
+No fixture or test depends on metadata round-tripping today, so
+the deviation is observable only to callers who pass metadata and
+then read it back.
+
 ## Steps (TDD order)
 
 - [ ] **Step 1: Scaffold `tinyquant-js` crate.**

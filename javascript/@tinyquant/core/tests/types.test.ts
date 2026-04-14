@@ -90,6 +90,20 @@ describe("@tinyquant/core — public surface smoke tests", () => {
     assert.equal(unprefixed.message, "plain message");
   });
 
+  it("TinyQuantError.fromNative handles non-prefixed panic-shaped messages", () => {
+    // Raw napi panics do not follow the `<ClassName>: reason` contract —
+    // they start with `thread 'main' panicked: ...`. The prefix regex
+    // rejects the leading `thread 'main' panicked` slice (contains a
+    // space and a single quote) so we should fall back to the default
+    // `code === "TinyQuantError"` and keep the original message intact.
+    const raw = new Error("thread 'main' panicked: something broke");
+    const wrapped = TinyQuantError.fromNative(raw);
+    assert.ok(wrapped instanceof TinyQuantError);
+    assert.equal(wrapped.code, "TinyQuantError");
+    assert.match(wrapped.message, /thread 'main' panicked/);
+    assert.equal(wrapped.cause, raw);
+  });
+
   it("compile-time type shapes", () => {
     // Pure type assertions — body is trivial; failure is at tsc.
     const _policyKind: CompressionPolicyKind = "compress";
