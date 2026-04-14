@@ -484,3 +484,193 @@ for that target and gate the size budget there.
 | *prior PR* | `fix(phase-22.B/sys): substitute CARGO_PKG_VERSION in generated header + const_assert` + `docs(rust/phase-22): implementation notes covering Parts A+B` |
 | `85aa374` | `test(phase-22.C/cli): failing smoke matrix + Cargo scaffold` (TDD red) |
 | *this PR* | `feat(phase-22.C/cli): standalone tinyquant binary with codec / corpus / verify subcommands` (TDD green + smoke scripts + impl notes) |
+
+## Part D — Cross-architecture release pipeline
+
+This section documents the Phase 22.D dry-run landing — the YAML,
+Dockerfile, compatibility ledger, and xtask additions that make the
+release surface ready to exercise against a pre-release tag without
+publishing anything.
+
+### Files landed
+
+| File | Purpose |
+|---|---|
+| `rust/Dockerfile` | Two-stage builder + distroless `nonroot` runtime. `SOURCE_DATE_EPOCH` passed as `ARG`; base-image digests supplied via `ARG` sentinels. |
+| `rust/.dockerignore` | Strips `target/`, `.git/`, Python reference, docs, and editor chaff from the build context. |
+| `.github/workflows/rust-release.yml` | Seven-stage pipeline: gate → supply-chain-gate → matrix-sync → build → container-reproducibility → publish-{crates,pypi,container} → publish-release. |
+| `COMPATIBILITY.md` (repo root) | First row of the `(tinyquant_cpu, tinyquant_rs)` ledger with the R19/R2 rotation-kernel drift called out. |
+| `rust/crates/tinyquant-cli/README.md` | Crate-level README required by `cargo publish` because the manifest declares `readme = "README.md"`. |
+| `rust/xtask/src/cmd/matrix_sync.rs` | `check-matrix-sync` subcommand asserting the CLI smoke matrix in the plan doc matches the `build.strategy.matrix.include` block in `rust-release.yml`. |
+| `rust/xtask/src/main.rs` | Wires `bench-budget` (alias for `bench --check-against main`) and `check-matrix-sync` into the task dispatcher. |
+| `rust/Cargo.toml` | Added `version = "=0.1.0"` to the `tinyquant-core`/`tinyquant-io`/`tinyquant-bruteforce` workspace-dependency entries so `cargo publish` accepts the manifest. `[profile.release]` was already configured in Phase 20 (`lto="fat"`, `codegen-units=1`, `strip=true`, `debug=0`). |
+
+### Dockerfile pinning approach
+
+The base images are **not** pinned to real SHA-256 digests in this
+change — the Dockerfile carries two `ARG` sentinels
+(`REPLACE_WITH_PINNED_DIGEST_RUST_1_81_BOOKWORM` /
+`REPLACE_WITH_PINNED_DIGEST_DISTROLESS_CC_DEBIAN12_NONROOT`) that
+the `container-reproducibility` job in `rust-release.yml` rejects
+at build time via an explicit grep guard. Rationale:
+
+1. This worktree has no sanctioned network access to resolve
+   registry digests, and pinning to stale digests would guarantee a
+   broken workflow by the time it runs.
+2. The sentinel pattern lets the release operator resolve digests
+   once (`docker buildx imagetools inspect rust:1.81-bookworm
+   --format '{{.Manifest.Digest}}'` and the distroless equivalent)
+   and commit the result as part of the release-prep PR, exercising
+   the dry-run workflow before the real tag lands.
+3. CI fails fast if the sentinels are still present — see the
+   "Guard against placeholder digests" step.
+
+### YAML structure decisions
+
+- **Single publish guard.** Every publish stage carries the same
+  `if:` expression
+  (`startsWith(github.ref, 'refs/tags/rust-v') &&
+    !contains(github.ref_name, '-alpha') &&
+    !contains(github.ref_name, '-rc') &&
+    inputs.dry_run != true`).
+  The YAML anchor pattern can't be used across jobs, so the
+  expression is duplicated literally; it is self-consistent and any
+  one change must be mirrored to the other three jobs in the same
+  edit. The "## Dry-run behavior" comment block at the top of the
+  YAML documents this.
+- **`workflow_dispatch` with `inputs.dry_run`.** Operators can run
+  the workflow from the UI (`gh workflow run rust-release.yml`)
+  against any ref; the input defaults to `true` so an accidental
+  manual fire cannot publish. Combined with the tag guard, only a
+  non-prerelease tag push (or a manual run with `dry_run: false`)
+  can publish.
+- **Seven stages, not six.** The spec lists six
+  (gate / build / publish-crates / publish-pypi / publish-container
+  / publish-release). This implementation adds two non-publishing
+  stages: `supply-chain-gate` (cargo-vet + cargo-audit) and
+  `matrix-sync` (xtask). Both depend on `gate` and gate the
+  `build` matrix. The `container-reproducibility` job also runs
+  between `build` and the publish stages and asserts the OCI image
+  ID is identical across two independent buildx passes.
+- **Attestations alongside artefacts.** `actions/attest-build-
+  provenance@v1` is invoked twice per build job (once for the CLI
+  archive, once for the wheel) and once on the container publish.
+  The generated attestations go to the GitHub attestation store
+  and the container attestation is also pushed to the registry via
+  `push-to-registry: true`.
+- **SBOM + cosign.** Every build job runs `syft` to emit a
+  CycloneDX SBOM next to the archive and `cosign sign-blob` to
+  produce a keyless OIDC signature. On Windows runners `syft` is
+  skipped (the `anchore/sbom-action/download-syft@v0` action isn't
+  published for Windows at the time of writing); the wheel
+  attestation still runs.
+- **Size budget enforcement.** Only the `x86_64-unknown-linux-gnu`
+  leg enforces the 8 MiB binary size budget. The spec's budget is
+  defined against stripped ELF; Windows PE and macOS Mach-O both
+  report smaller sizes and are not the gate.
+
+### xtask additions
+
+- **`cargo xtask check-matrix-sync`.** Parses the CLI smoke-test
+  matrix table out of
+  `docs/plans/rust/phase-22-pyo3-cabi-release.md` (looking inside
+  the `#### CLI smoke test matrix` section) and the
+  `build.strategy.matrix.include` block of `rust-release.yml`, then
+  diffs the two sets. Both sources currently agree on 9 targets
+  (`x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`,
+  `x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`,
+  `x86_64-apple-darwin`, `aarch64-apple-darwin`,
+  `x86_64-pc-windows-msvc`, `i686-pc-windows-msvc`,
+  `x86_64-unknown-freebsd`). Four unit tests cover the triple
+  heuristic and the two extractors.
+- **`cargo xtask bench-budget`.** Convenience alias for
+  `cargo xtask bench --check-against main`. The underlying
+  implementation in Phase 21's `cmd::bench` module already reads the
+  locked budget from the committed `baselines/main.json` and
+  compares it against a fresh criterion run, returning non-zero on
+  budget exceedance — which is exactly the semantics the task
+  brief asks for. The alias exists purely so the release workflow
+  can call a single verb.
+
+### Supply-chain wiring
+
+The release workflow wires, in order:
+
+1. **`cargo-vet` + `cargo-audit`** in `supply-chain-gate` (runs
+   after `gate`, before `build`). `cargo vet` is
+   `continue-on-error: true` because the audits.toml bootstrap
+   has not yet been committed — the job still emits a JSON report.
+   `cargo audit --deny warnings` is strict.
+2. **Keyless cosign** via `sigstore/cosign-installer@v3`, signing
+   each CLI archive as a blob and the container image via
+   registry digest.
+3. **SLSA build provenance** via
+   `actions/attest-build-provenance@v1`, run three times per build
+   (CLI archive, wheel, and in the container publish job).
+4. **CycloneDX SBOM** via `anchore/sbom-action/download-syft@v0`.
+   For blobs the `.cdx.json` is uploaded alongside the archive;
+   for containers it is attached via `cosign attach sbom`.
+
+### Dry-run verification performed locally
+
+This worktree has no network access to trusted publishers, so the
+dry-run is structural and host-local only.
+
+| Gate | Result |
+|---|---|
+| `yamllint .github/workflows/rust-release.yml` (relaxed, commas/braces disabled) | clean |
+| `npx @action-validator/cli` | clean except for `/permissions/attestations` — schema lag, not a real error; documented inline |
+| `docker buildx build --check -f rust/Dockerfile --target builder .` | parses; fails at image pull because placeholder digests (expected — CI guard rejects sentinels explicitly) |
+| `cargo publish --dry-run -p tinyquant-core --allow-dirty` | succeeds (`warning: aborting upload due to dry run`) |
+| `cargo package --list -p tinyquant-io / -bruteforce / -pgvector / -sys / -cli` | all succeed; downstream crates cannot run full `--dry-run` until upstream crates exist on crates.io |
+| `cargo fmt --all -- --check` | clean |
+| `cargo clippy --workspace --all-targets -- -D warnings` | clean |
+| `cargo test --workspace` | green (all pass / ignored counts unchanged from Phase 22.C) |
+| `cargo test -p xtask` | 9 / 9 pass (4 new `matrix_sync` tests) |
+| `cargo run -p xtask -- check-matrix-sync` | `plan and release.yml agree on 9 targets ✓` |
+| `cargo run -p xtask -- bench --validate` | baseline schema valid |
+| `cargo build -p tinyquant-cli --release` binary size (Windows PE) | 2.21 MiB (well under the 8 MiB budget; linux-gnu-x86_64 enforced in CI) |
+
+### Deferred / open items (Part D backlog)
+
+- **Real base-image digests.** Left as `REPLACE_WITH_PINNED_DIGEST_*`
+  sentinels. Must be resolved before any real release tag; the
+  CI workflow rejects the sentinel at build time, so a dry-run
+  tag will surface the missing pin without risk.
+- **`cargo-vet` audits bootstrap.** `supply-chain/audits.toml` is
+  not yet committed; the `cargo vet` step is
+  `continue-on-error: true` until the initial audit set is
+  published. Tracked as a Part-D follow-up.
+- **`compatibility-check` xtask.** The spec mentions an
+  `xtask compatibility-check` that reads `COMPATIBILITY.md` and
+  asserts the top row matches the workspace version. Deferred —
+  the ledger file exists but is reviewed manually during release
+  prep for the 0.1.0 release.
+- **Separate `rust-release-smoke.yml`.** The spec suggests an
+  optional PR-smoke variant that runs the build matrix without
+  tagging. Skipped because the `workflow_dispatch` input on
+  `rust-release.yml` already allows the release workflow itself
+  to be run in dry-run mode against any branch. A dedicated
+  smoke workflow would duplicate ~80 % of the release YAML for
+  marginal benefit.
+- **PyPI + crates.io trusted-publisher setup.** Project-side
+  configuration on pypi.org and crates.io cannot be done from
+  inside this repo; the workflow's `id-token: write` scope and
+  the `pypa/gh-action-pypi-publish@release/v1` action are ready
+  for the switchover once the trusted publishers are registered.
+- **FreeBSD round-trip smoke.** `cross` builds the CLI for
+  `x86_64-unknown-freebsd` but the §CLI smoke test matrix only
+  runs `info` / `verify` there (no runnable qemu emulator is
+  pinned in `cross`' image). The YAML matrix already gates this
+  via `matrix.target == 'x86_64-unknown-freebsd'`; full smoke is
+  deferred.
+
+### Part D commit trail
+
+| Commit | Summary |
+|---|---|
+| *this PR* | `feat(phase-22.D/release): rust-release.yml with build matrix and dry-run guards` |
+| *this PR* | `feat(phase-22.D/release): container image with reproducibility gates` |
+| *this PR* | `feat(phase-22.D/xtask): check-matrix-sync + bench-budget alias` |
+| *this PR* | `docs(root): initial COMPATIBILITY.md` |
+| *this PR* | `docs(rust/phase-22): implementation notes §Part D` |
