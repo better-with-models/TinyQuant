@@ -38,44 +38,20 @@ jobs:
           echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
       - run: echo "Selected runner=${{ steps.pick.outputs.runner }}"
 
-  probe-self-hosted:
-    name: Probe Self-Hosted Runner
-    # TEMP: self-hosted runners disabled; probe skipped to avoid indefinite queue.
-    if: false
-    runs-on: ["self-hosted", "docker-runner"]
-    needs: [choose-runner]
-    timeout-minutes: 2
-    continue-on-error: true
-    outputs:
-      ok: ${{ steps.probe.outputs.ok }}
-    steps:
-      - id: probe
-        run: echo 'ok=true' >> "$GITHUB_OUTPUT"
+  # TEMP: probe-self-hosted removed while docker-runners are offline.
+  # Transitive skip propagation from `if: false` poisoned all downstream jobs.
+  # Restore alongside the full runner-selection policy once runners come back.
 
   effective-runner:
     name: Effective Runner
     runs-on: ubuntu-latest
-    needs: [choose-runner, probe-self-hosted]
-    if: always()
+    needs: [choose-runner]
     outputs:
       runner: ${{ steps.resolve.outputs.runner }}
     steps:
       - id: resolve
         run: |
-          CHOSE_SELF_HOSTED="${{ needs.choose-runner.outputs.runner }}"
-          PROBE_OK="${{ needs.probe-self-hosted.outputs.ok }}"
-
-          # PROBE_RESULT is always "success" when continue-on-error: true, whether or
-          # not the runner was reachable. PROBE_OK is the only reliable availability signal.
-          if [[ "$CHOSE_SELF_HOSTED" == '["self-hosted","docker-runner"]' && \
-                "$PROBE_OK" == "true" ]]; then
-            echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
-          else
-            echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
-            if [[ "$CHOSE_SELF_HOSTED" == '["self-hosted","docker-runner"]' ]]; then
-              echo "⚠ Self-hosted runner unavailable — falling back to ubuntu-latest. Local runner offload not active." >> "$GITHUB_STEP_SUMMARY"
-            fi
-          fi
+          echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
 
   lint:
     name: Lint & Format
