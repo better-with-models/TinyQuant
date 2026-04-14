@@ -415,6 +415,16 @@ jobs:
           toolchain: 1.81.0
       - name: Publish crates (ordered)
         working-directory: rust
+        env:
+          # Required for `cargo publish` to authenticate against crates.io.
+          # Configure the `CARGO_REGISTRY_TOKEN` repo secret (owner → Settings
+          # → Secrets and variables → Actions) with a crates.io API token
+          # scoped to the `tinyquant-*` crate family before cutting the first
+          # real release tag. Dry-run tags (`-alpha`, `-rc`, `-beta`, `-pre`,
+          # `+build.*`, etc.) and `workflow_dispatch` runs with
+          # `inputs.dry_run == true` skip this job entirely via the guard
+          # expression above, so a missing secret does not break rehearsals.
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
           cargo publish -p tinyquant-core
           cargo publish -p tinyquant-io
