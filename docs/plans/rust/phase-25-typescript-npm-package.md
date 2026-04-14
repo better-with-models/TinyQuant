@@ -11,7 +11,7 @@ tags:
   - node-api
   - napi-rs
 date-created: 2026-04-13
-status: planned
+status: complete
 category: planning
 ---
 

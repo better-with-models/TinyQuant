@@ -73,6 +73,7 @@ publication-quality plots.
 <summary><b>Contents</b></summary>
 
 - [Installation](#installation)
+- [Language bindings](#language-bindings)
 - [Quickstart](#quickstart)
 - [How it works](#how-it-works)
 - [Recipes](#recipes)
@@ -116,6 +117,27 @@ TinyQuant is published on PyPI as `tinyquant-cpu` and imports as
 > talking to a live PostgreSQL database. Python **3.12+** is required.
 > The repository itself is no longer a buildable package — dev
 > dependencies are installed directly.
+
+---
+
+## Language bindings
+
+TinyQuant ships the same codec / corpus / backend surface across
+three languages, versioned in lockstep via `rust/Cargo.toml`
+`workspace.package.version`.
+
+| Language    | Package                                                 | Install                          | Phase |
+| :---------- | :------------------------------------------------------ | :------------------------------- | :---- |
+| Python      | [`tinyquant-cpu`](https://pypi.org/project/tinyquant-cpu/) ([![PyPI](https://img.shields.io/pypi/v/tinyquant-cpu.svg)](https://pypi.org/project/tinyquant-cpu/)) | `pip install tinyquant-cpu`      | 24    |
+| Rust        | [`tinyquant-core`](https://crates.io/crates/tinyquant-core) ([![crates.io](https://img.shields.io/crates/v/tinyquant-core.svg)](https://crates.io/crates/tinyquant-core)) | `cargo add tinyquant-core`       | 22    |
+| TypeScript  | [`@tinyquant/core`](https://www.npmjs.com/package/@tinyquant/core) ([![npm](https://img.shields.io/npm/v/@tinyquant/core.svg)](https://www.npmjs.com/package/@tinyquant/core)) | `npm install @tinyquant/core`    | 25    |
+
+- Python and TypeScript wrappers delegate all math to the shared
+  Rust core (`tinyquant-core`). There is no per-language
+  reimplementation; all three packages are guaranteed byte-identical
+  on `config_hash`, `Codebook.to_bytes`, and `CompressedVector.to_bytes`.
+- See [`COMPATIBILITY.md`](../COMPATIBILITY.md) for the supported
+  cross-package version pairs.
 
 ---
 

@@ -13,6 +13,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   (exporting only `version()`) and `javascript/@tinyquant/core/` npm
   package skeleton with the runtime loader and build config. No public
   value-object surface yet.
+- Phase 25.2 codec parity + round-trip: `CodecConfig`, `Codebook`,
+  `CompressedVector`, `RotationMatrix` exposed via napi-rs with
+  byte-identical `config_hash` against the Python reference, plus
+  `Codec.compress` / `Codec.decompress` covered by a 10,000-vector
+  seeded round-trip test with `MSE < 1e-2`. Parity fixtures generated
+  by `scripts/packaging/generate_js_parity_fixtures.py`.
+- Phase 25.3 corpus + backend + TS types: `Corpus`, `CompressionPolicy`,
+  `VectorEntry`, `BruteForceBackend`, and `SearchResult` exposed as
+  napi-rs classes with camelCase wrappers and hand-written JSDoc.
+  `scripts/build.mjs` orchestrates the full build pipeline
+  (napi → rename → tsc ESM → emit-cjs-types → emit-cjs-bundle);
+  `dist/` ships matching `.js`, `.cjs`, `.d.ts`, `.d.cts`, and source
+  maps for six modules. `TinyQuantError.fromNative` parses the Rust
+  message-prefix class name so structured error handling survives the
+  FFI boundary. 142/142 tests across the parity, round-trip, corpus,
+  backend, types, and CJS-smoke suites.
+- Phase 25.4 npm release chain: `.github/workflows/js-ci.yml` matrix
+  CI (build-native × 5 triples + assemble-tarball + install-test
+  5 runners × 3 runtimes + pnpm smoke + test-source) and
+  `.github/workflows/js-release.yml` tag-triggered publish workflow
+  with `release-gate`, `verify-version` (tag == rust == npm),
+  `--provenance`, `gh` CLI GitHub Release upload, and
+  `dry_run` workflow_dispatch input defaulting `true`. Publishes
+  `@tinyquant/core` once the first `v<semver>` tag is pushed; this
+  branch does not itself invoke the release.
+- Phase 25 implementation notes at
+  `docs/design/rust/phase-25-implementation-notes.md` (AC trace,
+  declared deviations, slice provenance).
+- `javascript/@tinyquant/core/README.md`, `AGENTS.md`, and `CLAUDE.md`
+  filled in with the canonical elevator pitch, install / quickstart /
+  API surface, and agent invariants (binary layout, math delegation,
+  CJS bundle integrity, napi-rs v2 deviation, version lockstep).
+- "Language bindings" table in `.github/README.md` cross-linking
+  Python, Rust, and TypeScript packages with live version badges and
+  lockstep-version guarantee.
 - `markdownlint-obsidian` pre-commit hook (`.pre-commit-config.yaml`)
   scoped to `docs/**/*.md` except `docs/research/`, gated at
   `alisonaquinas/markdownlint-obsidian@markdownlint-obsidian-cliv1.0.6`

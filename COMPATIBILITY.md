@@ -1,26 +1,32 @@
 # Compatibility matrix
 
-Authoritative ledger of supported `(tinyquant_cpu, tinyquant_rs)`
-pairs. Each row maps one Rust release to the Python reference
-implementation it has been parity-tested against.
+Authoritative ledger of supported `(tinyquant_cpu, tinyquant_rs,
+@tinyquant/core)` triples. Each row maps one Rust release to the
+Python fat-wheel and npm package versions that have been
+parity-tested against it.
 
 The policy this ledger implements lives in
 [Release and Versioning](docs/design/rust/release-strategy.md);
 this file is the data side of that contract.
 
-## Supported pairs
+## Supported triples
 
-| `tinyquant_cpu` | `tinyquant_rs` | Known drift | Notes |
-| --- | --- | --- | --- |
-| 0.1.1 | 0.1.0 | R19 / R2 rotation kernel: max \|py − rs\| ≈ 3.15e-4 (below the 1e-3 parity-suite tolerance) | First Rust release. Parity covers `config_hash`, `Codebook.train` bytes, `CompressedVector.to_bytes` bytes, corpus lifecycle, batch methods, and the exception hierarchy. The rotation drift is tracked in [numerical-semantics.md](docs/design/rust/numerical-semantics.md) §R19. |
+| `tinyquant_cpu` (PyPI) | `tinyquant_rs` / `tinyquant-core` (crates.io) | `@tinyquant/core` (npm) | Known drift | Notes |
+| --- | --- | --- | --- | --- |
+| 0.1.1 | 0.1.0 | — | R19 / R2 rotation kernel: max \|py − rs\| ≈ 3.15e-4 (below the 1e-3 parity-suite tolerance) | First Rust release. Parity covers `config_hash`, `Codebook.train` bytes, `CompressedVector.to_bytes` bytes, corpus lifecycle, batch methods, and the exception hierarchy. The rotation drift is tracked in [numerical-semantics.md](docs/design/rust/numerical-semantics.md) §R19. |
 
-> Phase 24 pairs the forthcoming `tinyquant_cpu 0.2.0` fat wheel with the same
-> `tinyquant_rs 0.1.0` per-arch wheels — no Rust-side bump is required. The
-> matching row (`0.2.0 | 0.1.0`) is deliberately **not** added until the
-> `py-v0.2.0` tag push produces a real PyPI artifact via
-> [`python-fatwheel.yml`](.github/workflows/python-fatwheel.yml). The R19
-> rotation-drift entry carries forward unchanged: the Rust core is
-> byte-identical between the two pairs.
+> **Phase 24 / 25 in flight.** The fat wheel `tinyquant_cpu 0.2.0` and
+> the npm package `@tinyquant/core 0.1.0` both pair with the same
+> `tinyquant_rs / tinyquant-core 0.1.0` binaries — no Rust-side bump
+> is required. The matching rows are deliberately **not** added until
+> the corresponding release tags produce real registry artefacts via
+> [`python-fatwheel.yml`](.github/workflows/python-fatwheel.yml) and
+> [`js-release.yml`](.github/workflows/js-release.yml). When those
+> land, the target row is:
+>
+> | `tinyquant_cpu` | `tinyquant_rs` | `@tinyquant/core` | Known drift | Notes |
+> | --- | --- | --- | --- | --- |
+> | 0.2.0 | 0.1.0 | 0.1.0 | R19 carries forward (Rust core is byte-identical) | First Rust-backed Python fat wheel + first npm release. TS wrapper parity covers `configHash`, `Codebook.toBytes` bytes, and a 10,000-vector round-trip with MSE < 1e-2. |
 
 ## Update cadence
 
