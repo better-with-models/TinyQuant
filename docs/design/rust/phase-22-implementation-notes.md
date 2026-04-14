@@ -701,6 +701,79 @@ commit batch before code-quality review:
   reproducibility-contract comment block (§3) is updated to
   reflect the real wiring.
 
+### Part D code-quality follow-up
+
+The code-quality review of the Part D landing pass returned *Needs
+changes* with three blockers and several nits. All are closed in a
+follow-up commit batch on the same branch; notes below so future
+reviewers can trace why the files look the way they do.
+
+- **M1 — `CARGO_REGISTRY_TOKEN` was not wired.** The
+  `publish-crates` job's `cargo publish` calls would have failed at
+  the first real tag because no registry token was exported. Added a
+  step-level `env: CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}`
+  on the `Publish crates (ordered)` step and an inline comment
+  documenting the required repo secret. **Operator action:**
+  before cutting `rust-v0.1.0`, create a crates.io API token scoped
+  to the `tinyquant-*` crate family (Account Settings → API Access
+  on crates.io) and add it as the `CARGO_REGISTRY_TOKEN` secret
+  under repo Settings → Secrets and variables → Actions. No CI
+  rehearsal exists for this token — pre-release tags skip the
+  publish job entirely (see M2 below).
+- **M2 — publish-guard allowed most pre-release suffixes.** The
+  original guard only excluded `-alpha` and `-rc`. Any tag with a
+  different semver pre-release marker (`-beta`, `-pre`, `-preview`,
+  numbered snapshots, `+build.*`) would have reached the real
+  publish path. Tightened to the blanket
+  `!contains(github.ref_name, '-') && !contains(github.ref_name, '+')`
+  pair — semver 2.0 pre-release tokens start with `-` and build-
+  metadata tokens start with `+`, so only clean release tags like
+  `rust-v0.1.0` now trigger publish. Applied identically to all four
+  `publish-*` jobs.
+- **M3 — no enforcement of guard-block equality.** The four publish
+  jobs' `if:` blocks must stay byte-identical but nothing asserted
+  this (Lesson L3 drift hazard). Added
+  `rust/xtask/src/cmd/guard_sync.rs`, wired into
+  `cargo xtask check-matrix-sync` so a single CLI verb runs both
+  the CLI-smoke-matrix check and the guard-equality check. The
+  parser handles the `if: >-` folded-scalar style, whitespace-
+  normalises the extracted expressions, and exits non-zero with a
+  diff-style report on drift. Five new unit tests in
+  `cmd::guard_sync::tests` cover the happy path, the drift path,
+  job enumeration, filtering of non-publish jobs, and whitespace
+  insensitivity. Chose the sibling-module layout (Option A from the
+  review) over extending `matrix_sync.rs` inline because the two
+  parsers share no logic and keeping them separate keeps each file
+  independently testable.
+- **N1 — Dockerfile comment referenced a nonexistent workflow step.**
+  The reproducibility-contract comment claimed the base-image
+  digest sentinels were resolved by a `resolve-base-digests` step
+  that does not exist. Rewrote the comment to describe the real
+  mechanism: the `Guard against placeholder digests` step in the
+  `container-reproducibility` stage greps for the
+  `REPLACE_WITH_PINNED_DIGEST` placeholder and fails the pipeline
+  if it is still present; operators supply the real digest either
+  by committing an edit or via `--build-arg`.
+- **N2 — workflow header referenced a nonexistent YAML anchor.**
+  The header comment advertised a `&publish_guard` anchor that was
+  never declared (GitHub Actions does not reliably expand anchors
+  across jobs, so the guard is duplicated verbatim). Reworked the
+  header comment to describe the real duplication-plus-xtask-check
+  shape — the text now points readers at
+  `cargo xtask check-matrix-sync` as the equality enforcer.
+- **N4 — `COMPATIBILITY.md` drift metric was mis-labelled.** Row 1
+  of the ledger called the rotation-kernel drift `MSE` but the
+  number (3.15e-4) is `max |py − rs|` per vector, measured against
+  the 1e-3 "tight numerical parity" tolerance defined in
+  `docs/design/rust/numerical-semantics.md`. Relabelled the cell;
+  no other changes to the row.
+
+Nit items N3 and the long-form review paragraphs outside the M/N set
+are not addressed in this pass — the fix agent had a bounded file
+scope and deeper refactors (e.g. collapsing the four `if:` blocks
+into a reusable composite action) would leak outside that scope.
+They are backlogged for the next Rust phase.
+
 ### Part D commit trail
 
 | Commit | Summary |
@@ -711,3 +784,8 @@ commit batch before code-quality review:
 | *this PR* | `docs(root): initial COMPATIBILITY.md` |
 | *this PR* | `docs(rust/phase-22): implementation notes §Part D` |
 | *this PR* | `fix(phase-22.D/release): close 5 spec-review deviations (tracing-json, cli-readme, cargo-auditable, cli-smoke, rewrite-timestamp)` |
+| *this PR* | `fix(phase-22.D/release): wire CARGO_REGISTRY_TOKEN for crates.io publish` |
+| *this PR* | `fix(phase-22.D/release): tighten publish guard to exclude all pre-release and build-metadata tags` |
+| *this PR* | `feat(phase-22.D/xtask): enforce byte-identical publish-job guards` |
+| *this PR* | `docs(rust/phase-22): correct Dockerfile digest-pin description and COMPATIBILITY drift label` |
+| *this PR* | `docs(rust/phase-22): code-quality follow-up notes` |
