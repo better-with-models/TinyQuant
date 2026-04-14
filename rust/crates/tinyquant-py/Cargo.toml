@@ -12,10 +12,12 @@ name       = "tinyquant_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3           = { workspace = true }
-tinyquant-core = { workspace = true }
-tinyquant-io   = { workspace = true }
+pyo3                 = { workspace = true, features = ["abi3-py312"] }
+numpy                = { workspace = true }
+tinyquant-core       = { workspace = true, features = ["std"] }
+tinyquant-io         = { workspace = true }
+tinyquant-bruteforce = { workspace = true }
 
 [features]
 default = ["simd"]
-simd    = ["tinyquant-core/simd", "tinyquant-io/simd"]
+simd    = ["tinyquant-core/simd", "tinyquant-io/simd", "tinyquant-bruteforce/simd"]
