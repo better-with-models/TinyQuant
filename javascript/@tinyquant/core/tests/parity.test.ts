@@ -18,7 +18,13 @@ const { readFileSync } = fs;
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { CodecConfig } from "../src/index.js";
+// Tests import the canonical published bundle — the same entry point
+// external consumers resolve — so there is no second compiled copy
+// of `src/` under `dist-tests/`. The main `build` script emits the
+// `.d.ts` and `.js` files required for this import to type-check and
+// load at runtime; the `test` script chains `build` before compiling
+// the test sources.
+import { CodecConfig } from "../dist/index.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 

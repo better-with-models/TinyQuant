@@ -44,7 +44,17 @@ from pathlib import Path
 # fat wheel to be installed. The Python reference path is anchored
 # to the Rust core's canonical config_hash format — see module
 # docstring above.
-from tinyquant_cpu.codec.codec_config import CodecConfig
+try:
+    from tinyquant_cpu.codec.codec_config import CodecConfig
+except ImportError as exc:  # pragma: no cover - environment hint
+    sys.stderr.write(
+        "error: cannot import tinyquant_cpu.codec.codec_config — "
+        "the fixture generator needs the in-tree Python shim.\n"
+        "  Install it with `pip install -e .` from the TinyQuant root "
+        "(or `maturin develop` if you want the Rust-backed fat wheel).\n"
+        f"  Underlying error: {exc}\n",
+    )
+    raise SystemExit(2) from exc
 
 
 # Sweep (3 * 5 * 4 * 2 = 120) is overkill for the first TS slice;

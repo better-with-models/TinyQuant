@@ -40,8 +40,10 @@
     "native"
   ],
   "scripts": {
-    "build": "napi build --cwd ../../../rust/crates/tinyquant-js --platform --release --output-dir ../../../javascript/@tinyquant/core/binaries && node scripts/rename-binaries.mjs && tsc -p tsconfig.json",
-    "test": "tsc -p tsconfig.test.json && node --test \"dist-tests/tests/**/*.test.js\"",
+    "clean": "node -e \"for (const d of ['dist','dist-tests']) require('fs').rmSync(d,{recursive:true,force:true})\"",
+    "clean:tests": "node -e \"require('fs').rmSync('dist-tests', {recursive:true, force:true})\"",
+    "build": "npm run clean && napi build --cwd ../../../rust/crates/tinyquant-js --platform --release --output-dir ../../../javascript/@tinyquant/core/binaries && node scripts/rename-binaries.mjs && tsc -p tsconfig.json",
+    "test": "npm run build && npm run clean:tests && tsc -p tsconfig.test.json && node --test \"dist-tests/**/*.test.js\"",
     "fixtures:generate": "python ../../../scripts/packaging/generate_js_parity_fixtures.py tests/fixtures"
   },
   "devDependencies": {

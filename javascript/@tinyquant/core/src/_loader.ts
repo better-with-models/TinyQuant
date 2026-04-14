@@ -87,7 +87,10 @@ export interface NativeCodecConfig {
 export interface NativeCodebook {
   readonly bitWidth: number;
   readonly numEntries: number;
-  readonly entries: Float32Array;
+  // `entries` is a method, not a getter — each call allocates and
+  // memcpy's the full buffer. Surfacing it as a function signature
+  // syntactically signals the allocation cost at every call site.
+  entries(): Float32Array;
 }
 
 export interface NativeCompressedVector {
@@ -96,7 +99,8 @@ export interface NativeCompressedVector {
   readonly bitWidth: number;
   readonly hasResidual: boolean;
   readonly sizeBytes: number;
-  readonly indices: Uint8Array;
+  // `indices` is a method, not a getter — see `NativeCodebook.entries`.
+  indices(): Uint8Array;
 }
 
 export interface NativeRotationMatrix {
@@ -123,7 +127,11 @@ type NativeBinding = {
   Codebook: {
     train(vectors: Float32Array, config: NativeCodecConfig): NativeCodebook;
   };
-  CompressedVector: unknown;
+  // CompressedVector is not directly constructed from JS — it is
+  // produced by `Codec.compress` / the module-level `compress` — but
+  // napi-rs still exposes the class on the binding for `instanceof`
+  // checks. Typed as a no-arg constructor returning the instance shape.
+  CompressedVector: new () => NativeCompressedVector;
   RotationMatrix: {
     fromConfig(config: NativeCodecConfig): NativeRotationMatrix;
   };

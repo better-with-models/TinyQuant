@@ -28,6 +28,14 @@ pub(crate) fn map_codec_error(err: CodecError) -> NapiError {
     // message. Phase 25.4 will add a TS wrapper that parses this
     // prefix and re-exposes it via `err.code` for JS consumers.
     let reason = err.to_string();
+    // `CodecError` is `#[non_exhaustive]`, so on stable Rust the
+    // compiler requires a wildcard arm even when every known variant
+    // is listed. We'd prefer a compile-time signal when a new variant
+    // lands (via the unstable `non_exhaustive_omitted_patterns` lint),
+    // but while that lint is nightly-only we surface the drift at
+    // runtime with `unreachable!`. On the next toolchain bump that
+    // stabilises the lint, drop the wildcard and add
+    // `#[deny(non_exhaustive_omitted_patterns)]` above the match.
     let code = match err {
         CodecError::DimensionMismatch { .. } => "DimensionMismatchError",
         CodecError::ConfigMismatch { .. } => "ConfigMismatchError",
@@ -41,8 +49,9 @@ pub(crate) fn map_codec_error(err: CodecError) -> NapiError {
         | CodecError::IndexOutOfRange { .. }
         | CodecError::LengthMismatch { .. }
         | CodecError::InvalidResidualFlag { .. } => "TinyQuantError",
-        // The core error enum is `#[non_exhaustive]`.
-        _ => "TinyQuantError",
+        ref other => unreachable!(
+            "new CodecError variant reached map_codec_error without an explicit mapping: {other:?}"
+        ),
     };
     // Prefix the reason with the class name so consumers who only
     // look at `err.message` still see the semantic bucket, matching

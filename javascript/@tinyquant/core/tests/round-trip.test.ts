@@ -12,7 +12,8 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { Codec, CodecConfig, Codebook } from "../src/index.js";
+// See parity.test.ts for the rationale on importing from `../dist/`.
+import { Codec, CodecConfig, Codebook } from "../dist/index.js";
 
 /**
  * Deterministic PRNG (mulberry32). Returns a float in `[0, 1)`.
@@ -45,6 +46,7 @@ describe("@tinyquant/core — round-trip: 10k f32 vectors, MSE < 1e-2", () => {
   const BITS = 4;
 
   it(`compress → decompress with bits=${BITS}, dim=${DIM}`, () => {
+    // arbitrary but fixed so any future MSE regression reproduces
     const rng = makeRng(0xcafebabe);
 
     // Pre-generate all vectors so training and round-trip see the

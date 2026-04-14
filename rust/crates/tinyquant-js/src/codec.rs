@@ -184,8 +184,12 @@ impl Codebook {
         self.inner.num_entries()
     }
 
-    /// Zero-copy view over the codebook's FP32 entries.
-    #[napi(getter)]
+    /// Copy the codebook's FP32 entries into a fresh `Float32Array`.
+    ///
+    /// Exposed as a method rather than a getter because it allocates
+    /// and memcpy's the full entries buffer on every call. Callers
+    /// should hoist the result out of hot loops.
+    #[napi]
     pub fn entries(&self) -> Float32Array {
         let v: Vec<f32> = self.inner.entries().to_vec();
         Float32Array::new(v)
@@ -261,13 +265,26 @@ impl CompressedVector {
     }
 
     #[napi(getter)]
-    pub fn size_bytes(&self) -> u32 {
-        // `size_bytes` returns `usize`; we clamp at u32::MAX because
-        // JS `number` is a 53-bit safe integer and u32 is always safe.
-        u32::try_from(self.inner.size_bytes()).unwrap_or(u32::MAX)
+    pub fn size_bytes(&self) -> napi::Result<u32> {
+        // `size_bytes` returns `usize`; surface a clean FFI error if
+        // the buffer somehow exceeds `u32::MAX` rather than silently
+        // truncating. JS `number` is a 53-bit safe integer, so u32 is
+        // always safe once the conversion succeeds.
+        let size_bytes = self.inner.size_bytes();
+        u32::try_from(size_bytes).map_err(|_| {
+            NapiError::new(
+                Status::InvalidArg,
+                format!("InvalidArg: sizeBytes {size_bytes} exceeds u32::MAX"),
+            )
+        })
     }
 
-    #[napi(getter)]
+    /// Copy the packed index buffer into a fresh `Uint8Array`.
+    ///
+    /// Method, not a getter: each call allocates and memcpy's the
+    /// full `sizeBytes` buffer. Callers that iterate should hoist
+    /// the result out of tight loops.
+    #[napi]
     pub fn indices(&self) -> Uint8Array {
         Uint8Array::new(self.inner.indices().to_vec())
     }
@@ -297,6 +314,7 @@ impl Codec {
         codebook: &Codebook,
     ) -> napi::Result<CompressedVector> {
         let buf = float32_array_to_vec(&vector);
+        // CoreCodec is stateless as of phase-20; per-call construction is intentional.
         let cv = CoreCodec::new()
             .compress(&buf, &config.inner, &codebook.inner)
             .map_err(map_codec_error)?;
@@ -310,6 +328,7 @@ impl Codec {
         config: &CodecConfig,
         codebook: &Codebook,
     ) -> napi::Result<Float32Array> {
+        // CoreCodec is stateless as of phase-20; per-call construction is intentional.
         let out = CoreCodec::new()
             .decompress(&compressed.inner, &config.inner, &codebook.inner)
             .map_err(map_codec_error)?;
