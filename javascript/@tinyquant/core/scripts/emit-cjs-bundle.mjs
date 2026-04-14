@@ -29,6 +29,15 @@ const DIST = path.join(ROOT, "dist");
 // still cleans up the transient `src-cjs-staging/` and `dist-cjs/`
 // dirs. Without this, a failed `npm run build:cjs` leaves stale
 // scaffolding behind that only `npm run clean` could sweep away.
+//
+// IMPORTANT: failures inside this block MUST `throw` (not call
+// `process.exit`). `process.exit()` terminates the event loop
+// synchronously and skips pending `finally` blocks — which would
+// defeat the whole point of this try/finally cleanup. The top-level
+// `main()` wrapper below catches the throw and sets `exitCode = 1`
+// so the script still exits non-zero without short-circuiting
+// cleanup.
+async function main() {
 try {
   // --- 1. Stage sources with import.meta rewrites.
   fs.rmSync(STAGE, { recursive: true, force: true });
@@ -95,11 +104,10 @@ try {
     { cwd: ROOT, stdio: "inherit" },
   );
   if (tscRun.error) {
-    console.error("emit-cjs-bundle: tsc spawn failed:", tscRun.error);
-    process.exit(1);
+    throw new Error("tsc spawn failed: " + tscRun.error.message);
   }
   if (tscRun.status !== 0) {
-    process.exit(tscRun.status ?? 1);
+    throw new Error("tsc exited " + (tscRun.status ?? 1));
   }
 
   // --- 3. Move dist-cjs/*.js → dist/*.cjs, rewriting require("./x.js").
@@ -146,4 +154,15 @@ try {
   // next build starts from a known state.
   fs.rmSync(DIST_CJS, { recursive: true, force: true });
   fs.rmSync(STAGE, { recursive: true, force: true });
+}
+}
+
+try {
+  await main();
+} catch (err) {
+  console.error(err instanceof Error ? err.message : err);
+  // Use `process.exitCode = 1` (not `process.exit(1)`) at the top
+  // level so any pending microtasks — including cleanup that ran
+  // inside the `finally` above — flush before termination.
+  process.exitCode = 1;
 }
