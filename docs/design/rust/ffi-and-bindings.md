@@ -284,6 +284,30 @@ fn compress_batch<'py>(
 This lets the batch path parallelize with rayon while other Python
 threads keep running.
 
+### Mixed-result batch path: `compress_batch_collect`
+
+Phase 21 introduces a second batch entry point for the Python
+binding,
+`Codec::compress_batch_collect(...) -> Vec<Result<CompressedVector, CodecError>>`,
+which mirrors the per-row outcome instead of failing the whole
+batch on the first error. PyO3 exposes it as
+`compress_batch(..., on_error="collect")` so Python callers can
+inspect each slot and retry only the failures:
+
+```python
+results = codec.compress_batch(vectors, cfg, cb, on_error="collect")
+for i, r in enumerate(results):
+    if isinstance(r, Exception):
+        log.warning("row %d failed: %s", i, r)
+```
+
+The default `on_error="raise"` maps to the fail-fast path
+(`compress_batch`) and matches Python's exception semantics; the
+collect-all path is opt-in. See
+[[plans/rust/phase-21-rayon-batch-benches|Phase 21 plan]] §Parallel
+error handling for the Rust-side split and the rationale for
+keeping fail-fast as the default.
+
 ### Version guard
 
 ```python
