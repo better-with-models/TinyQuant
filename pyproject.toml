@@ -106,6 +106,13 @@ ignore_missing_imports = true
 module = "tinyquant_rs.*"
 ignore_missing_imports = true
 
+# Phase 24.3 dry-run harness reads the python-fatwheel.yml workflow.
+# PyYAML ships no upstream stubs by default; types-PyYAML is a separate
+# package we don't pin yet. Treat as opaque so mypy stays green.
+[[tool.mypy.overrides]]
+module = "yaml"
+ignore_missing_imports = true
+
 # Explicitly tell hatchling there are no package sources. Phase 24.1
 # introduces a dev-mode shim at `src/tinyquant_cpu/` so the in-repo
 # test suite can import it without first assembling the fat wheel, but
