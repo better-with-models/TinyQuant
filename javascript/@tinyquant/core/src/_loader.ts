@@ -121,6 +121,82 @@ export interface NativeCodec {
   ): Float32Array;
 }
 
+// Phase 25.3 surfaces: corpus + backend value objects. Same
+// hand-typed-alongside-auto-generated contract as the codec types —
+// `_loader.ts` stays the single source of truth for the native
+// binding's JS-visible shape so tooling that bypasses the generated
+// `.d.ts` still type-checks.
+export interface NativeCompressionPolicy {
+  readonly kind: "compress" | "passthrough" | "fp16";
+  requiresCodec(): boolean;
+  storageDtype(): "uint8" | "float16" | "float32";
+}
+
+export interface NativeCompressionPolicyClass {
+  compress(): NativeCompressionPolicy;
+  passthrough(): NativeCompressionPolicy;
+  fp16(): NativeCompressionPolicy;
+}
+
+export interface NativeVectorEntry {
+  readonly vectorId: string;
+  compressed(): NativeCompressedVector;
+  readonly configHash: string;
+  readonly dimension: number;
+  readonly hasResidual: boolean;
+  readonly insertedAtMillis: number;
+  readonly metadataJson: string | null;
+}
+
+export interface NativeCorpus {
+  readonly corpusId: string;
+  codecConfig(): NativeCodecConfig;
+  codebook(): NativeCodebook;
+  compressionPolicy(): NativeCompressionPolicy;
+  readonly metadataJson: string | null;
+  readonly vectorCount: number;
+  readonly isEmpty: boolean;
+  readonly vectorIds: string[];
+  insert(
+    vectorId: string,
+    vector: Float32Array,
+    metadataJson: string | null | undefined,
+  ): NativeVectorEntry;
+  insertBatch(
+    vectors: Record<string, Float32Array>,
+    metadataJson: string | null | undefined,
+  ): NativeVectorEntry[];
+  get(vectorId: string): NativeVectorEntry;
+  contains(vectorId: string): boolean;
+  decompress(vectorId: string): Float32Array;
+  decompressAll(): Record<string, Float32Array>;
+  remove(vectorId: string): boolean;
+  pendingEvents(): string[];
+}
+
+export interface NativeCorpusClass {
+  new (
+    corpusId: string,
+    codecConfig: NativeCodecConfig,
+    codebook: NativeCodebook,
+    compressionPolicy: NativeCompressionPolicy,
+    metadataJson: string | null | undefined,
+  ): NativeCorpus;
+}
+
+export interface NativeSearchResult {
+  readonly vectorId: string;
+  readonly score: number;
+}
+
+export interface NativeBruteForceBackend {
+  readonly count: number;
+  ingest(vectors: Record<string, Float32Array>): void;
+  search(query: Float32Array, topK: number): NativeSearchResult[];
+  remove(vectorIds: readonly string[]): void;
+  clear(): void;
+}
+
 type NativeBinding = {
   version: () => string;
   CodecConfig: new (opts: CodecConfigOpts) => NativeCodecConfig;
@@ -146,6 +222,11 @@ type NativeBinding = {
     config: NativeCodecConfig,
     codebook: NativeCodebook,
   ) => Float32Array;
+  CompressionPolicy: NativeCompressionPolicyClass;
+  VectorEntry: new () => NativeVectorEntry;
+  Corpus: NativeCorpusClass;
+  SearchResult: new () => NativeSearchResult;
+  BruteForceBackend: new () => NativeBruteForceBackend;
 };
 
 // Walk up from `start` until we find a directory containing

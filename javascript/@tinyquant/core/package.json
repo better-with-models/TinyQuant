@@ -13,14 +13,19 @@
     "bun": ">=1.1.0"
   },
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.cjs"
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.js"
+      }
     },
     "./package.json": "./package.json"
   },
@@ -42,7 +47,7 @@
   "scripts": {
     "clean": "node -e \"for (const d of ['dist','dist-tests']) require('fs').rmSync(d,{recursive:true,force:true})\"",
     "clean:tests": "node -e \"require('fs').rmSync('dist-tests', {recursive:true, force:true})\"",
-    "build": "npm run clean && napi build --cwd ../../../rust/crates/tinyquant-js --platform --release --output-dir ../../../javascript/@tinyquant/core/binaries && node scripts/rename-binaries.mjs && tsc -p tsconfig.json",
+    "build": "npm run clean && napi build --cwd ../../../rust/crates/tinyquant-js --platform --release --output-dir ../../../javascript/@tinyquant/core/binaries && node scripts/rename-binaries.mjs && tsc -p tsconfig.json && node scripts/emit-cjs-types.mjs",
     "test": "npm run build && npm run clean:tests && tsc -p tsconfig.test.json && node --test \"dist-tests/**/*.test.js\"",
     "fixtures:generate": "python ../../../scripts/packaging/generate_js_parity_fixtures.py tests/fixtures"
   },

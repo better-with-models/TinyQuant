@@ -2380,6 +2380,8 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
+ "serde_json",
+ "tinyquant-bruteforce",
  "tinyquant-core",
 ]
 

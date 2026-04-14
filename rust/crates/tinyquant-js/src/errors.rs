@@ -1,41 +1,30 @@
-//! Map `tinyquant_core::errors::CodecError` into napi-rs errors.
-//!
-//! Phase 25.2 scope: only the codec path. Corpus / backend variants
-//! land in later slices.
+//! Map `tinyquant_core::errors::{CodecError, CorpusError, BackendError}`
+//! into napi-rs errors.
 //!
 //! Errors cross the FFI boundary as `napi::Error` whose `message`
 //! starts with `<ClassName>: ` (e.g. `"DimensionMismatchError: expected
 //! 768, got 128"`). The class name is NOT present in `err.code` on
 //! the JS side — that field is napi-rs's internal `Status` enum, which
-//! does not admit custom string codes in v2. Phase 25.4 will add TS
-//! wrapper classes (`TinyQuantError`, `DimensionMismatchError`, …)
-//! that parse the message prefix and re-expose a populated `err.code`.
-//! Until then, consumers that need to switch on the error class
-//! should parse `err.message.split(':', 1)[0]`.
+//! does not admit custom string codes in v2. The TS wrapper
+//! (`@tinyquant/core/src/_errors.ts`) parses the message prefix and
+//! re-exposes it via `err.code` for JS consumers.
+//!
+//! Phase 25.3 adds the corpus + backend mappings alongside the codec
+//! mapping that landed in Phase 25.2.
 
 use napi::{Error as NapiError, Status};
-use tinyquant_core::errors::CodecError;
+use tinyquant_bruteforce::BackendError as CoreBackendError;
+use tinyquant_core::errors::{CodecError, CorpusError};
 
 /// Convert a `CodecError` to a napi `Error` whose `message` is
 /// prefixed with the Python-parity exception class name (e.g.
 /// `"DimensionMismatchError: ..."`). The reason string is reused from
-/// `CodecError::Display` so stack traces stay self-explanatory. See
-/// the module-level doc comment for the full contract — in particular,
-/// the class name lives in `message`, not in `err.code`.
+/// `CodecError::Display` so stack traces stay self-explanatory.
 pub(crate) fn map_codec_error(err: CodecError) -> NapiError {
-    // napi-rs v2's `Status` enum does not admit custom string codes,
-    // so we encode the Python-parity class name as a prefix on the
-    // message. Phase 25.4 will add a TS wrapper that parses this
-    // prefix and re-exposes it via `err.code` for JS consumers.
     let reason = err.to_string();
-    // `CodecError` is `#[non_exhaustive]`, so on stable Rust the
-    // compiler requires a wildcard arm even when every known variant
-    // is listed. We'd prefer a compile-time signal when a new variant
-    // lands (via the unstable `non_exhaustive_omitted_patterns` lint),
-    // but while that lint is nightly-only we surface the drift at
-    // runtime with `unreachable!`. On the next toolchain bump that
-    // stabilises the lint, drop the wildcard and add
-    // `#[deny(non_exhaustive_omitted_patterns)]` above the match.
+    // `CodecError` is `#[non_exhaustive]`; the wildcard arm surfaces
+    // variant drift at runtime until the `non_exhaustive_omitted_patterns`
+    // lint stabilises.
     let code = match err {
         CodecError::DimensionMismatch { .. } => "DimensionMismatchError",
         CodecError::ConfigMismatch { .. } => "ConfigMismatchError",
@@ -53,8 +42,48 @@ pub(crate) fn map_codec_error(err: CodecError) -> NapiError {
             "new CodecError variant reached map_codec_error without an explicit mapping: {other:?}"
         ),
     };
-    // Prefix the reason with the class name so consumers who only
-    // look at `err.message` still see the semantic bucket, matching
-    // how PyO3 surfaces class names before the message.
+    NapiError::new(Status::GenericFailure, format!("{code}: {reason}"))
+}
+
+/// Convert a `CorpusError` to a napi `Error` using the same
+/// `"<ClassName>: reason"` message contract as `map_codec_error`.
+pub(crate) fn map_corpus_error(err: CorpusError) -> NapiError {
+    // Unwrap BatchAtomicityFailure / Codec into the nested cause so
+    // the surfaced class name is the semantic leaf rather than a
+    // wrapper — matches the PyO3 binding's behaviour.
+    match err {
+        CorpusError::Codec(inner) => map_codec_error(inner),
+        CorpusError::BatchAtomicityFailure { source, .. } => map_corpus_error(*source),
+        other => {
+            let reason = other.to_string();
+            let code = match other {
+                CorpusError::DuplicateVectorId { .. } => "DuplicateVectorError",
+                CorpusError::UnknownVectorId { .. } => "UnknownVectorError",
+                CorpusError::DimensionMismatch { .. } => "DimensionMismatchError",
+                CorpusError::PolicyImmutable => "PolicyImmutableError",
+                // Codec + BatchAtomicityFailure are handled above; the
+                // wildcard arm covers future additions to the
+                // non-exhaustive enum.
+                ref leftover => unreachable!(
+                    "new CorpusError variant reached map_corpus_error without an explicit mapping: {leftover:?}"
+                ),
+            };
+            NapiError::new(Status::GenericFailure, format!("{code}: {reason}"))
+        }
+    }
+}
+
+/// Convert a `BackendError` to a napi `Error` using the same
+/// `"<ClassName>: reason"` message contract.
+pub(crate) fn map_backend_error(err: CoreBackendError) -> NapiError {
+    let reason = err.to_string();
+    let code = match err {
+        CoreBackendError::Empty => "BackendEmptyError",
+        CoreBackendError::InvalidTopK => "InvalidTopKError",
+        CoreBackendError::Adapter(_) => "BackendAdapterError",
+        ref other => unreachable!(
+            "new BackendError variant reached map_backend_error without an explicit mapping: {other:?}"
+        ),
+    };
     NapiError::new(Status::GenericFailure, format!("{code}: {reason}"))
 }

@@ -1,13 +1,12 @@
 //! JavaScript/TypeScript bindings for TinyQuant (napi-rs).
 //!
-//! Phase 25.2: codec value objects + Codec + module-level compress/
-//! decompress. Corpus / backend / TS-wrapper polish land in later
-//! slices. See
+//! Phase 25.3: codec + corpus + backend surface. See
 //! `docs/plans/rust/phase-25-typescript-npm-package.md` §Steps.
 //!
 //! This crate is intentionally thin: all algorithmic work is
-//! delegated to `tinyquant-core`. The napi-rs layer only handles
-//! type conversion at the JS/Rust boundary.
+//! delegated to `tinyquant-core` (and `tinyquant-bruteforce` for the
+//! search backend). The napi-rs layer only handles type conversion
+//! at the JS/Rust boundary.
 //!
 //! This crate is NOT `#![no_std]` because napi-rs v2's runtime relies
 //! on `std` (thread locals, `String` owners in `Error::new`, etc.);
@@ -17,14 +16,18 @@
 
 use napi_derive::napi;
 
+pub mod backend;
 pub mod buffers;
 pub mod codec;
+pub mod corpus;
 pub mod errors;
 
+pub use backend::{BruteForceBackend, SearchResult};
 pub use codec::{
     compress, decompress, Codebook, Codec, CodecConfig, CodecConfigOpts, CompressedVector,
     RotationMatrix,
 };
+pub use corpus::{CompressionPolicy, Corpus, VectorEntry};
 
 /// Package version, forwarded from the workspace Cargo.toml.
 #[napi]
