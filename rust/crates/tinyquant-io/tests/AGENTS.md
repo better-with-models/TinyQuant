@@ -1,12 +1,15 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-io/tests`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+Integration and property tests for the `tinyquant-io` serialization layer.
+Tests cover bit-packing exhaustion, round-trip file correctness, memory-mapped
+corpus access, zero-copy views, rejection of malformed input, and byte-level
+parity with the Python reference implementation.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: validate that the serialization layer is correct, stable, and compatible with the Python reference
+- main entrypoints: `roundtrip.rs` (happy-path encode/decode), `bit_pack_exhaustive.rs` (all bit-width combinations), `python_parity.rs` (cross-impl byte comparison)
+- common changes: adding new fixture dimensions, tightening rejection criteria, extending the bit-pack matrix
 
 ## Layout
 
@@ -30,22 +33,21 @@ tests/
 
 ### Update existing behavior
 
-1. Read the local README and the files you will touch before editing.
-2. Follow the local invariants before introducing new files or abstractions.
-3. Update nearby docs when the change affects layout, commands, or invariants.
-4. Run the narrowest useful verification first, then the broader project gate.
+1. Read the test file and the relevant source module before editing.
+2. If the binary format changes, regenerate fixtures with `cargo run --example gen_corpus_fixture`.
+3. Run `cargo test -p tinyquant-io` to confirm no regressions.
 
-### Add a new file or module
+### Add a new test file
 
-1. Confirm the new file belongs in this directory rather than a sibling.
-2. Update the layout section if the structure changes in a way another agent must notice.
-3. Add or refine local docs when the new file introduces a new boundary or invariant.
+1. Add the file under `tests/` and register it in `Cargo.toml` `[[test]]` if needed.
+2. Update the layout section above.
+3. Add or update fixtures in `fixtures/` when the new test needs golden data.
 
 ## Invariants — Do Not Violate
 
-- keep this directory focused on its stated responsibility
-- do not invent APIs, workflows, or invariants that the code does not support
-- update this file when structure or safe-editing rules change
+- Fixture files in `fixtures/` are committed golden data; do not regenerate silently.
+- `python_parity.rs` must stay in sync with the Python reference byte layout.
+- `rejection.rs` must cover every documented invalid-header variant.
 
 ## See Also
 

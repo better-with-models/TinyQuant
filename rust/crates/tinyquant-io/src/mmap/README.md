@@ -1,18 +1,26 @@
 # rust/crates/tinyquant-io/src/mmap
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+Memory-mapped Level-2 TQCV corpus file reader, compiled only when `feature = "mmap"` is enabled. The entire file is mapped read-only via `memmap2`. Iteration yields zero-copy `CompressedVectorView`s that borrow directly from the mapped region, avoiding per-record heap allocation.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+| File | Public items |
+|---|---|
+| `corpus_file.rs` | `CorpusFileReader`, `CorpusFileIter` |
+| `mod.rs` | Feature-gated re-exports of the above |
+
+`CorpusFileReader::open` validates the Level-2 header immediately. `CorpusFileIter` yields `Result<CompressedVectorView<'_>, IoError>` with the lifetime tied to the reader's mapped region.
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+This module is an alternative to `../codec_file/reader.rs` for scenarios where the entire corpus is read repeatedly (e.g., benchmarks, search). The `mmap` feature is off by default and must be explicitly enabled in `Cargo.toml`.
+
+Safety note: memory-mapping is inherently unsafe — external modification of the file while a `CorpusFileReader` is alive results in undefined behaviour. Callers must ensure the TQCV file is not truncated or overwritten during iteration.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- **Iterator logic** — `corpus_file.rs`, `CorpusFileIter::next`
+- **Header validation changes** — delegate to `../codec_file/header.rs`; only the open/map logic lives here
 
 ## See also
 

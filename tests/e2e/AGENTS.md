@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `tests/e2e`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory holds end-to-end pipeline tests that drive the full train → compress → decompress → search flow using the Python API. These tests are the highest-level correctness gate: they assert that the entire stack (codec + corpus + backend) produces coherent results. CI runs these on every push. Changes here happen when the end-to-end API contract changes or new pipeline variants are added.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `test_full_pipeline.py` — exercises the complete TinyQuant pipeline from raw FP32 vectors through codec training, corpus ingest, and brute-force search, asserting recall and MSE within acceptable bounds
+- main entrypoints: `test_full_pipeline.py`
+- common changes: adjusting quality thresholds, adding new bit-width or dimension variants to the matrix, updating assertions when the pipeline API changes
 
 ## Layout
 

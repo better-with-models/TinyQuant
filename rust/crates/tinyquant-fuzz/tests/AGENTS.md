@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-fuzz/tests`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the smoke tests for `tinyquant-fuzz`. Because fuzz targets cannot be run as ordinary `cargo test` binaries, `smoke.rs` provides a lightweight always-run check that the fuzz crate compiles correctly and that its public surface is reachable under normal test conditions. Changes here most often involve updating the smoke test when new fuzz targets are added to `src/lib.rs`.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `smoke.rs` — a minimal always-run test that verifies the `tinyquant-fuzz` crate compiles and its entry points are reachable without invoking the actual fuzzer
+- main entrypoints: `smoke.rs` (the only test file; open this first for any smoke-test change)
+- common changes: extending coverage when new fuzz targets are registered in `src/lib.rs`
 
 ## Layout
 

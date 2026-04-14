@@ -1,18 +1,25 @@
 # rust/crates/tinyquant-pgvector/tests/fixtures
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+Committed golden files for the `tinyquant-pgvector` integration test suite.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+| File | Purpose |
+| --- | --- |
+| `0001_create_vectors_table.sql` | DDL migration that creates the `vectors` table with the `pgvector` column type; applied by test setup before each run |
+| `pgvector_wire_100.json` | 100-vector golden sample in the pgvector binary wire format; used by `tests/adapter.rs` to assert round-trip byte stability |
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+These files are the stable contract between the Rust adapter implementation and
+the PostgreSQL schema. `adapter.rs` tests apply `0001_create_vectors_table.sql`
+at setup time and compare stored bytes against `pgvector_wire_100.json`. Any
+format or schema change must be paired with an explicit fixture update.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- **`0001_create_vectors_table.sql`** — update when the column type, index type, or table layout changes.
+- **`pgvector_wire_100.json`** — regenerate when the binary wire format changes; never edit by hand.
 
 ## See also
 

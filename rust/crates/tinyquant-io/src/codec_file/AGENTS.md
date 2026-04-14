@@ -1,12 +1,20 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-io/src/codec_file`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This module implements the Level-2 TQCV corpus file container that wraps a
+sequence of Level-1 wire-format records with a file-level header and optional
+metadata. `header.rs` defines `CorpusFileHeader` (magic bytes, version, record
+count, dimension, bit-width, and config hash). `metadata.rs` defines
+`MetadataBlob` for opaque per-file metadata. `writer.rs` provides
+`CodecFileWriter` for streaming `CompressedVector` records into a `.tqcv` file.
+`reader.rs` provides `CodecFileReader` for sequential decoding. This module is
+consumed by `tinyquant-cli` corpus commands, the `gen_corpus_fixture` example,
+and the mmap reader in `mmap/`.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: Level-2 TQCV corpus file — `CorpusFileHeader`, `MetadataBlob`, `CodecFileWriter` (streaming write), and `CodecFileReader` (sequential read)
+- main entrypoints: `mod.rs` (re-exports all four public items), `writer.rs`, `reader.rs`, `header.rs`
+- common changes: adding a new header field, extending `MetadataBlob`, changing the magic bytes or file version, adjusting reader / writer buffer logic
 
 ## Layout
 

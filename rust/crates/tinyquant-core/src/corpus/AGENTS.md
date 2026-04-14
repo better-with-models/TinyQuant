@@ -1,12 +1,20 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-core/src/corpus`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This module implements the `Corpus` aggregate root and its supporting domain
+types. `Corpus` owns an insertion-ordered `BTreeMap` of `VectorEntry` values,
+enforces the active `CompressionPolicy` (Compress, Passthrough, or Fp16),
+accumulates domain events (`CorpusEvent`), and exposes insert / decompress /
+remove / drain-events APIs. Supporting types include `VectorEntry` (stores a
+`CompressedVector` plus optional metadata), `CompressionPolicy` / `StorageTag`,
+`EntryMetaValue`, `ViolationKind`, and the crate-private `VectorIdMap` (id-to-key
+index). `tinyquant-cli`, `tinyquant-io`, and `tinyquant-bench` all consume this
+module via `tinyquant-core`.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `Corpus` aggregate root, `VectorEntry`, `CompressionPolicy`, domain events (`CorpusEvent`, `ViolationKind`), and the crate-private `VectorIdMap`
+- main entrypoints: `aggregate.rs` (`Corpus`, `BatchReport`), `mod.rs` (public re-exports), `compression_policy.rs`, `events.rs`
+- common changes: adding a new `CorpusEvent` variant, extending `CompressionPolicy`, adding metadata fields to `VectorEntry`, adjusting batch-insert atomicity logic
 
 ## Layout
 

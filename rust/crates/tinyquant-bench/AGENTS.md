@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-bench`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This crate provides the Criterion benchmark harness for TinyQuant and the calibration quality-gate helpers (neighbor recall and Pearson ρ) used to enforce codec fidelity in CI. CI quality-gate jobs depend on this crate to verify that quantization does not degrade search recall or correlation below defined thresholds. Changes here most often involve adding Criterion bench groups for new codec paths, adjusting recall or Pearson ρ thresholds in the calibration helpers, or adding fixture data under `baselines/`.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: Criterion benchmark harness for TinyQuant codec performance and calibration quality-gate helpers (neighbor recall, Pearson ρ) consumed by CI quality-gate jobs
+- main entrypoints: `src/lib.rs` (crate root, exposes `pub mod calibration`), `benches/` (Criterion entry points), `tests/` (calibration quality-gate integration tests)
+- common changes: adding Criterion bench groups for new codec variants, adjusting calibration thresholds, adding baseline fixture data
 
 ## Layout
 

@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `tests/corpus`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory holds unit tests for the corpus layer: compression policies, corpus file I/O, event handling, and `VectorEntry` serialization. Tests exercise the corpus independently of the brute-force search backend. Changes here happen when corpus file format, compression policy semantics, or event schema changes.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `test_compression_policy.py` (policy enum and selection logic), `test_corpus.py` (corpus construction, insertion, and retrieval), `test_events.py` (corpus event schema and dispatch), `test_vector_entry.py` (`VectorEntry` serialization and round-trip)
+- main entrypoints: `test_corpus.py` for the primary corpus API; `test_compression_policy.py` for policy invariants
+- common changes: adding tests for new compression policies, updating serialization assertions when the `VectorEntry` or corpus file format changes
 
 ## Layout
 

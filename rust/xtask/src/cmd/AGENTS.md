@@ -1,19 +1,23 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/xtask/src/cmd`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the xtask subcommand modules that are large enough to warrant their own files. Each module exports a `run` function called from `main.rs`. CI workflows and the release workflow call into these verbs and rely on their exit behaviour for pass/fail gating.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `bench.rs` (criterion baseline capture/compare/validate/diff), `guard_sync.rs` (asserts four-way `if:` guard equality across `publish-*` jobs in `rust-release.yml`), `guard_sync_python.rs` (asserts publish-guard contract in `python-fatwheel.yml`), `matrix_sync.rs` (diffs CLI smoke matrix in the plan doc against `rust-release.yml`), `simd.rs` (SIMD feature audit)
+- main entrypoints: `bench.rs` for the benchmark budget logic invoked by the `bench-budget` CI step; `guard_sync.rs` and `guard_sync_python.rs` for publish drift detection
+- common changes: extending `bench.rs` with new baseline comparison modes, updating the plan-doc path or job-name selectors in `matrix_sync.rs`, adding a new guard check module
 
 ## Layout
 
 ```text
 cmd/
-├── README.md
-└── simd.rs
+├── bench.rs
+├── guard_sync.rs
+├── guard_sync_python.rs
+├── matrix_sync.rs
+├── simd.rs
+└── README.md
 ```
 
 ## Common workflows

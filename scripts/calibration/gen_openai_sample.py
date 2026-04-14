@@ -58,6 +58,7 @@ def write_f32_bin(path: Path, arr: npt.NDArray[np.float32]) -> str:
 
 
 def main(argv: Sequence[str] | None = None) -> None:
+    """Parse CLI arguments and write calibration fixtures to the output directory."""
     import numpy as np
 
     parser = argparse.ArgumentParser(description=__doc__)

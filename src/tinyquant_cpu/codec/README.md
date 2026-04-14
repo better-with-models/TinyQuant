@@ -1,18 +1,21 @@
 # src/tinyquant_cpu/codec
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+This directory is the `tinyquant_cpu.codec` sub-package. It re-exports every codec class and function from `tinyquant_rs._core.codec` (the Rust PyO3 extension) under the `tinyquant_cpu.codec` namespace. The shim contains no logic of its own — it exists solely to satisfy the `tinyquant_cpu` public API surface.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+- `__init__.py` — resolves `sys.modules["tinyquant_cpu._core"].codec` and binds the following names into the package namespace:
+  - Classes: `CodecConfig`, `Codebook`, `RotationMatrix`, `CompressedVector`, `Codec`
+  - Functions: `compress`, `decompress`
+  - Exceptions: `CodebookIncompatibleError`, `ConfigMismatchError`, `DimensionMismatchError`, `DuplicateVectorError`
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+Importing `tinyquant_cpu.codec` first triggers the `tinyquant_cpu` parent `__init__.py`, which registers `tinyquant_rs._core` into `sys.modules`. The shim then reads the `.codec` sub-module attribute off that registered extension. Changing the set of exported names requires matching changes in `rust/crates/tinyquant-py/src/codec.rs` and the `register_codec` function in `lib.rs`.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- `__init__.py` — when `tinyquant-py` adds, renames, or removes a codec-layer class or function; keep `__all__` in sync.
 
 ## See also
 

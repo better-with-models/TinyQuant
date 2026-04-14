@@ -1,18 +1,29 @@
 # rust/crates/tinyquant-core/src/codec/kernels
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+Architecture-specific kernel implementations for quantize, dequantize, cosine distance, and residual helpers (Phase 20). The `scalar` submodule is the canonical reference and is always compiled. Under `feature = "simd"`, architecture-specific submodules provide the fast paths. `portable` exists as a documented fallback but delegates to scalar on MSRV 1.81 where `core::simd` is unavailable.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+| File | Compiled when | Role |
+|---|---|---|
+| `scalar.rs` | always | Canonical reference implementation |
+| `portable.rs` | `feature = "simd"` | `core::simd` fallback; currently delegates to scalar |
+| `avx2.rs` | `feature = "simd"` + `target_arch = "x86_64"` | AVX2 fast path |
+| `avx512.rs` | `feature = "simd"` + `feature = "avx512"` + `target_arch = "x86_64"` | AVX-512 fast path |
+| `neon.rs` | `feature = "simd"` + `target_arch = "aarch64"` | NEON fast path |
+| `mod.rs` | always | Re-exports and feature-gated module declarations |
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+`../dispatch.rs` selects a kernel at runtime via `DispatchKind` and calls into the appropriate submodule through `../simd_api.rs`. The SIMD parity integration tests in `../../../../tests/simd_parity_*.rs` verify that every kernel produces bit-identical output to `scalar` for the same inputs.
+
+Adding a new intrinsic path requires: a new submodule here, a new `DispatchKind` variant, a dispatch arm in `simd_api.rs`, and a corresponding parity test.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- **Correctness fixes or new operations** — start in `scalar.rs`, propagate to architecture submodules
+- **AVX2 intrinsics** — `avx2.rs`
+- **NEON intrinsics** — `neon.rs`
 
 ## See also
 

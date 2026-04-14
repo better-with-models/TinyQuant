@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/xtask/src`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the full source of the `cargo xtask` task runner. `main.rs` owns the top-level dispatch table and all fixture-refresh logic (calling Python scripts and Rust example binaries). The `cmd/` sub-modules implement the heavier subcommands (bench budget checks, CI guard-sync, publish-guard drift checks, SIMD audit) that warrant their own files. CI workflows invoke xtask verbs rather than scripting cargo directly, so changes here can affect multiple workflow files.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `main.rs` (dispatch, fixture refresh functions, `docs_check_ci_parity`), `cmd/bench.rs` (criterion baseline capture/compare), `cmd/guard_sync.rs` (publish-guard equality check for `rust-release.yml`), `cmd/guard_sync_python.rs` (publish-guard contract check for `python-fatwheel.yml`), `cmd/matrix_sync.rs` (CLI smoke matrix diff vs `rust-release.yml`), `cmd/simd.rs` (SIMD audit subcommand)
+- main entrypoints: `main.rs` for the top-level `match task` dispatch; `cmd/bench.rs` for the benchmark budget logic used by CI
+- common changes: adding a `refresh-*` arm in `fixtures()`, updating `REQUIRED_CI_JOBS`, adding a new `cmd/` module
 
 ## Layout
 

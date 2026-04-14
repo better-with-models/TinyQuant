@@ -1,12 +1,13 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-pgvector/tests/fixtures`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+Committed test fixtures for the `tinyquant-pgvector` integration suite. These
+files are golden data — do not regenerate or overwrite them automatically.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: store committed SQL schema migrations and JSON wire-format samples used by the integration tests
+- main entrypoints: `0001_create_vectors_table.sql` (schema baseline), `pgvector_wire_100.json` (100-vector wire-format golden file)
+- common changes: updating the SQL file when the schema evolves; replacing the JSON file when the wire format changes
 
 ## Layout
 
@@ -19,24 +20,23 @@ fixtures/
 
 ## Common workflows
 
-### Update existing behavior
+### Update a fixture
 
-1. Read the local README and the files you will touch before editing.
-2. Follow the local invariants before introducing new files or abstractions.
-3. Update nearby docs when the change affects layout, commands, or invariants.
-4. Run the narrowest useful verification first, then the broader project gate.
+1. Make the schema or wire-format change in the source crate first.
+2. Regenerate the affected fixture by running the relevant test helper with `--bless` or by re-running `gen_corpus_fixture`.
+3. Commit the updated fixture alongside the source change in the same PR.
 
-### Add a new file or module
+### Add a new fixture
 
-1. Confirm the new file belongs in this directory rather than a sibling.
-2. Update the layout section if the structure changes in a way another agent must notice.
-3. Add or refine local docs when the new file introduces a new boundary or invariant.
+1. Confirm the fixture belongs here (SQL schema or wire-format golden data).
+2. Add the file and update the layout section above.
+3. Reference the new fixture from the appropriate test in `tests/adapter.rs` or `tests/smoke.rs`.
 
 ## Invariants — Do Not Violate
 
-- keep this directory focused on its stated responsibility
-- do not invent APIs, workflows, or invariants that the code does not support
-- update this file when structure or safe-editing rules change
+- Never auto-generate or silently overwrite fixture files; they are the ground-truth contract.
+- SQL files must be valid PostgreSQL and must run against a pgvector-enabled instance.
+- JSON fixtures must encode vectors at the dimension documented in their filename.
 
 ## See Also
 

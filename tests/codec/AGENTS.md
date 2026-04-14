@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `tests/codec`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory holds unit tests for the codec layer: codebook training, quantization, compressed-vector serialization, and rotation matrix construction. Tests exercise each component in isolation and assert byte-level parity against Python-generated fixtures where applicable. Changes here happen when codec internals (bit widths, serialization format, `CodecConfig` fields) are modified or new codec features are added.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `test_codebook.py` (codebook training and lookup), `test_codec.py` (end-to-end compress/decompress), `test_codec_config.py` (`CodecConfig` serialization and round-trip), `test_compressed_vector.py` (byte-parity of the compressed vector format), `test_rotation_matrix.py` (determinism and orthogonality of the rotation matrix)
+- main entrypoints: `test_codec.py` for the end-to-end path; `test_compressed_vector.py` for byte-format parity
+- common changes: updating fixture paths after `cargo xtask fixtures refresh-codec`, adding tests for new bit-width variants, adjusting assertions when the `CompressedVector` binary format changes
 
 ## Layout
 

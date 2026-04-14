@@ -1,12 +1,20 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-io`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This crate owns all serialization, file I/O, and memory-mapping for TinyQuant.
+It depends on `tinyquant-core` and adds the Level-1 binary wire format
+(bit-packed `CompressedVector` encode / decode via `compressed_vector::to_bytes`
+and `from_bytes`), zero-copy views (`CompressedVectorView`) over serialized
+records, the Level-2 TQCV corpus file container (`codec_file` — header, reader,
+writer, metadata), an optional memory-mapped reader (`mmap` feature via
+`memmap2`), and an optional `rayon`-parallel decode path. It is consumed by
+`tinyquant-cli`, `tinyquant-bench`, and any downstream crate that reads or
+writes `.tqcv` corpus files.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: Level-1 wire-format encode / decode, bit-packing, zero-copy views, Level-2 TQCV corpus file container, and optional mmap reader
+- main entrypoints: `src/lib.rs` (public re-exports: `to_bytes`, `from_bytes`, `CompressedVectorView`), `src/codec_file/` (TQCV reader/writer), `src/compressed_vector/` (wire format)
+- common changes: updating the wire format header, adding a new codec file metadata field, extending the mmap reader for a new access pattern, enabling or tuning rayon parallel decode
 
 ## Layout
 

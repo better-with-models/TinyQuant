@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `tests/integration`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory holds integration tests that exercise cross-layer interactions: codec output feeding into corpus storage, corpus feeding into the search backend, pgvector adapter wiring, and serialization round-trips across the Rust/Python boundary. Tests here require more setup than unit tests and may use `conftest.py` fixtures for shared database or file state. Changes here happen when an interface between layers is added or modified.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `test_codec_corpus.py` (codec compress → corpus ingest → corpus decompress round-trip), `test_corpus_backend.py` (corpus retrieval feeding brute-force search), `test_pgvector.py` (pgvector adapter integration), `test_serialization.py` (byte-level parity across Python/Rust serialization); `conftest.py` for shared fixtures
+- main entrypoints: `conftest.py` for fixture setup; `test_codec_corpus.py` for the primary cross-layer path
+- common changes: adding cross-layer test cases when new pipeline stages land, updating `conftest.py` fixture paths, adjusting pgvector connection parameters
 
 ## Layout
 

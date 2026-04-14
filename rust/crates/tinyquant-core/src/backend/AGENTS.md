@@ -1,12 +1,18 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-core/src/backend`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This module defines the uniform `SearchBackend` trait that every concrete search
+backend must implement, plus the `SearchResult` value object returned by
+`SearchBackend::search`. The trait specifies `ingest`, `search`, `remove`, `len`,
+`is_empty`, and `dim` methods with dimension-locking and Python-parity semantics.
+Concrete implementations live in `tinyquant-bruteforce` and `tinyquant-pgvector`;
+this module contains only the contract, not any implementation. It is a pure
+`no_std` / alloc module.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `SearchBackend` trait definition and `SearchResult` value object (score + `VectorId`, ordered descending by cosine similarity)
+- main entrypoints: `protocol.rs` (both public items), `mod.rs` (re-exports `SearchBackend` and `SearchResult`)
+- common changes: extending the trait with a new method, adjusting `SearchResult` ordering semantics, adding a new `BackendError` variant in the shared errors module
 
 ## Layout
 

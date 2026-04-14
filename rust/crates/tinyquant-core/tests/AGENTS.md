@@ -1,12 +1,20 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-core/tests`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the integration test suite for `tinyquant-core`. Tests
+exercise the public API end-to-end: `Codebook` construction and Python fixture
+parity at all supported bit widths, `Codec` compress / decompress round-trips
+and codec fixture parity, `Corpus` aggregate lifecycle (insert, decompress,
+remove, events, batch atomicity, three-policy round-trips), SIMD kernel parity
+across scalar / AVX2 / NEON / portable / every-dispatch paths, rotation matrix
+fixture parity, serialization fixture parity, and a batch determinism / parallel
+correctness suite. The `common/` subdirectory provides shared helpers. Binary
+fixtures live in `fixtures/`.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: integration tests for the `tinyquant-core` public API — codebook, codec service, corpus aggregate, SIMD parity, serialization fixture parity, and batch / parallel correctness
+- main entrypoints: `codec_service.rs`, `codebook.rs`, `corpus_aggregate.rs`, `simd_parity_all_dispatch.rs`, `codec_fixture_parity.rs`
+- common changes: adding a new parity test when a fixture file is regenerated, extending corpus event or policy coverage, adding a SIMD parity file for a new kernel
 
 ## Layout
 

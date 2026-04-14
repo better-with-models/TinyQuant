@@ -224,6 +224,7 @@ def build_fat_wheel(
     record_entries: list[tuple[str, str, int]] = []
 
     def add(zf: zipfile.ZipFile, arcname: str, blob: bytes) -> None:
+        """Write ``blob`` into ``zf`` at ``arcname`` with a deterministic ZipInfo and record it."""
         zf.writestr(_deterministic_zipinfo(arcname), blob)
         record_entries.append((arcname, _sha256(blob), len(blob)))
 

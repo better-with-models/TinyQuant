@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `tests/reference/tinyquant_py_reference/backend/adapters`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory holds the pgvector adapter for the Python reference implementation. It is an anti-corruption layer translating TinyQuant vector types to the pgvector wire format for PostgreSQL deployments. The integration tests in `tests/integration/test_pgvector.py` depend on this adapter. Changes here happen when the pgvector wire format, the SQL schema, or the `SearchBackend` protocol changes.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `pgvector.py` — `PgvectorAdapter` class implementing the `SearchBackend` protocol for PostgreSQL + pgvector; all SQL uses parameterized queries
+- main entrypoints: `pgvector.py`
+- common changes: updating the SQL query when the pgvector index type or dimension handling changes, adjusting `SearchResult` mapping when the protocol schema changes
 
 ## Layout
 

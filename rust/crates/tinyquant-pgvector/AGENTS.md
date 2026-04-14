@@ -1,12 +1,15 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-pgvector`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This crate provides `PgvectorAdapter`, a PostgreSQL storage backend that
+persists compressed vectors via the `pgvector` extension. It implements the
+`Backend` trait from `tinyquant-core` so that a `Corpus` can store and search
+embeddings in a live Postgres instance without any Python dependency.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: PostgreSQL + pgvector storage backend implementing the `Backend` trait
+- main entrypoints: `src/adapter.rs` (the adapter struct and `Backend` impl), `src/lib.rs` (crate root)
+- common changes: updating SQL when the schema evolves; adding connection-pool configuration options
 
 ## Layout
 
@@ -22,22 +25,21 @@ tinyquant-pgvector/
 
 ### Update existing behavior
 
-1. Read the local README and the files you will touch before editing.
-2. Follow the local invariants before introducing new files or abstractions.
-3. Update nearby docs when the change affects layout, commands, or invariants.
-4. Run the narrowest useful verification first, then the broader project gate.
+1. Read `src/adapter.rs` before touching the SQL or wire-format logic.
+2. Schema changes require updating `tests/fixtures/0001_create_vectors_table.sql` and regenerating `tests/fixtures/pgvector_wire_100.json`.
+3. Run `cargo test -p tinyquant-pgvector` against a live PostgreSQL + pgvector instance.
 
-### Add a new file or module
+### Add a new configuration option
 
-1. Confirm the new file belongs in this directory rather than a sibling.
-2. Update the layout section if the structure changes in a way another agent must notice.
-3. Add or refine local docs when the new file introduces a new boundary or invariant.
+1. Add the field to the adapter config struct in `src/adapter.rs`.
+2. Update `src/lib.rs` re-exports if the new type is part of the public API.
+3. Document the option with a `///` comment.
 
 ## Invariants — Do Not Violate
 
-- keep this directory focused on its stated responsibility
-- do not invent APIs, workflows, or invariants that the code does not support
-- update this file when structure or safe-editing rules change
+- This crate requires a live PostgreSQL + pgvector instance; do not mock the database in integration tests.
+- All SQL is parameterised; never interpolate user-supplied strings into query strings.
+- The wire format in `tests/fixtures/pgvector_wire_100.json` is a committed golden file; regenerate explicitly, not automatically.
 
 ## See Also
 

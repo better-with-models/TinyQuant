@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `tests/architecture`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains static architecture tests that enforce import-direction rules across the Python packages. It has no runtime dependency on the codec or corpus implementation — it imports only module metadata. CI runs these tests to catch accidental layering violations before they reach production. Changes here happen when package boundaries are restructured or new packages are added that must respect the existing dependency direction.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `test_dependency_direction.py` — asserts that lower-level packages do not import from higher-level ones (e.g., `tinyquant_cpu.codec` must not import from `tinyquant_cpu.corpus`)
+- main entrypoints: `test_dependency_direction.py`
+- common changes: adding new packages to the dependency matrix when the project structure grows
 
 ## Layout
 

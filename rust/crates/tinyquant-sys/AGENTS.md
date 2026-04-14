@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-sys`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This crate is the C ABI façade for TinyQuant. It exposes a stable `extern "C"` surface for non-Rust consumers (Python via ctypes/cffi, C, or other FFI clients). `build.rs` regenerates `include/tinyquant.h` via `cbindgen` on every build; CI fails on any header drift. Non-Rust embedding, the Python `tinyquant-py` PyO3 crate (which uses a separate binding path), and any future C integration depend on the handle types and error conventions established here. Changes most often happen when adding new codec or corpus ABI entry points, bumping the crate version (which requires updating `TINYQUANT_H_VERSION`), or adjusting the cbindgen configuration.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `extern "C"` entry points for codec and corpus operations, opaque handle types, caller-owned error structs, and the cbindgen-generated `include/tinyquant.h` header
+- main entrypoints: `src/lib.rs` (module declarations, public re-exports, `TINYQUANT_H_VERSION` compile-time parity check), `src/codec_abi.rs`, `src/corpus_abi.rs`
+- common changes: adding `extern "C"` functions, updating `TINYQUANT_H_VERSION` when bumping crate version, adjusting `cbindgen.toml`, regenerating the C header
 
 ## Layout
 

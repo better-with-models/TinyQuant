@@ -1,12 +1,16 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-py`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This crate is the PyO3 binding layer that compiles to the `tinyquant_rs._core`
+Python extension module. It exposes `CodecConfig`, `Codebook`, `Codec`,
+`CompressedVector`, and `RotationMatrix` to Python callers and is the Rust half
+of the fat wheel produced in Phase 24. The Python shim package in
+`src/tinyquant_cpu/` re-exports from this extension module.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: PyO3 extension module exposing the TinyQuant codec API to Python as `tinyquant_rs._core`
+- main entrypoints: `src/lib.rs` (PyO3 module root with `#[pymodule]`), individual `*_py.rs` files for each exported type
+- common changes: adding PyO3 `#[pymethods]` when the core codec API adds new methods; updating maturin build config
 
 ## Layout
 
@@ -21,22 +25,22 @@ tinyquant-py/
 
 ### Update existing behavior
 
-1. Read the local README and the files you will touch before editing.
-2. Follow the local invariants before introducing new files or abstractions.
-3. Update nearby docs when the change affects layout, commands, or invariants.
-4. Run the narrowest useful verification first, then the broader project gate.
+1. Read `src/lib.rs` and the relevant `*_py.rs` file before adding or changing a `#[pymethod]`.
+2. All Python-visible types must derive `#[pyclass]`; keep the surface consistent with the Python reference API.
+3. Build and test with `maturin develop` in the project virtual environment.
+4. Run the parity test suite (`pytest -m parity`) to confirm Python ↔ Rust agreement.
 
-### Add a new file or module
+### Add a new exported type
 
-1. Confirm the new file belongs in this directory rather than a sibling.
-2. Update the layout section if the structure changes in a way another agent must notice.
-3. Add or refine local docs when the new file introduces a new boundary or invariant.
+1. Create a new `*_py.rs` file following the existing pattern.
+2. Register the type in `src/lib.rs` via `m.add_class::<MyType>()?`.
+3. Add `///` doc comments; PyO3 surfaces them as Python `__doc__` strings.
 
 ## Invariants — Do Not Violate
 
-- keep this directory focused on its stated responsibility
-- do not invent APIs, workflows, or invariants that the code does not support
-- update this file when structure or safe-editing rules change
+- The Python-visible API must remain compatible with the pure-Python reference implementation's interface.
+- Do not expose internal Rust types that are not part of the stable codec surface.
+- Parity tests (`tests/python/test_parity.py`) must pass before merging any API change.
 
 ## See Also
 

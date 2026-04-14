@@ -1,18 +1,22 @@
 # src/tinyquant_cpu/corpus
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+This directory is the `tinyquant_cpu.corpus` sub-package. It re-exports every corpus class from `tinyquant_rs._core.corpus` (the Rust PyO3 extension) under the `tinyquant_cpu.corpus` namespace. The shim contains no logic of its own.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+- `__init__.py` — resolves `sys.modules["tinyquant_cpu._core"].corpus` and binds:
+  - `CompressionPolicy` — enum of `COMPRESS`, `PASSTHROUGH`, `FP16` policies.
+  - `Corpus` — aggregate root for vector storage.
+  - `VectorEntry` — individual stored vector record.
+  - Event types: `CorpusCreated`, `VectorsInserted`, `CorpusDecompressed`, `CompressionPolicyViolationDetected`
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+Same registration pattern as `codec/`: parent `__init__.py` registers `_core`, then this shim reads `.corpus` off it. Changing exported names requires matching changes in `rust/crates/tinyquant-py/src/corpus.rs` and `register_corpus` in `lib.rs`. The event types mirror the domain events emitted by the Rust `Corpus` API.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- `__init__.py` — when `tinyquant-py` adds, renames, or removes a corpus class or event type; keep `__all__` in sync.
 
 ## See also
 

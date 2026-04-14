@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `tests/reference/tinyquant_py_reference/tools`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory holds developer utility scripts for the Python reference implementation. Tools here generate or inspect fixture data used by the Rust byte-parity tests; they are invoked by `cargo xtask fixtures refresh-serialization` or directly from the repo root. Changes here happen when the serialization format changes and the fixture generator must be updated to match.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `dump_serialization.py` — generates `CompressedVector` byte-parity fixture files consumed by `tinyquant-io` Rust tests; also prints SHA-256 hashes for manual verification
+- main entrypoints: `dump_serialization.py` (run via `cargo xtask fixtures refresh-serialization` or `python scripts/generate_rust_fixtures.py serialization`)
+- common changes: updating the serialization layout when the `CompressedVector` binary format changes, adding new bit-width or dimension cases to the fixture set
 
 ## Layout
 

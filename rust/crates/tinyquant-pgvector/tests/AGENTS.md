@@ -1,12 +1,15 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-pgvector/tests`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+Integration tests for `PgvectorAdapter`. Tests require a live PostgreSQL
+instance with the `pgvector` extension installed. The `testcontainers/` helper
+spins up an ephemeral Postgres container via Docker for CI; local runs can
+point at a pre-existing instance via `DATABASE_URL`.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: validate `PgvectorAdapter` correctness against a real PostgreSQL + pgvector instance
+- main entrypoints: `adapter.rs` (full adapter integration tests), `smoke.rs` (connection and schema smoke checks)
+- common changes: updating tests when the SQL schema or wire format changes; adding new adapter test cases
 
 ## Layout
 
@@ -23,22 +26,21 @@ tests/
 
 ### Update existing behavior
 
-1. Read the local README and the files you will touch before editing.
-2. Follow the local invariants before introducing new files or abstractions.
-3. Update nearby docs when the change affects layout, commands, or invariants.
-4. Run the narrowest useful verification first, then the broader project gate.
+1. Read `adapter.rs` before changing a test — understand what invariant it is asserting.
+2. Schema changes require updating `fixtures/0001_create_vectors_table.sql`.
+3. Run `cargo test -p tinyquant-pgvector` with a live database to validate.
 
-### Add a new file or module
+### Add a new test
 
-1. Confirm the new file belongs in this directory rather than a sibling.
-2. Update the layout section if the structure changes in a way another agent must notice.
-3. Add or refine local docs when the new file introduces a new boundary or invariant.
+1. Add the test to `adapter.rs` (integration) or `smoke.rs` (basic connectivity).
+2. If new fixture data is needed, add files under `fixtures/` and commit them.
+3. Update the layout section if new files are added.
 
 ## Invariants — Do Not Violate
 
-- keep this directory focused on its stated responsibility
-- do not invent APIs, workflows, or invariants that the code does not support
-- update this file when structure or safe-editing rules change
+- Do not mock the database; these tests must run against a real Postgres + pgvector instance.
+- `fixtures/` files are committed golden data; do not regenerate silently.
+- Tests must clean up created rows or use a dedicated test schema to avoid cross-test pollution.
 
 ## See Also
 

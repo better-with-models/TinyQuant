@@ -1,18 +1,21 @@
 # src/tinyquant_cpu/backend
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+This directory is the `tinyquant_cpu.backend` sub-package. It re-exports the search backend classes from `tinyquant_rs._core.backend` (the Rust PyO3 extension) under the `tinyquant_cpu.backend` namespace. The shim contains no logic of its own.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+- `__init__.py` — resolves `sys.modules["tinyquant_cpu._core"].backend` and binds:
+  - `SearchBackend` — protocol placeholder (no runtime pyclass; typing only).
+  - `SearchResult` — result record returned by a search operation.
+  - `BruteForceBackend` — exhaustive nearest-neighbour search adapter backed by `tinyquant-bruteforce`.
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+Same registration pattern as `codec/` and `corpus/`. Changing exported names requires matching changes in `rust/crates/tinyquant-py/src/backend.rs` and `register_backend` in `lib.rs`. The `BruteForceBackend` wraps `tinyquant_bruteforce::BruteForceBackend` from the `tinyquant-bruteforce` crate; the Rust-side `SearchBackend` protocol is a trait, so it has no corresponding Python class at runtime.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- `__init__.py` — when `tinyquant-py` adds a new backend adapter class or renames an existing one; keep `__all__` in sync.
 
 ## See also
 

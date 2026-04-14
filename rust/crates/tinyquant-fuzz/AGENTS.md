@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-fuzz`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This crate holds `libfuzzer-sys` fuzz targets for TinyQuant serialization surfaces. New fuzz targets are added as each codec or corpus serialization path is implemented. The crate is not part of the standard `cargo test` run; fuzz targets are exercised separately via `cargo fuzz`. The smoke tests in `tests/` provide a minimal always-run check that the crate compiles and its entry points are reachable. Changes here most often involve adding new fuzz targets for newly stabilized codec surfaces.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `libfuzzer-sys` fuzz target implementations for corpus and codec serialization paths, with a smoke-test layer for CI compilation checks
+- main entrypoints: `src/lib.rs` (fuzz target entry points), `tests/smoke.rs` (compilation and reachability check)
+- common changes: adding new fuzz targets in `src/lib.rs` as new serialization surfaces are stabilized, updating smoke tests to cover new entry points
 
 ## Layout
 

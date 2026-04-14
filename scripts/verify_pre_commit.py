@@ -40,10 +40,12 @@ OBSIDIAN_PATTERNS = [
 
 
 def fail(message: str) -> None:
+    """Print a FAIL-prefixed message to stdout."""
     print(f"FAIL: {message}")
 
 
 def ok(message: str) -> None:
+    """Print a PASS-prefixed message to stdout."""
     print(f"PASS: {message}")
 
 
@@ -67,6 +69,7 @@ _EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv", ".worktrees"}
 
 
 def markdown_files_outside_docs() -> list[Path]:
+    """Return all ``*.md`` files that are outside the excluded top-level directories."""
     files: list[Path] = []
     for path in REPO_ROOT.rglob("*.md"):
         relative = path.relative_to(REPO_ROOT)
@@ -77,6 +80,7 @@ def markdown_files_outside_docs() -> list[Path]:
 
 
 def wiki_markdown_files() -> list[Path]:
+    """Return all ``*.md`` files under ``docs/`` excluding the ``research/`` subtree."""
     files: list[Path] = []
     for path in (REPO_ROOT / "docs").rglob("*.md"):
         relative = path.relative_to(REPO_ROOT)
@@ -87,6 +91,7 @@ def wiki_markdown_files() -> list[Path]:
 
 
 def check_required_files() -> bool:
+    """Verify that every file in ``REQUIRED_ROOT_FILES`` exists. Returns ``True`` on success."""
     success = True
     for relative_path in REQUIRED_ROOT_FILES:
         path = REPO_ROOT / relative_path
@@ -99,6 +104,7 @@ def check_required_files() -> bool:
 
 
 def check_claude_stub() -> bool:
+    """Verify that ``CLAUDE.md`` contains a reference to ``AGENTS.md``. Returns ``True`` on success."""
     claude = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     if "AGENTS.md" in claude:
         ok("CLAUDE.md points to AGENTS.md")
@@ -108,6 +114,7 @@ def check_claude_stub() -> bool:
 
 
 def check_obsidian_boundary() -> bool:
+    """Verify that Obsidian-specific markdown (wikilinks, callouts) is confined to ``docs/``. Returns ``True`` on success."""
     success = True
     for path in markdown_files_outside_docs():
         text = path.read_text(encoding="utf-8")
@@ -126,6 +133,7 @@ def check_obsidian_boundary() -> bool:
 
 
 def parse_frontmatter(text: str) -> tuple[bool, set[str]]:
+    """Parse YAML frontmatter from ``text``. Returns ``(has_frontmatter, key_set)``."""
     lines = text.splitlines()
     if len(lines) < 3 or lines[0].strip() != "---":
         return False, set()
@@ -144,12 +152,14 @@ def parse_frontmatter(text: str) -> tuple[bool, set[str]]:
 
 
 def strip_code(text: str) -> str:
+    """Remove fenced code blocks and inline code spans from ``text`` before pattern-matching."""
     text = re.sub(r"```[\s\S]*?```", "", text)
     text = re.sub(r"`[^`\n]+`", "", text)
     return text
 
 
 def check_wiki_frontmatter() -> bool:
+    """Verify that every Obsidian wiki page has required YAML frontmatter keys. Returns ``True`` on success."""
     success = True
     for path in wiki_markdown_files():
         text = path.read_text(encoding="utf-8")
@@ -172,6 +182,7 @@ def check_wiki_frontmatter() -> bool:
 
 
 def run_markdownlint() -> bool:
+    """Run ``markdownlint-cli2`` against the repository via ``npx``. Returns ``True`` on clean exit."""
     npx = shutil.which("npx.cmd") or shutil.which("npx")
     if not npx:
         fail("npx was not found, so markdownlint could not run")
@@ -191,6 +202,7 @@ def run_markdownlint() -> bool:
 
 
 def main() -> int:
+    """Run all pre-commit verification checks and return an exit code (0 = pass, 1 = fail)."""
     checks = [
         check_required_files(),
         check_claude_stub(),

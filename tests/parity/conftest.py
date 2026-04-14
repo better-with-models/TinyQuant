@@ -49,17 +49,20 @@ def cfg_triplet(request: pytest.FixtureRequest) -> tuple[int, int, int]:
 
 @pytest.fixture()
 def rng(cfg_triplet: tuple[int, int, int]) -> np.random.Generator:
+    """Seeded NumPy Generator derived from the ``cfg_triplet`` seed."""
     _, seed, _ = cfg_triplet
     return np.random.default_rng(seed)
 
 
 @pytest.fixture()
 def vector(rng: np.random.Generator, cfg_triplet: tuple[int, int, int]):
+    """Single FP32 vector of the dimension specified by ``cfg_triplet``."""
     _, _, dim = cfg_triplet
     return rng.standard_normal(dim).astype(np.float32)
 
 
 @pytest.fixture()
 def batch(rng: np.random.Generator, cfg_triplet: tuple[int, int, int]):
+    """FP32 matrix of 128 vectors with the dimension specified by ``cfg_triplet``."""
     _, _, dim = cfg_triplet
     return rng.standard_normal((128, dim)).astype(np.float32)

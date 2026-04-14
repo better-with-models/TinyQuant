@@ -1,12 +1,22 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-core/src/codec/kernels`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains all architecture-specific and reference kernel
+implementations for quantize, dequantize, cosine similarity, and FP16 residual
+operations. `scalar.rs` is the canonical reference that every SIMD path must
+match byte-for-byte; it is always compiled regardless of features. Under
+`feature = "simd"`, `avx2.rs` (x86\_64), `neon.rs` (aarch64), and
+`avx512.rs` (x86\_64 + `feature = "avx512"`) provide architecture-specific
+wrappers — currently delegating to scalar until full intrinsic paths land.
+`portable.rs` documents the intended `core::simd` portable fallback but also
+delegates to scalar on MSRV 1.81 where `core::simd` is unavailable. The
+`kernels` module itself is `pub(crate)` and is consumed exclusively by
+`dispatch.rs` and `simd_api.rs`.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: scalar reference kernels plus SIMD-gated architecture-specific kernel modules (AVX2, AVX-512, NEON, portable)
+- main entrypoints: `scalar.rs` (canonical reference for `quantize_into`, `dequantize_into`, `cosine`, `compute_residual_into`, `apply_residual_into`), `mod.rs` (feature-gated module declarations)
+- common changes: promoting a stub SIMD kernel to a real intrinsic path, adding a new kernel function, extending parity test coverage in sibling `tests/`
 
 ## Layout
 

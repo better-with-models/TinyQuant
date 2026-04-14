@@ -65,6 +65,7 @@ def connection_factory(pgvector_connection: Any) -> Callable[[], Any]:
     """Factory that always returns the session connection."""
 
     def factory() -> Any:
+        """Return the session-scoped pgvector connection."""
         return pgvector_connection
 
     return factory

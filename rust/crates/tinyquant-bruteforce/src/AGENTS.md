@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-bruteforce/src`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains all source modules for `tinyquant-bruteforce`. `backend.rs` is the primary file and contains the `BruteForceBackend` struct with its `SearchBackend` implementation. `store.rs` manages vector storage, `similarity.rs` provides the scalar cosine similarity computation, `similarity_simd.rs` provides the SIMD-accelerated variant (compiled only when the `simd` feature is enabled), and `errors.rs` defines `BackendError`. Changes here most often involve modifying similarity logic, refining storage layout, or adding new error variants.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `backend.rs` (`BruteForceBackend` and `SearchBackend` impl), `store.rs` (vector storage), `similarity.rs` (scalar cosine similarity), `similarity_simd.rs` (SIMD cosine similarity, `simd` feature-gated), `errors.rs` (`BackendError` definition)
+- main entrypoints: `backend.rs` (start here for any query-path or ingest-path changes), `lib.rs` (public re-exports and feature-gated module declarations)
+- common changes: modifying cosine similarity computation in `similarity.rs` or `similarity_simd.rs`, updating `BackendError` variants, adjusting storage internals in `store.rs`
 
 ## Layout
 

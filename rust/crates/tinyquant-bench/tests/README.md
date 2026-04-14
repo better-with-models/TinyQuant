@@ -1,18 +1,26 @@
 # rust/crates/tinyquant-bench/tests
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+Calibration quality-gate tests for `tinyquant-bench`. These run under the
+normal `cargo test` invocation (not `cargo bench`) and enforce minimum
+acceptable recall and correlation values.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+| File | Role |
+|---|---|
+| `calibration.rs` | Asserts neighbor-recall and Pearson ρ exceed defined thresholds |
+| `smoke.rs` | Confirms the test harness links and the calibration helpers are reachable |
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+CI runs these tests on every push. A regression in `BruteForceBackend`
+accuracy or a bad change to a calibration formula will cause `calibration.rs`
+to fail before the change reaches a benchmark run. The tests use the
+`tinyquant-bench` library crate directly and require no external services.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- Adjusting pass/fail thresholds: `calibration.rs`
 
 ## See also
 

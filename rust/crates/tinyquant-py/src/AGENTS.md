@@ -1,18 +1,23 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-py/src`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the PyO3 bindings that produce the `tinyquant_rs._core` Python extension module. The extension mirrors the `tinyquant_cpu` Python API so that Python consumers can import either package interchangeably. `lib.rs` registers the three sub-modules and the top-level module; `backend.rs`, `codec.rs`, and `corpus.rs` wrap the corresponding Rust types as PyO3 classes; `errors.rs` maps Rust errors to Python exceptions; `numpy_bridge.rs` handles zero-copy conversion between NumPy arrays and Rust slices. The fat-wheel packaging workflow (`python-fatwheel.yml`) and the `tinyquant_cpu` dev shim both depend on the API surface defined here.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: PyO3 extension module `tinyquant_rs._core` — codec, corpus, and backend Python classes with NumPy interop
+- main entrypoints: `lib.rs` (module registration, `VERSION` constant), `codec.rs` (codec PyO3 classes), `corpus.rs` (corpus PyO3 classes), `backend.rs` (search backend bindings)
+- common changes: adding or renaming Python-visible methods, adjusting NumPy dtype handling in `numpy_bridge.rs`, mapping new Rust error variants in `errors.rs`
 
 ## Layout
 
 ```text
 src/
+├── backend.rs
+├── codec.rs
+├── corpus.rs
+├── errors.rs
 ├── lib.rs
+├── numpy_bridge.rs
 └── README.md
 ```
 

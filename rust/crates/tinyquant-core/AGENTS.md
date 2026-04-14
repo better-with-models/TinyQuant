@@ -1,12 +1,18 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-core`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This is the `no_std` (alloc-only) core library for TinyQuant. It defines every
+domain type used across the workspace: `CodecConfig`, `Codebook`, `Codec`,
+`RotationMatrix`, `CompressedVector`, the `Corpus` aggregate root, and the
+`SearchBackend` trait. It contains no I/O, no file-system access, and no
+platform-specific code. Every other crate in the workspace depends on this crate.
+Changes here most often involve adding codec pipeline variants, extending corpus
+domain logic, or landing new SIMD kernel paths behind feature gates.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: the pure-Rust, `no_std` domain model — codec, corpus, backend trait
+- main entrypoints: `src/lib.rs` (module map), `src/codec/mod.rs`, `src/corpus/mod.rs`, `src/backend/mod.rs`
+- common changes: codec config and codebook tuning, corpus event additions, SIMD kernel gating, residual / rotation updates
 
 ## Layout
 

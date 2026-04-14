@@ -1,12 +1,16 @@
 # AGENTS.md — Guide for AI Agents Working in `src/tinyquant_cpu/codec`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This sub-package re-exports the codec layer of the `tinyquant_cpu` Python
+shim. It exposes `CodecConfig`, `Codebook`, `Codec`, `CompressedVector`, and
+`RotationMatrix` to callers of `tinyquant_cpu.codec`. In Phase 24 these come
+from the `tinyquant_rs._core` Rust extension; the pure-Python reference
+implementations in the individual modules remain as fallbacks.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: expose the full codec API (`CodecConfig`, `Codebook`, `Codec`, `CompressedVector`, `RotationMatrix`) under `tinyquant_cpu.codec`
+- main entrypoints: `__init__.py` (re-exports and Rust/Python dispatch), `codec.py`, `codebook.py`, `codec_config.py`, `compressed_vector.py`, `rotation_matrix.py`
+- common changes: updating `__init__.py` to prefer the Rust-backed type when available; adding new public methods to the pure-Python fallbacks
 
 ## Layout
 
@@ -27,22 +31,21 @@ codec/
 
 ### Update existing behavior
 
-1. Read the local README and the files you will touch before editing.
-2. Follow the local invariants before introducing new files or abstractions.
-3. Update nearby docs when the change affects layout, commands, or invariants.
-4. Run the narrowest useful verification first, then the broader project gate.
+1. Read `__init__.py` to understand the Rust/Python dispatch before touching any module.
+2. Changes to the pure-Python classes must keep the interface compatible with the Rust-backed classes.
+3. Run `pytest tests/codec/` and `pytest -m parity` after any change.
 
-### Add a new file or module
+### Add a new public type
 
-1. Confirm the new file belongs in this directory rather than a sibling.
-2. Update the layout section if the structure changes in a way another agent must notice.
-3. Add or refine local docs when the new file introduces a new boundary or invariant.
+1. Implement it in a new `<type>.py` module following the existing pattern.
+2. Re-export from `__init__.py`.
+3. Add the matching PyO3 class in `rust/crates/tinyquant-py/src/` and keep the interfaces in sync.
 
 ## Invariants — Do Not Violate
 
-- keep this directory focused on its stated responsibility
-- do not invent APIs, workflows, or invariants that the code does not support
-- update this file when structure or safe-editing rules change
+- The public interface of every class here must be identical to the corresponding Rust-backed class.
+- `_errors.py` and `_quantize.py` are internal helpers; do not import them from outside this package.
+- `__init__.py` must guard Rust-extension imports with `try/except ImportError`.
 
 ## See Also
 

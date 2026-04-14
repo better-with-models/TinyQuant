@@ -1,18 +1,25 @@
 # rust/crates/tinyquant-fuzz/src
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+Source for the `tinyquant-fuzz` crate. Currently contains only `lib.rs`;
+fuzz target functions will be added here as serialization surfaces in the
+codec are implemented.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+| File | Role |
+|---|---|
+| `lib.rs` | Crate root; will contain `libfuzzer-sys` fuzz target functions |
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+Each fuzz target in `lib.rs` is exercised by `cargo fuzz run <target-name>`.
+The crate depends on `libfuzzer-sys` and on whichever `tinyquant-*` crates own
+the serialization surfaces under test. No fuzz targets run during normal CI;
+they are run on demand or in a dedicated fuzzing workflow.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- Adding a fuzz target for a new codec surface: `lib.rs`
 
 ## See also
 

@@ -1,12 +1,20 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-core/examples`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains developer-facing example binaries that generate golden
+fixture files consumed by integration tests and downstream tooling.
+`dump_codec_fixture.rs` runs the full codec pipeline with configurable seeds,
+row/column counts, and bit widths, writing raw `f32` input and `u8` index
+binaries so that regressions in the codec pipeline are detectable without
+Python round-trips. `dump_rotation_fixture.rs` writes a canonical little-endian
+`f64[dim × dim]` rotation matrix binary used by `rotation_fixture_parity` tests
+and any future backend that needs Rust-reference rotation data. Both examples
+require `feature = "std"` and are excluded from `no_std` builds.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: fixture-generation binaries — `dump_codec_fixture.rs` (full codec pipeline golden output) and `dump_rotation_fixture.rs` (rotation matrix binary)
+- main entrypoints: `dump_codec_fixture.rs` (run with `cargo run -p tinyquant-core --example dump_codec_fixture --features std`), `dump_rotation_fixture.rs` (analogous invocation)
+- common changes: updating output paths or file formats when the wire format or rotation algorithm changes, adding a new example when a new fixture type is needed
 
 ## Layout
 

@@ -1,17 +1,18 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-bench/benches`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the Criterion benchmark entry points for `tinyquant-bench`. Each file registers one or more benchmark groups that Criterion discovers and runs. These benchmarks are not part of the CI test suite — they are run on demand to measure throughput and latency. Changes here most often involve adding new benchmark groups for additional codec configurations or SIMD paths.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: Criterion benchmark entry points — `batch_parallel.rs` (parallel batch encoding throughput), `simd_kernels.rs` (SIMD kernel microbenchmarks), `smoke.rs` (lightweight end-to-end benchmark sanity check)
+- main entrypoints: `batch_parallel.rs`, `simd_kernels.rs`, `smoke.rs` — each file is a self-contained Criterion binary
+- common changes: adding bench groups for new codec variants, adjusting sample sizes or measurement time, introducing new SIMD kernel benchmarks
 
 ## Layout
 
 ```text
 benches/
+├── batch_parallel.rs
 ├── README.md
 ├── simd_kernels.rs
 └── smoke.rs

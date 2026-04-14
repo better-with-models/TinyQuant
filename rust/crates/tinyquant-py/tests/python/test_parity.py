@@ -414,6 +414,7 @@ def test_threading_safety() -> None:
     errors: list[BaseException] = []
 
     def worker(idx: int) -> None:
+        """Compress the batch in a thread and store byte results at ``results[idx]``."""
         try:
             rs_codec = rs.codec.Codec()
             out = rs_codec.compress_batch(batch, rs_cfg, rs_cb)

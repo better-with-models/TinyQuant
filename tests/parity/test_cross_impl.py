@@ -14,13 +14,17 @@ pytestmark = pytest.mark.parity
 
 
 class TestConfigParity:
+    """Parity tests for CodecConfig construction and config_hash determinism."""
+
     def test_config_hash_matches_self(self, ref, cfg_triplet):
+        """Two identical CodecConfigs from the same implementation produce the same hash."""
         bw, seed, dim = cfg_triplet
         a = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         b = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         assert a.config_hash == b.config_hash
 
     def test_config_hash_cross_impl(self, ref, rs, cfg_triplet):
+        """Python-reference and Rust-backed CodecConfigs with identical parameters produce the same hash."""
         bw, seed, dim = cfg_triplet
         py_cfg = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         rs_cfg = rs.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
@@ -28,7 +32,10 @@ class TestConfigParity:
 
 
 class TestRotationParity:
+    """Parity tests for RotationMatrix determinism and cross-implementation agreement."""
+
     def test_rotation_deterministic(self, ref, cfg_triplet, vector):
+        """Two RotationMatrices built from the same config apply identically to the same vector."""
         bw, seed, dim = cfg_triplet
         cfg = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         r1 = ref.codec.RotationMatrix.from_config(cfg)
@@ -36,6 +43,7 @@ class TestRotationParity:
         np.testing.assert_array_equal(r1.apply(vector), r2.apply(vector))
 
     def test_rotation_cross_impl(self, ref, rs, cfg_triplet, vector):
+        """Python-reference and Rust rotation agree within 1e-6 on the same vector."""
         bw, seed, dim = cfg_triplet
         py_cfg = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         rs_cfg = rs.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
@@ -47,7 +55,10 @@ class TestRotationParity:
 
 
 class TestCompressRoundTrip:
+    """Parity tests for compress/decompress round-trip within and across implementations."""
+
     def test_self_round_trip(self, ref, cfg_triplet, batch):
+        """Reference compress → reference decompress MSE is below 1.0 (sanity bound)."""
         bw, seed, dim = cfg_triplet
         cfg = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         cb = ref.codec.Codebook.train(batch, cfg)
@@ -79,6 +90,8 @@ class TestCompressRoundTrip:
 
 
 class TestSerializationParity:
+    """Parity tests for codebook byte-stability and cross-implementation entry agreement."""
+
     def test_codebook_entries_stable(self, ref, cfg_triplet, batch):
         """Reference Codebook has no `to_bytes`; train determinism is the
         stable structural property we can assert on the reference alone.
@@ -92,6 +105,7 @@ class TestSerializationParity:
         np.testing.assert_array_equal(cb1.entries, cb2.entries)
 
     def test_codebook_cross_impl_bytes(self, ref, rs, cfg_triplet, batch):
+        """Rust Codebook constructed from reference entries has identical ``entries`` array."""
         bw, seed, dim = cfg_triplet
         cfg = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         cb = ref.codec.Codebook.train(batch, cfg)

@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-fuzz/src`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the fuzz target implementations for `tinyquant-fuzz`. `lib.rs` is the entry point where `libfuzzer-sys` fuzz targets are registered. New targets are added here as each TinyQuant serialization surface (codec round-trip, corpus loading, etc.) is ready to be fuzzed. The file currently contains the crate-level docstring; concrete target functions are added in later phases alongside the corresponding codec implementations.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: fuzz target implementations in `lib.rs` — each target exercises one serialization surface (corpus or codec path) using arbitrary byte input from `libfuzzer-sys`
+- main entrypoints: `lib.rs` (all fuzz targets live here; open this first for any fuzz-target addition or modification)
+- common changes: adding new `fuzz_target!` functions for newly stabilized codec or corpus serialization paths
 
 ## Layout
 

@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/xtask`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This crate is the `cargo xtask` task runner for the TinyQuant Rust workspace. It is invoked as `cargo xtask <command>` from the `rust/` directory. CI workflows, the release workflow, and local developer scripts all call into xtask rather than scripting raw `cargo` invocations. Changes here most often happen when adding new fixture-refresh sub-verbs, adjusting benchmark budget checks, or extending CI-parity guards.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `cargo xtask` entry point — `fmt`, `lint`, `test`, `fixtures` (sub-verbs for all fixture categories), `bench`/`bench-budget`, `check-matrix-sync`, `check-publish-guards`, `docs`, `simd`, and `help` commands
+- main entrypoints: `src/main.rs` (top-level dispatch and all fixture refresh functions), `src/cmd/` (bench, guard_sync, guard_sync_python, matrix_sync, simd sub-modules)
+- common changes: adding a `fixtures refresh-*` sub-verb, updating required CI job names in `REQUIRED_CI_JOBS`, adding a new `cmd/` module for a new xtask subcommand
 
 ## Layout
 

@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `experiments`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory holds standalone research scripts for TinyQuant. Nothing here is part of the main test suite or CI pipeline — scripts are run manually by researchers to explore quantization trade-offs. The only current sub-experiment is `quantization-benchmark/`, which benchmarks FP32/FP16/PQ/TinyQuant compression strategies. Changes here most often involve adding new benchmark scripts or extending existing ones; do not add CI dependencies on this directory.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: standalone research scripts and experiments, run manually outside CI — currently contains the `quantization-benchmark/` compression comparison experiment
+- main entrypoints: `quantization-benchmark/` (the active experiment subdirectory)
+- common changes: adding new experiment subdirectories, extending `quantization-benchmark/` scripts with new codec configurations or metrics
 
 ## Layout
 

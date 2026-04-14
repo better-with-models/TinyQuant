@@ -1,12 +1,19 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-io/examples`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the developer example that generates golden corpus
+fixture files for the `tinyquant-io` integration tests. `gen_corpus_fixture.rs`
+writes `tests/fixtures/codec_file/golden_100.tqcv` (100 vectors, dim=64,
+bw=4) and a matching raw `u8` index binary using deterministic
+`ChaCha20Rng::seed_from_u64(17)`. The generated files are the ground truth for
+fixture-parity integration tests in `tinyquant-io/tests/`. Run with
+`cargo run -p tinyquant-io --example gen_corpus_fixture` to regenerate after
+a wire format change.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: fixture generation for `tinyquant-io` integration tests — `gen_corpus_fixture.rs` writes a golden `.tqcv` file and a companion raw index binary
+- main entrypoints: `gen_corpus_fixture.rs` (single file; uses `CodecFileWriter` and `CompressedVector`)
+- common changes: updating the vector count, dimension, or bit-width constants when the fixture spec changes, regenerating after a `codec_file` header format update
 
 ## Layout
 

@@ -1,18 +1,24 @@
 # rust/crates/tinyquant-fuzz/tests
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+Smoke tests for the `tinyquant-fuzz` crate. These run under the normal
+`cargo test` invocation, not under `cargo fuzz`, and exist solely to verify
+that the fuzz crate compiles correctly in the standard workspace build.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+| File | Role |
+|---|---|
+| `smoke.rs` | Confirms the `tinyquant-fuzz` crate links and builds without error |
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+Because fuzz builds use a separate toolchain and are not part of CI's default
+`cargo test` run, `smoke.rs` catches broken imports or missing dependencies
+before anyone attempts an actual fuzz session.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- `smoke.rs` — only needs changing if the crate's public interface is restructured
 
 ## See also
 

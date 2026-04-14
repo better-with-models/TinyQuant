@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-cli`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This crate produces the `tinyquant` CLI binary — the primary operator-facing tool for the TinyQuant codec. It owns argument parsing (via clap derive), subcommand dispatch, progress-bar wiring, and format-aware I/O. The Python reference implementation, `tinyquant-sys` C ABI consumers, and CI smoke tests all depend on the binary produced here. Changes most often happen when adding or modifying subcommands, adjusting exit-code behaviour, or extending the supported input/output formats.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `tinyquant` binary — `codec train/compress/decompress`, `corpus ingest/decompress/search`, `verify`, and `info` subcommands
+- main entrypoints: `src/main.rs` (clap derive layout and dispatch), `src/commands/` (per-subcommand logic), `src/io.rs` (format-aware matrix I/O)
+- common changes: adding subcommand flags, adjusting exit codes, extending `VectorFormat` / `SearchOutputFormat` variants, updating progress-bar integration
 
 ## Layout
 

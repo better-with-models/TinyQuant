@@ -1,18 +1,27 @@
 # rust/crates/tinyquant-fuzz
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+`tinyquant-fuzz` houses `libfuzzer-sys` fuzz targets for TinyQuant. The crate
+is wired in a later phase; targets will be added as each serialization surface
+is implemented. It is kept as a separate crate so fuzz builds do not affect the
+normal `cargo test` / `cargo build` pipeline for the rest of the workspace.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+| Path | Role |
+|---|---|
+| `src/lib.rs` | Crate root; fuzz target implementations added here as serialization surfaces land |
+| `tests/smoke.rs` | Smoke test confirming the crate compiles and links cleanly |
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+Fuzz targets are run independently with `cargo fuzz` (not part of the default
+test suite). The `tests/smoke.rs` test runs under normal `cargo test` so CI
+catches compilation failures before anyone attempts a fuzz run.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- New fuzz targets: `src/lib.rs` (one target function per serialization surface)
+- Build-level sanity: `tests/smoke.rs`
 
 ## See also
 

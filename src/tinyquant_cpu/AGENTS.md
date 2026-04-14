@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `src/tinyquant_cpu`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This package is a developer-mode shim that re-exports the Phase 22.A `tinyquant_rs._core` extension as `tinyquant_cpu._core`. In the fat wheel produced by the packaging workflow the shim is replaced by a per-arch runtime selector; locally it allows tests and scripts to `import tinyquant_cpu` without installing the wheel. The Python test suite, calibration scripts, and parity tests all import through this package. Changes here are uncommon — they happen only when the shim contract (documented in `docs/plans/rust/phase-24-python-fat-wheel-official.md` §Shim-layer contract) or the module namespace changes.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: dev-mode shim re-exporting `tinyquant_rs._core` under `sys.modules["tinyquant_cpu._core"]`; sub-packages `backend/`, `codec/`, and `corpus/` mirror the production `tinyquant_cpu` namespace
+- main entrypoints: `__init__.py` (the shim entry point), `_types.py` (shared type definitions used by sub-packages)
+- common changes: updating the shim import path when the extension module name changes, adjusting `_types.py` when new shared types are added
 
 ## Layout
 

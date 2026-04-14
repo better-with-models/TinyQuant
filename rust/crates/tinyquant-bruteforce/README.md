@@ -1,6 +1,11 @@
 # rust/crates/tinyquant-bruteforce
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+`tinyquant-bruteforce` implements the `SearchBackend` trait by computing cosine
+similarity against every stored vector on each query — a linear scan. It is
+kept as a standalone crate so the in-process reference implementation can be
+swapped out for production backends (e.g. `tinyquant-pgvector`) without
+touching shared core types. The crate is suitable for corpora up to roughly
+100 k vectors and is the primary target for SIMD kernel development.
 
 ## What lives here
 

@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `tests/backend`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory tests the brute-force search backend in isolation. Tests verify correctness of nearest-neighbour retrieval against known query/corpus pairs without exercising the codec pipeline. CI runs these tests on every push. Changes here most often happen when the `BruteForceBackend` API changes or new distance metrics are added.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `test_brute_force.py` — unit tests for the brute-force search backend (result ordering, top-K correctness, edge cases such as empty corpus or single-vector corpus)
+- main entrypoints: `test_brute_force.py`
+- common changes: adding test cases for new distance metrics, updating assertions when the `SearchResult` schema changes
 
 ## Layout
 

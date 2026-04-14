@@ -1,12 +1,18 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-io/src`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This is the source root for `tinyquant-io`. `lib.rs` declares the public module
+tree, re-exports the top-level `to_bytes` / `from_bytes` / `CompressedVectorView`
+convenience symbols, and gates `mmap` and `parallelism` modules behind the
+matching Cargo features. `errors.rs` defines `IoError`, the unified error type
+for all I/O operations. The four subdirectories (`compressed_vector/`,
+`codec_file/`, `mmap/`, `zero_copy/`) each own one layer of the I/O stack.
+`parallelism.rs` (feature-gated `rayon`) provides parallel decode helpers.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: crate root module tree — module declarations, feature gating for `mmap` and `rayon`, and re-exports of the primary public API
+- main entrypoints: `lib.rs` (module map and public re-exports), `errors.rs` (`IoError`), `compressed_vector/` and `codec_file/` subdirectories
+- common changes: adding a new top-level module, adjusting feature gates, extending `IoError`, wiring a new public re-export
 
 ## Layout
 

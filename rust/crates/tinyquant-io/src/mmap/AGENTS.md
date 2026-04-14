@@ -1,12 +1,19 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-io/src/mmap`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This module provides a memory-mapped reader for TQCV corpus files, compiled only
+when `feature = "mmap"` is enabled (backed by `memmap2`). `corpus_file.rs`
+defines `CorpusFileReader` and `CorpusFileIter`, which open a `.tqcv` file,
+validate its header, and expose zero-copy iteration over `CompressedVectorView`
+records without loading the entire file into heap memory. The optional
+`mmap-lock` feature can be combined to lock the mapping in RAM. This module is
+consumed by performance-critical read paths in `tinyquant-cli` and
+`tinyquant-bench`.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: memory-mapped TQCV corpus file reader — `CorpusFileReader` (open + validate header) and `CorpusFileIter` (zero-copy iteration over `CompressedVectorView` records)
+- main entrypoints: `corpus_file.rs` (both public types), `mod.rs` (feature-gated re-exports)
+- common changes: adjusting mapping or locking strategy, extending `CorpusFileIter` with random-access or seek, adapting to header format changes in `codec_file/header.rs`
 
 ## Layout
 

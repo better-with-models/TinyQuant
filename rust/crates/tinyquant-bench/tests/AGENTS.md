@@ -1,17 +1,18 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-bench/tests`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the calibration quality-gate integration tests. All heavy tests are marked `#[ignore]` by default so they do not run in the standard `cargo test` pass; they are activated explicitly in CI quality-gate jobs. Changes here most often involve adding new calibration assertions, adjusting thresholds, or wiring new codec variants into the existing test harness.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: calibration quality-gate tests — `calibration.rs` (neighbor recall and Pearson ρ assertions against codec output), `smoke.rs` (fast sanity check that the calibration helpers compile and return plausible values)
+- main entrypoints: `calibration.rs` (the primary quality gate), `smoke.rs` (always-run sanity check)
+- common changes: adjusting recall or Pearson ρ thresholds, adding test cases for new codec configurations, marking new tests `#[ignore]` appropriately
 
 ## Layout
 
 ```text
 tests/
+├── calibration.rs
 ├── README.md
 └── smoke.rs
 ```

@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `experiments/quantization-benchmark`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the FP32/FP16/PQ/TinyQuant compression benchmark. It compares storage size, compression ratio, fidelity (Pearson ρ, MSE, top-k recall), and compress/decompress throughput across FP32, FP16, uint8 scalar quantization, Product Quantization simulation, and TinyQuant 8-bit/4-bit/2-bit configurations (with and without FP16 residuals). These scripts are run manually for research; they are not part of CI. Changes here most often involve adding new codec configurations to `run_benchmark.py`, extending plots in `generate_plots.py`, or regenerating the embedding fixtures via `generate_embeddings.py`.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: standalone benchmark comparing FP32, FP16, uint8, PQ, and TinyQuant variants on storage, fidelity, and throughput metrics — `generate_embeddings.py` (creates test corpus), `run_benchmark.py` (runs all codec comparisons, writes JSON results to `results/`), `generate_plots.py` (reads results and renders charts)
+- main entrypoints: `run_benchmark.py` (primary script; read its module docstring for the full list of compared codecs), `generate_embeddings.py` (run first if `data/` is empty)
+- common changes: adding new TinyQuant configurations to `run_benchmark.py`, adjusting metric thresholds, updating `generate_plots.py` to visualize new result columns
 
 ## Layout
 

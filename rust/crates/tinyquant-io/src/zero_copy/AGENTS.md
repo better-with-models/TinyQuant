@@ -1,12 +1,16 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-io/src/zero_copy`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This module provides zero-copy read access to serialized `.tqcv` corpus files.
+`CompressedVectorView` maps byte slices directly to on-disk layouts without
+deserializing into heap-allocated structs; `SliceCursor` advances through a
+byte buffer with bounds-checked reads. Callers are `mmap_corpus.rs` and the
+Python parity test.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: zero-copy byte-slice views over serialized compressed vectors
+- main entrypoints: `view.rs` (`CompressedVectorView`), `cursor.rs` (`SliceCursor`), `mod.rs` (re-exports)
+- common changes: adjusting the view layout when the binary format version changes
 
 ## Layout
 
@@ -22,22 +26,22 @@ zero_copy/
 
 ### Update existing behavior
 
-1. Read the local README and the files you will touch before editing.
-2. Follow the local invariants before introducing new files or abstractions.
-3. Update nearby docs when the change affects layout, commands, or invariants.
-4. Run the narrowest useful verification first, then the broader project gate.
+1. Read `view.rs` and `cursor.rs` before touching the byte-layout logic.
+2. Any format change here must be mirrored in `tests/zero_copy.rs` baselines.
+3. Update `mod.rs` re-exports when adding a new public type.
+4. Run `cargo test -p tinyquant-io zero_copy` before widening the change.
 
 ### Add a new file or module
 
-1. Confirm the new file belongs in this directory rather than a sibling.
-2. Update the layout section if the structure changes in a way another agent must notice.
-3. Add or refine local docs when the new file introduces a new boundary or invariant.
+1. Confirm the new file is a zero-copy concern, not a higher-level codec concern.
+2. Update the layout section and `mod.rs` if structure changes.
+3. Add a corresponding unit test in `tests/zero_copy.rs`.
 
 ## Invariants — Do Not Violate
 
-- keep this directory focused on its stated responsibility
-- do not invent APIs, workflows, or invariants that the code does not support
-- update this file when structure or safe-editing rules change
+- Views must not allocate; all reads go through `SliceCursor` bounds checks.
+- Public types must implement `Copy` or carry only lifetime-bounded slice refs.
+- Binary compatibility: changing a view layout is a breaking format change and requires a version bump in the file header.
 
 ## See Also
 

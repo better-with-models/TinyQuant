@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-bruteforce`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This crate implements the linear-scan `BruteForceBackend` that satisfies the `SearchBackend` trait from `tinyquant-core`. It computes cosine similarity against every stored vector on each query and is suitable for corpora up to approximately 100 k vectors. It is used as the reference backend in integration tests and as a correctness baseline for more advanced index backends. Changes here most often involve adjusting similarity computation, adding SIMD-accelerated paths gated on the `simd` feature, or refining error handling.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: linear-scan `BruteForceBackend` implementing `SearchBackend` from `tinyquant-core`, including cosine similarity, vector storage, and an optional SIMD-accelerated kernel
+- main entrypoints: `src/lib.rs` (re-exports `BruteForceBackend`, `BackendError`, and the `SearchBackend` trait), `src/backend.rs` (core `SearchBackend` implementation)
+- common changes: adjusting similarity logic, gating SIMD paths behind the `simd` feature flag, updating error variants in `errors.rs`
 
 ## Layout
 

@@ -1,12 +1,16 @@
 # AGENTS.md — Guide for AI Agents Working in `src/tinyquant_cpu/backend`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This sub-package re-exports the backend layer of the `tinyquant_cpu` Python
+shim. In Phase 23 and earlier the pure-Python `BruteForceBackend` is the
+primary implementation; from Phase 24 onward the Rust-backed
+`tinyquant_rs._core.backend` implementation is preferred and this shim
+transparently selects it.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: expose `BruteForceBackend`, `SearchResult`, and the `Backend` protocol to callers of `tinyquant_cpu.backend`
+- main entrypoints: `__init__.py` (re-exports), `brute_force.py` (pure-Python fallback), `protocol.py` (structural `Backend` protocol)
+- common changes: wiring the Rust-backed adapter in `adapters/` when Phase 24 is fully enabled; adding new `Backend` protocol methods
 
 ## Layout
 
@@ -23,22 +27,21 @@ backend/
 
 ### Update existing behavior
 
-1. Read the local README and the files you will touch before editing.
-2. Follow the local invariants before introducing new files or abstractions.
-3. Update nearby docs when the change affects layout, commands, or invariants.
-4. Run the narrowest useful verification first, then the broader project gate.
+1. Read `protocol.py` before changing a method signature — the protocol is the public contract.
+2. Pure-Python changes go in `brute_force.py`; Rust-backed changes go in `adapters/`.
+3. Run `pytest tests/backend/` after any change.
 
-### Add a new file or module
+### Add a new adapter
 
-1. Confirm the new file belongs in this directory rather than a sibling.
-2. Update the layout section if the structure changes in a way another agent must notice.
-3. Add or refine local docs when the new file introduces a new boundary or invariant.
+1. Add the adapter module under `adapters/`.
+2. Wire it in `__init__.py` behind the feature flag or import guard.
+3. Add or update tests in `tests/backend/`.
 
 ## Invariants — Do Not Violate
 
-- keep this directory focused on its stated responsibility
-- do not invent APIs, workflows, or invariants that the code does not support
-- update this file when structure or safe-editing rules change
+- `protocol.py` defines the structural protocol; do not add non-protocol methods to it.
+- The pure-Python `BruteForceBackend` must remain functional as a fallback when the Rust extension is not installed.
+- `__init__.py` must not import Rust extension modules at the top level; guard with `try/except ImportError`.
 
 ## See Also
 

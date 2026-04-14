@@ -1,12 +1,12 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-bruteforce/tests`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains the integration tests for `BruteForceBackend`. Tests use real fixture data from `fixtures/` to exercise the full ingest-and-search path. `backend.rs` contains behavioural integration tests (ingest, search, error conditions), and `smoke.rs` provides a minimal always-run check that the backend constructs and returns results. Changes here most often involve adding test cases for new error conditions, extending fixture coverage, or verifying correctness of updated similarity logic.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: integration tests for `BruteForceBackend` — `backend.rs` (full behavioural tests covering ingest, search, and error paths), `smoke.rs` (fast sanity check), `fixtures/` (test vector data)
+- main entrypoints: `backend.rs` (primary test coverage), `smoke.rs` (always-run sanity check)
+- common changes: adding test cases for new error variants or edge cases in search, updating fixture data when vector dimensions change
 
 ## Layout
 

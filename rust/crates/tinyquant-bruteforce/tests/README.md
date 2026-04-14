@@ -1,18 +1,30 @@
 # rust/crates/tinyquant-bruteforce/tests
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what lives here, why it is separated from sibling directories, and what a maintainer is most likely to change in this area.
+Integration tests for `tinyquant-bruteforce`. These run against the compiled
+crate as a black box via `cargo test`, exercising the public `SearchBackend`
+API without access to internal modules.
 
 ## What lives here
 
-List the important file groups, entrypoints, or submodules in this directory.
+| File | Role |
+|---|---|
+| `backend.rs` | Full-cycle integration tests: ingest, search, edge cases |
+| `smoke.rs` | Minimal sanity check that the crate links and returns a result |
+
+There is also a `fixtures/` subdirectory containing data files loaded by
+`backend.rs` tests.
 
 ## How this area fits the system
 
-Explain who calls into this directory, what it depends on, and which local invariants matter.
+Tests here are the first line of defence for regressions in `BruteForceBackend`
+behavior. The CI `cargo test` step runs these unconditionally; they have no
+external service dependencies.
 
 ## Common edit paths
 
-Note the files or subdirectories most likely to change for routine work.
+- New behavioral tests: `backend.rs`
+- New test fixtures: `fixtures/`
+- Build-level sanity: `smoke.rs`
 
 ## See also
 

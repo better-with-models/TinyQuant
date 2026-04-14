@@ -1,17 +1,22 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-sys/src`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory contains all Rust source for the `tinyquant-sys` C ABI crate. Each module has a narrow, well-documented role: `codec_abi.rs` and `corpus_abi.rs` hold the `#[allow(unsafe_code)]` `extern "C"` entry points; `error.rs` defines `TinyQuantError` and the `tq_error_free` free function; `handle.rs` declares opaque handle types; `internal.rs` holds shared helpers that must not cross the C boundary. `lib.rs` re-exports the public surface and enforces the `TINYQUANT_H_VERSION` compile-time parity check. Any non-Rust FFI consumer and the cbindgen header generation depend on the stability of this module boundary.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: `lib.rs` (public re-exports, `TINYQUANT_H_VERSION` parity assertion), `codec_abi.rs` (codec `extern "C"` functions), `corpus_abi.rs` (corpus `extern "C"` functions and `TinyQuantCompressionPolicy`), `error.rs` (`TinyQuantError`, `TinyQuantErrorKind`, `tq_error_free`), `handle.rs` (opaque `CodebookHandle`, `CodecConfigHandle`, `CompressedVectorHandle`, `CorpusHandle`, `ByteBufferHandle`), `internal.rs` (internal helpers)
+- main entrypoints: `lib.rs` for the module map and public re-exports; `codec_abi.rs` and `corpus_abi.rs` for the actual `extern "C"` surface
+- common changes: adding `extern "C"` entry points in `codec_abi.rs` or `corpus_abi.rs`, updating handle types in `handle.rs`, bumping `TINYQUANT_H_VERSION` in `lib.rs` when the crate version changes
 
 ## Layout
 
 ```text
 src/
+├── codec_abi.rs
+├── corpus_abi.rs
+├── error.rs
+├── handle.rs
+├── internal.rs
 ├── lib.rs
 └── README.md
 ```

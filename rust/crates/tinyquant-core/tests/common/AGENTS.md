@@ -1,12 +1,18 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates/tinyquant-core/tests/common`
 
-**BOOTSTRAP NOTE:** replace this opening paragraph with what this area is responsible for, who depends on it, and the kinds of changes that most often happen here.
+This directory provides shared test helpers used by sibling integration test files
+in `tests/`. Because Cargo does not compile files under `tests/common/` as
+standalone test binaries, `mod.rs` is included via `mod common;` in each test
+file that needs it. It supplies deterministic input generation (seeded RNG via
+`StdRng`), shared codebook entry builders, and the per-kernel parity runner used
+by all `simd_parity_*` tests. It is gated behind `#[cfg(feature = "simd")]` and
+has `#[allow(dead_code)]` since not every test file uses every helper.
 
 ## What this area contains
 
-- primary responsibility: replace with the main job of this directory
-- main entrypoints: replace with the files or subdirectories an agent should open first
-- common changes: replace with the edits that usually happen here
+- primary responsibility: shared test helpers — deterministic `f32` vector generation, SIMD dispatch parity runner, and reusable fixture builders for the `simd_parity_*` integration tests
+- main entrypoints: `mod.rs` (single file; exposes `make_entries` and parity runner)
+- common changes: adding a new helper when a new parity test file needs common setup, extending the entry generator for a new bit-width
 
 ## Layout
 

@@ -276,6 +276,7 @@ def _backend_scenarios() -> list[dict[str, object]]:
 
 
 def main(argv: list[str]) -> int:
+    """Entry point — parse ``argv`` and write parity fixtures to the specified output directory."""
     if len(argv) != 2:
         sys.stderr.write(
             "usage: generate_js_parity_fixtures.py <output-dir>\n"
