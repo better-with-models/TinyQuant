@@ -105,14 +105,21 @@ fn header_parses_and_exposes_every_entry_point() {
             "symbol `{sym}` missing from bindgen output of tinyquant.h"
         );
     }
+}
 
-    // Sanity: version macro is present and non-empty.
+/// Header / crate version parity. Runs unconditionally — a plain file
+/// read does not need `libclang`, so this catches `@version@`-
+/// substitution regressions on CI runners without a C toolchain.
+#[test]
+fn header_version_macro_matches_crate_version() {
+    let header = header_path();
     let src = std::fs::read_to_string(&header).expect("read header");
     assert!(
         src.contains("#define TINYQUANT_H_VERSION"),
         "header must expose TINYQUANT_H_VERSION"
     );
-    // The macro value must match CARGO_PKG_VERSION.
+    // The macro value must match CARGO_PKG_VERSION (post-processed by
+    // build.rs from cbindgen's `@version@` placeholder).
     let expected = format!(
         "#define TINYQUANT_H_VERSION \"{}\"",
         env!("CARGO_PKG_VERSION")
@@ -120,6 +127,11 @@ fn header_parses_and_exposes_every_entry_point() {
     assert!(
         src.contains(&expected),
         "header version macro out of sync with crate version (expected `{expected}`)"
+    );
+    assert!(
+        !src.contains("@version@"),
+        "header contains a literal `@version@` placeholder — \
+         build.rs substitution regressed"
     );
 }
 

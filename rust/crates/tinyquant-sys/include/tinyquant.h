@@ -6,7 +6,7 @@
  *
  * CI gate: `git diff --exit-code rust/crates/tinyquant-sys/include/tinyquant.h`.
  */
-#define TINYQUANT_H_VERSION "@version@"
+#define TINYQUANT_H_VERSION "0.1.0"
 
 
 #ifndef TINYQUANT_H

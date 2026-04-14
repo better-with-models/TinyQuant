@@ -28,10 +28,14 @@
 //!
 //! # Version guard
 //!
-//! `TINYQUANT_H_VERSION` in the generated header is emitted from
-//! `cbindgen.toml` via the `@version@` substitution and compared to
-//! `env!("CARGO_PKG_VERSION")` at build time through a `const` sanity
-//! check below. A mismatch is a compile-time error.
+//! `TINYQUANT_H_VERSION` in the generated header is emitted from the
+//! `header` block in `cbindgen.toml`. The raw `@version@` token in
+//! that block is NOT substituted by cbindgen under `with_src` (see
+//! [`build.rs`] for context); instead the build script post-
+//! processes the emitted header and replaces it with
+//! `CARGO_PKG_VERSION`. A `const _: ()` block below byte-compares
+//! [`TINYQUANT_H_VERSION`] (the manually-kept-in-sync constant) with
+//! `env!("CARGO_PKG_VERSION")`. Any drift is a compile-time error.
 #![no_std]
 // Intentionally `deny` rather than `forbid`: `forbid` cannot be
 // narrowed by inner `#[allow(unsafe_code)]` attributes. Every module
@@ -89,4 +93,48 @@ pub use corpus_abi::TinyQuantCompressionPolicy;
 pub use error::{TinyQuantError, TinyQuantErrorKind};
 pub use handle::{
     ByteBufferHandle, CodebookHandle, CodecConfigHandle, CompressedVectorHandle, CorpusHandle,
+};
+
+// ── Header / crate version parity check ──────────────────────────────
+//
+// `build.rs` post-processes `include/tinyquant.h` to substitute the
+// `@version@` token in `cbindgen.toml`'s `header` block with the
+// build-time value of `CARGO_PKG_VERSION`. `TINYQUANT_H_VERSION` below
+// mirrors that substituted literal so the two can be byte-compared at
+// compile time. Any drift (forgotten bump of this constant after a
+// crate version change, stale committed header) is a compile-time
+// error.
+//
+// Kept manually in sync with the workspace `version` field — this
+// file MUST be updated in the same commit that bumps `rust/Cargo.toml`'s
+// `[workspace.package] version = "..."`. The build script is NOT a
+// safe place to put this check because `build.rs` runs at build time
+// and has no way to refuse compilation of the crate itself; the
+// `const` block below does.
+/// Version string baked into the generated C header `TINYQUANT_H_VERSION`
+/// macro. Must equal `env!("CARGO_PKG_VERSION")`; see the `const` block
+/// below for the compile-time assertion.
+pub const TINYQUANT_H_VERSION: &str = "0.1.0";
+
+#[allow(clippy::indexing_slicing)]
+const _: () = {
+    let h = TINYQUANT_H_VERSION.as_bytes();
+    let c = env!("CARGO_PKG_VERSION").as_bytes();
+    assert!(
+        h.len() == c.len(),
+        "TINYQUANT_H_VERSION length differs from CARGO_PKG_VERSION — \
+         update src/lib.rs TINYQUANT_H_VERSION to match the new crate \
+         version, regenerate the C header, and commit both.",
+    );
+    let mut i = 0;
+    while i < h.len() {
+        assert!(
+            h[i] == c[i],
+            "TINYQUANT_H_VERSION differs from CARGO_PKG_VERSION — \
+             the committed C header is out of sync with the crate \
+             version. Update src/lib.rs TINYQUANT_H_VERSION and \
+             rebuild to regenerate include/tinyquant.h.",
+        );
+        i += 1;
+    }
 };
