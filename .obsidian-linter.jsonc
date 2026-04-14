@@ -1,0 +1,24 @@
+// markdownlint-obsidian configuration for the TinyQuant docs/ vault.
+//
+// Rationale:
+// - vaultRoot: docs/ is an Obsidian vault (it has docs/.obsidian/).
+// - globs: we only lint docs/*.md; non-docs markdown is covered by
+//   markdownlint-cli2 via .markdownlint-cli2.jsonc.
+// - ignores: docs/research/ is raw source material that AGENTS.md
+//   forbids modifying after initial placement, so we do not lint it.
+// - MD013 disabled: wiki pages routinely carry long lines for prose
+//   paragraphs, Mermaid diagrams, and YAML frontmatter.
+{
+  "vaultRoot": "./docs",
+  "resolve": true,
+  "globs": ["docs/**/*.md"],
+  "ignores": [
+    "docs/research/**",
+    "docs/.obsidian/**",
+    "node_modules/**",
+    ".worktrees/**"
+  ],
+  "rules": {
+    "MD013": { "enabled": false }
+  }
+}

@@ -1,8 +1,13 @@
+//! Integration tests for the `CompressedVector` value object.
+//!
+//! Validates constructor invariants, error paths, and borrow-safe views
+//! over compressed payload bytes.
+
+extern crate alloc;
+
 use alloc::sync::Arc;
 use tinyquant_core::codec::CompressedVector;
 use tinyquant_core::errors::CodecError;
-
-extern crate alloc;
 
 fn hash() -> Arc<str> {
     Arc::from("deadbeef".repeat(8).as_str())

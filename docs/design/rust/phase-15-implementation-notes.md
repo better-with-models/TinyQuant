@@ -1,3 +1,13 @@
+---
+title: Phase 15 Implementation Notes — Codec Service, Residual, CompressedVector
+tags:
+  - design
+  - rust
+  - phase-15
+date-created: 2026-04-08
+status: complete
+---
+
 # Phase 15 Implementation Notes — Codec Service, Residual, CompressedVector
 
 > Status: **complete** | Branch merged to `main` via PR.

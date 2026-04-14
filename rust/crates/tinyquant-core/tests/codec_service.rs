@@ -1,3 +1,8 @@
+//! Integration tests for the stateless `Codec` service.
+//!
+//! Exercises compress/decompress round-trips against the shared fixture
+//! corpus shared with the Python reference implementation.
+
 use std::{fs, path::Path};
 use tinyquant_core::codec::{Codebook, Codec, CodecConfig};
 

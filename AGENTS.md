@@ -181,16 +181,49 @@ Documentation quality is part of pre-commit verification for this repository.
 
 Before commit, verify at least the following:
 
-- `/well-documented` expectations are satisfied at full maturity
+- `/well-documented` expectations are satisfied at full maturity, including
+  the docstring rules below
 - markdown outside `docs/` passes strict markdownlint rules
+  (`.markdownlint-cli2.jsonc`)
+- markdown inside `docs/` (excluding `docs/research/`) passes
+  `markdownlint-obsidian`, configured via `.obsidian-linter.jsonc`
 - links, paths, commands, and structural references in documentation still
   match the current repository
 - code changes that affect behavior, architecture, layout, or workflows are
   reflected in the relevant docs
 
-The Obsidian wiki inside `docs/` should still be checked for internal
-consistency, but it is allowed to use Obsidian-specific constructs that would
-not be valid under a strict ordinary-markdown markdownlint profile.
+The Obsidian wiki inside `docs/` is gated by `markdownlint-obsidian`, which
+understands wikilinks, embeds, callouts, and block references. Raw sources
+under `docs/research/` are excluded from linting because this file forbids
+modifying them after initial placement.
+
+### Markdown linting surfaces
+
+| Surface | Tool | Config | Scope |
+| ---- | ---- | ---- | ---- |
+| Non-`docs/` markdown | `markdownlint-cli2` | `.markdownlint-cli2.jsonc` | everything outside `docs/` |
+| `docs/` Obsidian vault | `markdownlint-obsidian` | `.obsidian-linter.jsonc` | `docs/**/*.md` except `docs/research/` |
+
+Both tools run as pre-commit hooks via `.pre-commit-config.yaml` and as
+CI jobs under `.github/workflows/`. The Obsidian lint job is defined in
+`.github/workflows/docs-lint.yml`.
+
+### Code docstring requirement
+
+Every source file in this repository must open with a module-level
+docstring or doc comment that explains its purpose in one sentence.
+Public symbols must carry their own docstrings. The expectation is
+per-language:
+
+- Python (`src/`, `scripts/`, `tests/`): module-level `"""..."""`
+  docstring at the top of every `.py` file, plus docstrings on public
+  classes and functions (see `$python-docstrings`).
+- Rust (`rust/crates/`, `rust/xtask/`): `//!` module docstring at the
+  top of every `.rs` file and `///` doc comments on public items
+  (see `$rust-docstrings`).
+
+`scripts/verify_pre_commit.py` is the intended home for an automated
+check that enforces this requirement across the tree.
 
 ## Escalation cues
 
