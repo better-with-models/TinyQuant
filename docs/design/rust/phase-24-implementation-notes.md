@@ -44,7 +44,7 @@ four sub-slices on `phase-22-25-release-chain`:
   `.github/workflows/python-fatwheel.yml` shaped after Phase 22.D's
   `rust-release.yml`: `release-gate` job, `dry_run` workflow_dispatch
   input defaulting `true`, byte-identical `publish.if` guard enforced
-  by `cargo xtask check-sync-python` against
+  by `cargo xtask check-publish-guards` against
   `rust/xtask/src/cmd/guard_sync_python.rs::CONTRACT`, dry-run
   fabrication of dummy per-arch wheels via the extracted
   `scripts/packaging/_make_dummy_wheel.py`, and a `lint-workflow`
@@ -130,13 +130,15 @@ Evidence: `.github/workflows/python-fatwheel.yml:132` —
 `needs: [release-gate, lint-workflow]` on the next-stage job; the
 `lint-workflow` job is defined earlier in the same file.
 
-### 7. Phase 24.4 — `rs` fixture is already wired
+## Phase 24.4 parity-fixture note
 
-The plan's §Prerequisites bullet ("`tests/parity/test_cross_impl.py`
-[…] `rs` fixture that currently points at `tinyquant_rs`; this phase
-flips the fixture to the fat wheel once assembled") was satisfied
-out-of-order. The fixture in `tests/parity/conftest.py:34` already
-reads `import tinyquant_cpu as rs_pkg`. In Phase 24.1 the in-tree
+This is not a declared deviation — it is a confirmation that a spec
+item shipped out-of-order. The plan's §Prerequisites bullet
+("`tests/parity/test_cross_impl.py` […] `rs` fixture that currently
+points at `tinyquant_rs`; this phase flips the fixture to the fat
+wheel once assembled") was satisfied out-of-order. The fixture in
+`tests/parity/conftest.py:34` already reads
+`import tinyquant_cpu as rs_pkg`. In Phase 24.1 the in-tree
 `src/tinyquant_cpu/__init__.py` was made into a shim that re-exports
 `tinyquant_rs._core` under `sys.modules["tinyquant_cpu._core"]`, so
 the existing import path is **already** the load path the fat wheel

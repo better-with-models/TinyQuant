@@ -47,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `tinyquant_cpu-0.2.0-py3-none-any.whl` (Phase 24.1–24.2)
 - `.github/workflows/python-fatwheel.yml` dry-run-by-default release
   workflow with a `release-gate` job and a publish-job byte-identical
-  guard enforced by `cargo xtask check-sync-python` (Phase 24.3)
+  guard enforced by `cargo xtask check-publish-guards` (Phase 24.3)
 - Phase 24.4 design note at
   `docs/design/rust/phase-24-implementation-notes.md` recording the
   parity-audit wiring, AC trace, and 6 declared deviations from
