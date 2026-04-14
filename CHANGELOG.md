@@ -48,6 +48,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - `.github/workflows/python-fatwheel.yml` dry-run-by-default release
   workflow with a `release-gate` job and a publish-job byte-identical
   guard enforced by `cargo xtask check-sync-python` (Phase 24.3)
+- Phase 24.4 design note at
+  `docs/design/rust/phase-24-implementation-notes.md` recording the
+  parity-audit wiring, AC trace, and 6 declared deviations from
+  `phase-24-python-fat-wheel-official.md`.
 
 ### Changed
 
