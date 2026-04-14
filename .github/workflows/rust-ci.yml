@@ -36,13 +36,9 @@ jobs:
       runner: ${{ steps.pick.outputs.runner }}
     steps:
       - id: pick
+        # TEMP: self-hosted docker-runners offline; force GitHub-hosted until restored.
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" && \
-                "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
-            echo 'runner=["ubuntu-22.04"]' >> "$GITHUB_OUTPUT"
-          else
-            echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
-          fi
+          echo 'runner=["ubuntu-22.04"]' >> "$GITHUB_OUTPUT"
       - run: echo "Selected runner=${{ steps.pick.outputs.runner }}"
 
   fmt:

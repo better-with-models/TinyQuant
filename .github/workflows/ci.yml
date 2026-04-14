@@ -33,23 +33,15 @@ jobs:
       runner: ${{ steps.pick.outputs.runner }}
     steps:
       - id: pick
+        # TEMP: self-hosted docker-runners offline; force GitHub-hosted until restored.
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" && \
-                "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
-            echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
-          else
-            echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
-          fi
+          echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
       - run: echo "Selected runner=${{ steps.pick.outputs.runner }}"
 
   probe-self-hosted:
     name: Probe Self-Hosted Runner
-    # Only run on non-fork triggers (push to main, or internal PR).
-    # Job-level `if:` cannot read outputs from other jobs, so the fork
-    # condition is re-evaluated here directly rather than from choose-runner.
-    if: >-
-      !(github.event_name == 'pull_request' &&
-        github.event.pull_request.head.repo.fork == true)
+    # TEMP: self-hosted runners disabled; probe skipped to avoid indefinite queue.
+    if: false
     runs-on: ["self-hosted", "docker-runner"]
     needs: [choose-runner]
     timeout-minutes: 2
