@@ -57,14 +57,14 @@ def selector() -> types.ModuleType:
 
 
 @pytest.mark.parametrize(
-    ("plat", "machine", "libc_name", "alpine_release", "expected_key"),
+    ("plat", "machine", "libc", "expected_key"),
     [
-        ("linux", "x86_64", "glibc", False, "linux_x86_64_gnu"),
-        ("linux", "x86_64", "", True, "linux_x86_64_musl"),
-        ("linux", "aarch64", "glibc", False, "linux_aarch64_gnu"),
-        ("darwin", "x86_64", "", False, "macos_x86_64"),
-        ("darwin", "arm64", "", False, "macos_arm64"),
-        ("win32", "AMD64", "", False, "win_amd64"),
+        ("linux", "x86_64", "gnu", "linux_x86_64_gnu"),
+        ("linux", "x86_64", "musl", "linux_x86_64_musl"),
+        ("linux", "aarch64", "gnu", "linux_aarch64_gnu"),
+        ("darwin", "x86_64", "", "macos_x86_64"),
+        ("darwin", "arm64", "", "macos_arm64"),
+        ("win32", "AMD64", "", "win_amd64"),
     ],
 )
 def test_detect_platform_key_supported_tuples(
@@ -72,41 +72,21 @@ def test_detect_platform_key_supported_tuples(
     selector: types.ModuleType,
     plat: str,
     machine: str,
-    libc_name: str,
-    alpine_release: bool,
+    libc: str,
     expected_key: str,
 ) -> None:
-    """Supported Tier-1 tuples resolve to the expected `_lib/<key>/` name."""
-    import platform as _platform
+    """Supported Tier-1 tuples resolve to the expected `_lib/<key>/` name.
 
+    `_detect_libc` is stubbed directly because its probe stack
+    (platform.libc_ver / /etc/alpine-release / SOABI) is exercised by
+    its own dedicated tests; here we just want to pin the branch.
+    """
     monkeypatch.setattr(selector.sys, "platform", plat, raising=False)
     monkeypatch.setattr(
         selector.platform, "machine", lambda: machine, raising=False
     )
     monkeypatch.setattr(
-        selector.platform,
-        "libc_ver",
-        lambda: (libc_name, ""),
-        raising=False,
-    )
-
-    # Alpine probe: patch Path.exists() only for the alpine-release path.
-    real_exists = selector.Path.exists
-
-    def fake_exists(self: selector.Path) -> bool:
-        if str(self) == "/etc/alpine-release":
-            return alpine_release
-        return real_exists(self)
-
-    monkeypatch.setattr(selector.Path, "exists", fake_exists, raising=False)
-
-    # Also force SOABI to a neutral string so the fallback path doesn't
-    # accidentally flip glibc to musl or vice-versa.
-    monkeypatch.setattr(
-        selector.sysconfig,
-        "get_config_var",
-        lambda key: "" if key == "SOABI" else _platform.machine(),
-        raising=False,
+        selector, "_detect_libc", lambda: libc, raising=True
     )
 
     assert selector.detect_platform_key() == expected_key
@@ -139,20 +119,12 @@ def test_detect_platform_key_musl_aarch64_rejected(
     monkeypatch: pytest.MonkeyPatch,
     selector: types.ModuleType,
 ) -> None:
-    """musllinux aarch64 is not bundled; must fail with sdist guidance."""
+    """Musllinux aarch64 is not bundled; must fail with sdist guidance."""
     monkeypatch.setattr(selector.sys, "platform", "linux", raising=False)
     monkeypatch.setattr(
         selector.platform, "machine", lambda: "aarch64", raising=False
     )
-    monkeypatch.setattr(
-        selector.platform, "libc_ver", lambda: ("", ""), raising=False
-    )
-    monkeypatch.setattr(
-        selector.Path,
-        "exists",
-        lambda self: str(self) == "/etc/alpine-release",
-        raising=False,
-    )
+    monkeypatch.setattr(selector, "_detect_libc", lambda: "musl", raising=True)
 
     with pytest.raises(selector.UnsupportedPlatformError) as excinfo:
         selector.detect_platform_key()
@@ -193,3 +165,80 @@ def _expected_ext_suffix() -> str:
 def test_ext_filename_for_host(selector: types.ModuleType) -> None:
     """Host suffix matches the canonical table."""
     assert selector._ext_filename(sys.platform) == "_core" + _expected_ext_suffix()
+
+
+def test_detect_libc_non_linux_returns_empty(
+    monkeypatch: pytest.MonkeyPatch, selector: types.ModuleType
+) -> None:
+    """Outside Linux, libc detection is a no-op (returns '')."""
+    monkeypatch.setattr(selector.sys, "platform", "darwin", raising=False)
+    assert selector._detect_libc() == ""
+    monkeypatch.setattr(selector.sys, "platform", "win32", raising=False)
+    assert selector._detect_libc() == ""
+
+
+def test_detect_libc_glibc(
+    monkeypatch: pytest.MonkeyPatch, selector: types.ModuleType
+) -> None:
+    """`platform.libc_ver() == ('glibc', ...)` resolves to 'gnu'."""
+    monkeypatch.setattr(selector.sys, "platform", "linux", raising=False)
+    monkeypatch.setattr(
+        selector.platform,
+        "libc_ver",
+        lambda: ("glibc", "2.39"),
+        raising=False,
+    )
+    assert selector._detect_libc() == "gnu"
+
+
+def test_detect_libc_soabi_fallback_to_musl(
+    monkeypatch: pytest.MonkeyPatch, selector: types.ModuleType
+) -> None:
+    """When libc_ver is empty and alpine-release is absent, SOABI decides."""
+    monkeypatch.setattr(selector.sys, "platform", "linux", raising=False)
+    monkeypatch.setattr(
+        selector.platform,
+        "libc_ver",
+        lambda: ("", ""),
+        raising=False,
+    )
+    # Force the alpine probe negative so SOABI is the deciding signal.
+    monkeypatch.setattr(
+        selector.Path,
+        "exists",
+        lambda self: False,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        selector.sysconfig,
+        "get_config_var",
+        lambda key: "cpython-312-x86_64-linux-musl" if key == "SOABI" else None,
+        raising=False,
+    )
+    assert selector._detect_libc() == "musl"
+
+
+def test_detect_libc_default_to_gnu(
+    monkeypatch: pytest.MonkeyPatch, selector: types.ModuleType
+) -> None:
+    """With all probes silent, the selector defaults to glibc."""
+    monkeypatch.setattr(selector.sys, "platform", "linux", raising=False)
+    monkeypatch.setattr(
+        selector.platform,
+        "libc_ver",
+        lambda: ("", ""),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        selector.Path,
+        "exists",
+        lambda self: False,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        selector.sysconfig,
+        "get_config_var",
+        lambda key: "" if key == "SOABI" else None,
+        raising=False,
+    )
+    assert selector._detect_libc() == "gnu"

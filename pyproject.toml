@@ -84,14 +84,50 @@ ignore_missing_imports = true
 module = "matplotlib.*"
 ignore_missing_imports = true
 
-# Explicitly tell hatchling there are no package sources.
-# Without this, hatchling tries to auto-detect a package under src/
-# and fails the build entirely — which is actually the desired
-# failure mode for Phase 23, because nothing should be built from
-# this tree until Phase 24 introduces the Rust backend.
+# Phase 24.1 fat-wheel shim templates live flat under
+# scripts/packaging/templates/ and reference import paths
+# (e.g. `tinyquant_cpu._selector`) that only resolve once the Phase
+# 24.2 assembler has stamped them into the wheel tree. Until then
+# mypy would report the imports as unresolved — suppress for this
+# directory only.
+[[tool.mypy.overrides]]
+module = "templates.*"
+ignore_missing_imports = true
+ignore_errors = true
+
+# The Phase 22.A PyO3 extension is a compiled .pyd with no stubs; the
+# dev-mode shim under src/tinyquant_cpu/ re-exports from it. mypy
+# cannot inspect the C extension so treat its imports as opaque.
+[[tool.mypy.overrides]]
+module = "tinyquant_rs"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tinyquant_rs.*"
+ignore_missing_imports = true
+
+# Explicitly tell hatchling there are no package sources. Phase 24.1
+# introduces a dev-mode shim at `src/tinyquant_cpu/` so the in-repo
+# test suite can import it without first assembling the fat wheel, but
+# the wheel built from this pyproject must remain empty — the fat
+# wheel is assembled separately in Phase 24.2 from
+# `scripts/packaging/templates/`.
+#
+# `bypass-selection = true` keeps hatchling from hard-failing when
+# `packages = []`, and the `exclude` list keeps it from falling back
+# to packing the entire worktree once the `src/tinyquant_cpu/` dev
+# shim is present (hatchling 1.29 auto-detects any `src/<name>/`
+# matching the project name).
 [tool.hatch.build.targets.wheel]
 packages = []
 bypass-selection = true
+# Force-exclude everything. `include = []` pairs with `packages = []`
+# to produce the empty metadata-only wheel that Phase 23 expects.
+# The single `*` exclude catches every root-relative path and every
+# nested file — without it hatchling 1.29 falls through to
+# packing the entire worktree once `src/tinyquant_cpu/` exists (the
+# dev-mode shim Phase 24.1 introduces for in-repo tests).
+exclude = ["**"]
 
 # Keep sdists buildable for local archival, but exclude the reference.
 [tool.hatch.build.targets.sdist]
@@ -119,10 +155,14 @@ source = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-# pythonpath is how pytest adds tests/reference to sys.path at
-# collection time. --import-mode=importlib is preserved so that
-# tests/parity and tests/reference do not share a module cache.
-pythonpath = ["tests/reference"]
+# pythonpath is how pytest adds tests/reference and the Phase 24.1
+# dev-mode shim at src/ to sys.path at collection time.
+# --import-mode=importlib is preserved so that tests/parity and
+# tests/reference do not share a module cache. The `src` entry makes
+# the shim under src/tinyquant_cpu/ importable without installing it —
+# the fat wheel (Phase 24.2) ships its own copy assembled from
+# scripts/packaging/templates/.
+pythonpath = ["tests/reference", "src"]
 addopts = "--import-mode=importlib -x --tb=short"
 markers = [
     "pgvector: requires PostgreSQL with pgvector (PGVECTOR_TEST_DSN)",

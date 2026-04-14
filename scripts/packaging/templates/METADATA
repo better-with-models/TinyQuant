@@ -1,0 +1,23 @@
+Metadata-Version: 2.3
+Name: tinyquant-cpu
+Version: 0.2.0
+Summary: CPU-only vector quantization codec for embedding storage compression (Rust-backed)
+Author-email: Better With Models <ops@betterwithmodels.example>
+License-Expression: Apache-2.0
+Requires-Python: >=3.12
+Classifier: Development Status :: 4 - Beta
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Rust
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Operating System :: MacOS
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Typing :: Typed
+Requires-Dist: numpy>=1.26
+Project-URL: Homepage, https://github.com/better-with-models/TinyQuant
+Project-URL: Changelog, https://github.com/better-with-models/TinyQuant/blob/main/CHANGELOG.md
+Description-Content-Type: text/markdown
