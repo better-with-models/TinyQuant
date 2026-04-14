@@ -1,1 +1,1 @@
-"""Tests for the tinyquant_cpu.backend package."""
+"""Tests for the tinyquant_py_reference.backend package."""
