@@ -51,7 +51,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: true
+          lfs: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -72,7 +72,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: true
+          lfs: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -136,7 +136,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: true
+          lfs: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -339,7 +339,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
@@ -370,7 +370,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"

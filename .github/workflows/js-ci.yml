@@ -96,11 +96,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu }
-          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu }
-          - { triple: x86_64-apple-darwin,        runner: macos-13,         key: darwin-x64 }
-          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64 }
-          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc }
+          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu,   build_target: "" }
+          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu, build_target: "" }
+          - { triple: x86_64-apple-darwin,        runner: macos-14,         key: darwin-x64,      build_target: x86_64-apple-darwin }
+          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64,    build_target: "" }
+          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc,  build_target: "" }
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -120,6 +120,7 @@ jobs:
         shell: bash
         env:
           RUSTFLAGS: "-C strip=symbols"
+          CARGO_BUILD_TARGET: ${{ matrix.build_target }}
         run: npm run build
       - name: Verify binary exists
         working-directory: javascript/@tinyquant/core

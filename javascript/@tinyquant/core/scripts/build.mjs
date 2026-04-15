@@ -70,12 +70,21 @@ runStep(
 // Invoke through npx so the locally-installed @napi-rs/cli is used.
 // `shell: true` is intentional on Windows for the `.cmd` shim, but
 // argv is static so there is no injection surface.
+//
+// Cross-compilation: if CARGO_BUILD_TARGET is set (e.g. when CI builds
+// the darwin-x64 binary on a darwin-arm64 runner), replace --platform
+// (host-auto-detect) with --target <triple> so napi names the output
+// file after the *target* platform, not the host.
 const napiCrate = path.resolve(REPO_ROOT, "rust/crates/tinyquant-js");
 const binariesOut = path.join(ROOT, "binaries");
 const isWindows = process.platform === "win32";
 const napiCmd = isWindows ? "npx.cmd" : "npx";
+const crossTarget = process.env.CARGO_BUILD_TARGET || "";
 process.stdout.write("\n[build] napi build (release)...\n");
 {
+  const napiTargetArgs = crossTarget
+    ? ["--target", crossTarget]
+    : ["--platform"];
   const result = spawnSync(
     napiCmd,
     [
@@ -83,7 +92,7 @@ process.stdout.write("\n[build] napi build (release)...\n");
       "build",
       "--cwd",
       napiCrate,
-      "--platform",
+      ...napiTargetArgs,
       "--release",
       "--output-dir",
       binariesOut,
