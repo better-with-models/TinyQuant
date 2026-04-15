@@ -15,7 +15,7 @@ members = [
 ]
 
 [workspace.package]
-version      = "0.1.0"
+version      = "0.0.0"
 edition      = "2021"
 rust-version = "1.81"
 license      = "Apache-2.0"
@@ -30,9 +30,9 @@ authors      = ["TinyQuant Contributors"]
 # cargo strips it from the published manifest and consumers resolve through
 # crates.io at the pinned version. See
 # [[design/rust/crate-topology]] §Publish order.
-tinyquant-core       = { path = "crates/tinyquant-core",       version = "=0.1.0" }
-tinyquant-io         = { path = "crates/tinyquant-io",         version = "=0.1.0" }
-tinyquant-bruteforce = { path = "crates/tinyquant-bruteforce", version = "=0.1.0" }
+tinyquant-core       = { path = "crates/tinyquant-core",       version = "=0.0.0" }
+tinyquant-io         = { path = "crates/tinyquant-io",         version = "=0.0.0" }
+tinyquant-bruteforce = { path = "crates/tinyquant-bruteforce", version = "=0.0.0" }
 
 # no_std-compatible (added to individual crates as needed in later phases)
 half        = { version = "2.4",  default-features = false, features = ["bytemuck"] }

@@ -453,9 +453,13 @@ jobs:
     name: Publish crates.io
     needs: [build, container-reproducibility, release-gate]
     runs-on: ubuntu-22.04
+    environment:
+      name: cargo
     if: >-
       needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -463,18 +467,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.81.0
+      - name: Obtain crates.io token (trusted publishing)
+        uses: rust-lang/crates-io-auth-action@v1
+        id: auth
       - name: Publish crates (ordered)
         working-directory: rust
         env:
-          # Required for `cargo publish` to authenticate against crates.io.
-          # Configure the `CARGO_REGISTRY_TOKEN` repo secret (owner → Settings
-          # → Secrets and variables → Actions) with a crates.io API token
-          # scoped to the `tinyquant-*` crate family before cutting the first
-          # real release tag. Dry-run tags (`-alpha`, `-rc`, `-beta`, `-pre`,
-          # `+build.*`, etc.) and `workflow_dispatch` runs with
-          # `inputs.dry_run == true` skip this job entirely via the guard
-          # expression above, so a missing secret does not break rehearsals.
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
         run: |
           cargo publish -p tinyquant-core
           cargo publish -p tinyquant-io
