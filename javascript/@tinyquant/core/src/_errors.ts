@@ -18,7 +18,7 @@
  *
  * @example
  * ```ts
- * import { Corpus, TinyQuantError } from "@tinyquant/core";
+ * import { Corpus, TinyQuantError } from "@better-with-models/tinyquant-core";
  * try {
  *   corpus.insert("dup", vector);
  * } catch (err) {

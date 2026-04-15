@@ -54,7 +54,7 @@ export function binaryKey(): string {
   }
 
   throw new Error(
-    `@tinyquant/core: no pre-built binary for ${platform}/${arch}. ` +
+    `@better-with-models/tinyquant-core: no pre-built binary for ${platform}/${arch}. ` +
       `Supported combinations: linux/x64, linux/arm64, darwin/x64, ` +
       `darwin/arm64, win32/x64. Please open an issue at ` +
       `https://github.com/better-with-models/TinyQuant/issues.`,
@@ -230,7 +230,7 @@ type NativeBinding = {
 };
 
 // Walk up from `start` until we find a directory containing
-// `package.json` whose `name` is `@tinyquant/core`. This keeps the
+// `package.json` whose `name` is `@better-with-models/tinyquant-core`. This keeps the
 // loader robust regardless of how the source is packaged:
 //
 //   - published wheel:   dist/_loader.cjs     → pkg root  is `..`
@@ -248,7 +248,7 @@ function findPackageRoot(start: string): string {
         const parsed = JSON.parse(fs.readFileSync(pjson, "utf8")) as {
           name?: string;
         };
-        if (parsed.name === "@tinyquant/core") return dir;
+        if (parsed.name === "@better-with-models/tinyquant-core") return dir;
       } catch {
         // ignore malformed package.json on the walk up
       }
@@ -272,7 +272,7 @@ function loadNative(): NativeBinding {
 
   if (!fs.existsSync(candidate)) {
     throw new Error(
-      `@tinyquant/core: expected bundled binary at ${candidate} ` +
+      `@better-with-models/tinyquant-core: expected bundled binary at ${candidate} ` +
         `but file is missing. The package tarball may have been ` +
         `truncated; try reinstalling.`,
     );
@@ -283,7 +283,7 @@ function loadNative(): NativeBinding {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     throw new Error(
-      `@tinyquant/core: failed to load native binary at ${candidate}: ${detail}`,
+      `@better-with-models/tinyquant-core: failed to load native binary at ${candidate}: ${detail}`,
     );
   }
 }

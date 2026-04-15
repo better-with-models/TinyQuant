@@ -39,7 +39,7 @@ function uniformVector(rng: () => number, dim: number): Float32Array {
   return v;
 }
 
-describe("@tinyquant/core — round-trip: 10k f32 vectors, MSE < 1e-2", () => {
+describe("@better-with-models/tinyquant-core — round-trip: 10k f32 vectors, MSE < 1e-2", () => {
   const N = 10_000;
   const CAL = 1_000;
   const DIM = 128;

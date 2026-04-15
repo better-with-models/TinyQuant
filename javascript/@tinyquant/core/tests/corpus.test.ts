@@ -87,7 +87,7 @@ function deterministicCalibration(dim: number, rows: number, seed: number): Floa
   return out;
 }
 
-describe("@tinyquant/core — corpus scenarios from Python oracle", () => {
+describe("@better-with-models/tinyquant-core — corpus scenarios from Python oracle", () => {
   const scenarios = loadScenarios();
 
   for (const scenario of scenarios) {
