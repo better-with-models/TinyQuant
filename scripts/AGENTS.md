@@ -15,9 +15,13 @@ fixture regeneration.
   - `ci_local_simulate.sh` — reproduces the CI pipeline locally.
   - `generate_rust_fixtures.py` — refreshes the golden fixtures shared
     between Python and Rust parity tests.
+  - `calibration/gen_openai_sample.py` — generates synthetic LFS-backed
+    calibration fixtures for `tinyquant-bench`.
 - common changes: extend pre-commit checks when new policy lands, adjust
   fixture generation when codec byte layout changes, keep CI simulation
   aligned with `.github/workflows/`.
+- calibration run scripts (local mirrors of the CI calibration legs) live in
+  the top-level `calibration/` directory, not here.
 
 ## Layout
 
