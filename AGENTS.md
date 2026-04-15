@@ -1,238 +1,95 @@
 # AGENTS.md — TinyQuant
 
-## About TinyQuant
+TinyQuant is a CPU-only vector quantization codec for embedding storage compression.
 
-> *CPU-only vector quantization codec for embedding storage compression.*
+## Layout
 
-TinyQuant is a CPU-only vector quantization codec that compresses
-high-dimensional embedding vectors to low-bit representations while
-preserving cosine similarity rankings. It combines random orthogonal
-preconditioning with two-stage scalar quantization and optional FP16
-residual correction to hit 8× compression at 4-bit with Pearson ρ ≈ 0.998
-and 95% top-5 recall on real OpenAI embeddings.
+```text
+TinyQuant/
+├── README.md                portable root README for PyPI and general renderers
+├── .github/README.md        rich GitHub landing page
+├── AGENTS.md                repo-wide agent contract
+├── CLAUDE.md                short redirect to AGENTS.md
+├── CHANGELOG.md             release history
+├── COMPATIBILITY.md         cross-surface version alignment ledger
+├── CONCEPTS.md              root glossary for repo-wide vocabulary
+├── docs/                    Obsidian wiki plus immutable research sources
+├── rust/                    authoritative shipping implementation
+├── src/                     Python import shim for the Rust extension
+├── tests/                   Python suites, parity tests, and frozen oracle
+├── scripts/                 verification, packaging, and fixture automation
+├── javascript/              npm package surfaces
+├── experiments/             benchmark and research playgrounds
+├── .github/                 CI, release automation, and GitHub-facing assets
+└── .githooks/               versioned Git hooks
+```
 
-See [README.md](README.md) for the vanilla, PyPI-friendly landing page
-and [.github/README.md](.github/README.md) for the rich GitHub-flavored
-version (with logo hero, admonitions, and collapsible recipes) that
-GitHub auto-prefers for the repo landing page.
+Use the closest local `AGENTS.md` before editing inside a subtree. Root guidance
+stays high-level on purpose; directory-local contracts own the detail.
 
-## Repository overview
+## Common Workflows
 
-TinyQuant uses an LLM-maintained documentation vault under `docs/`. The
-repository is documentation-first and implementation-plural: the shipping
-engine is the Rust workspace under `rust/`, and a pure-Python reference
-implementation lives under `tests/reference/tinyquant_py_reference/` as a
-test-only differential oracle. The legacy in-tree pure-Python package was
-removed in Phase 23; what now lives at `src/tinyquant_cpu/` is a Phase
-24.1 developer shim that re-exports the Rust extension (`tinyquant_rs`)
-under the `tinyquant_cpu` import name so editor IDEs and the Phase 24
-fat-wheel templates have a single source of truth for the public API
-surface. The `tinyquant-cpu==0.1.1` wheel on PyPI remains as the last
-pure-Python release; Phase 24 reclaims the `tinyquant-cpu` name on PyPI
-with a Rust-backed fat wheel at version `0.2.0`.
+### Change product behavior
 
-The documentation system is explicitly based on the ideas in
-`docs/research/llm-wiki.md`. Treat that file as the conceptual source for how
-the repo's knowledge base should operate.
+1. Treat [`rust/AGENTS.md`](rust/AGENTS.md) as the primary implementation
+   contract when codec, corpus, backend, CLI, or file-format semantics change.
+2. Keep [`src/AGENTS.md`](src/AGENTS.md) aligned only as a Python shim and
+   editor-facing import surface, not as the system of record.
+3. Keep the frozen oracle under
+   [`tests/reference/AGENTS.md`](tests/reference/AGENTS.md) aligned only when a
+   documented rollout plan explicitly requires it.
+4. Run the narrowest relevant test gate first, then parity and broader suite
+   checks before finishing.
 
-## Key directories
+### Change documentation
 
-| Path | Purpose |
-| ------ | ------- |
-| `rust/` | Cargo workspace for the shipping Rust implementation (tinyquant-core, tinyquant-py, tinyquant-sys, tinyquant-cli). |
-| `tests/reference/tinyquant_py_reference/` | Pure-Python reference implementation. Test-only oracle; never installed by end users. Frozen at `v0.1.1` behavior. |
-| `tests/parity/` | Cross-implementation parity suite (`pytest -m parity`). Self-parity lives now; Rust-side parity is wired on in Phase 24. |
-| `docs/` | LLM-maintained wiki (Obsidian vault). All markdown here uses Obsidian-flavored syntax unless explicitly exempted. |
-| `docs/research/` | Raw source material. The LLM reads from these but never modifies them after placement. |
-| `docs/entities/` | Wiki pages for concrete systems, datasets, services, libraries, or tools. |
-| `docs/concepts/` | Wiki pages for abstract ideas, patterns, methods, and architectural principles. |
-| `docs/sources/` | One-page summaries of ingested source documents. |
-| `docs/comparisons/` | Side-by-side analyses, trade-off tables, and decision records. |
-| `docs/behavior/` | Behavior specifications and acceptance criteria. |
-| `docs/design/` | Design-level analysis and structured architecture notes. |
-| `docs/specs/` | Specs, plans, and implementation-oriented documentation. |
-| `docs/assets/` | Images and other binary attachments referenced by wiki pages. |
+1. Markdown under `docs/` is an Obsidian vault; read
+   [`docs/README.md`](docs/README.md) before editing wiki pages.
+2. Raw sources under `docs/research/` are read-only after placement.
+3. Update `docs/index.md` and `docs/log.md` when wiki pages change in a durable
+   way.
+4. Markdown outside `docs/` stays portable, ordinary, and compatible with
+   `.markdownlint-cli2.jsonc`.
 
-## Markdown policy
+### Change release or automation surfaces
 
-There are two markdown modes in this repository:
+1. Keep [`scripts/AGENTS.md`](scripts/AGENTS.md),
+   [`.github/AGENTS.md`](.github/AGENTS.md), and
+   [`tests/packaging/AGENTS.md`](tests/packaging/AGENTS.md) aligned when
+   packaging or CI behavior changes.
+2. Update `CHANGELOG.md`, `COMPATIBILITY.md`, and any affected user-facing
+   README files in the same change when release behavior moves.
+3. Keep `CLAUDE.md` files as short redirects to sibling `AGENTS.md` files.
 
-- **Inside `docs/`**: use rich Obsidian-flavored markdown
-- **Outside `docs/`**: use ordinary markdown that follows strict
-  markdownlint-compatible rules
+## Invariants — Do Not Violate
 
-This distinction is intentional. The `docs/` vault is optimized for Obsidian as
-an LLM-maintained wiki; markdown elsewhere in the repo should stay portable,
-plain, and lint-clean.
+- `rust/` is the authoritative implementation of shipped TinyQuant behavior.
+  `src/tinyquant_cpu/` is a developer shim, and
+  `tests/reference/tinyquant_py_reference/` is a frozen differential oracle.
+- If the project tagline, elevator paragraph, or headline benchmark numbers
+  change in `README.md`, `.github/README.md`, `AGENTS.md`, or `CLAUDE.md`,
+  update all four in the same commit.
+- `docs/research/` is immutable after source placement.
+- Markdown inside `docs/` may use Obsidian features; markdown outside `docs/`
+  must not.
+- Non-`docs/` markdown lint runs through `scripts/verify_pre_commit.py` and the
+  CI `markdown-lint` job in `.github/workflows/ci.yml`.
+- `docs/` vault lint runs through `markdownlint-obsidian` in
+  `.pre-commit-config.yaml` and `.github/workflows/docs-lint.yml`.
+- Every `.py` file opens with a module docstring. Every `.rs` file opens with a
+  `//!` module docstring. Public symbols carry their own docstrings or doc
+  comments.
+- When a directory's structure, workflows, or safe-editing constraints change,
+  update that directory's local `README.md` and `AGENTS.md` with the code.
 
-## docs/ is an Obsidian vault
+## See Also
 
-The `docs/` directory is designed to be opened directly in Obsidian. Every
-markdown file under `docs/` except files in `docs/research/` must use
-Obsidian-flavored markdown:
-
-- Use wikilinks: `[[Page Name]]` and `[[Page Name|display text]]`
-- Add YAML frontmatter to every wiki page with at least `title`, `tags`, and
-  `date-created`
-- Use callouts with `> [!type]`
-- Use `![[Page Name]]` and `![[image.png]]` for embeds
-- Add Dataview-friendly fields such as `status`, `category`, or `source-count`
-- Use fenced ` ```mermaid ` blocks for diagrams where useful
-
-Files in `docs/research/` are raw sources. They may use any markdown flavor and
-must not be modified after initial placement.
-
-## LLM wiki pattern
-
-The `docs/` directory follows the LLM Wiki pattern described in
-`docs/research/llm-wiki.md`, adapted for TinyQuant:
-
-1. Raw sources in `docs/research/` and the rest of the repository outside
-   `docs/`, when those files are being analyzed as source material
-2. The wiki in the rest of `docs/`
-3. The schema in this file plus `docs/README.md`
-
-### Raw data model
-
-For TinyQuant, "raw" material includes both:
-
-- **curated research inputs** placed in `docs/research/`
-- **the live repository itself** outside `docs/` such as code, configs,
-  scripts, tests, and operational files
-
-The LLM should synthesize from both of those raw layers into the Obsidian wiki
-under `docs/`. In other words, `docs/` is the compiled knowledge layer, while
-`docs/research/` and the rest of the repo are the underlying evidence.
-
-### Core operations
-
-| Operation | What happens |
-| --------- | ------------ |
-| `ingest` | A new source is placed in `docs/research/`. The LLM creates a summary in `docs/sources/`, updates or creates wiki pages, and updates `docs/index.md` and `docs/log.md`. |
-| `query` | The LLM reads `docs/index.md` to locate relevant pages, reads those pages, and synthesizes an answer. Valuable outputs can be filed back into the wiki. |
-| `lint` | Health-check for orphan pages, missing cross-references, stale claims, contradictions, structural gaps, and code-doc drift between the wiki and the live repo. |
-
-## Special files
-
-| File | Role |
-| ------ | ---- |
-| `docs/index.md` | Catalog of wiki pages with summaries and metadata. Updated on each meaningful content addition. |
-| `docs/log.md` | Append-only operational history for scaffolding, ingests, and maintenance work. |
-| `docs/README.md` | Human-facing overview of the wiki structure and conventions. |
-
-## Editing rules
-
-- Never modify files in `docs/research/` after initial placement
-- Always update `docs/index.md` and `docs/log.md` when adding or changing wiki
-  pages
-- Use wikilinks for internal references across wiki pages
-- Add YAML frontmatter to every new wiki page
-- Store images in `docs/assets/` and reference them with `![[filename.ext]]`
-- Keep markdown outside `docs/` in ordinary markdown, not Obsidian-flavored
-  markdown
-- Treat non-`docs/` markdown as subject to strict markdownlint discipline
-
-## Cross-file prose alignment
-
-Four files describe TinyQuant's identity and must stay in sync:
-
-- `README.md` — root-level, vanilla markdown, what ships to PyPI and
-  what non-GitHub renderers see
-- `.github/README.md` — rich GitHub-flavored landing page that GitHub
-  auto-prefers for the repo page (with logo hero, admonitions,
-  collapsibles)
-- `AGENTS.md` — agent operating contract (this file)
-- `CLAUDE.md` — Claude-specific redirect to `AGENTS.md`
-
-**Rule:** if you edit the project tagline, elevator-pitch paragraph, or
-headline benchmark numbers in any one of these files, propagate the same
-change to the other three in the same commit. The canonical tagline
-today is:
-
-> *CPU-only vector quantization codec for embedding storage compression.*
-
-The canonical elevator-pitch paragraph lives at the top of this file
-under `## About TinyQuant`, in the lead of `README.md`, and in the
-`[!NOTE]` TL;DR callout of `.github/README.md`. `CLAUDE.md` carries
-the short tagline under its h1.
-
-This rule exists because these four files are read by different
-audiences (humans on GitHub, humans on PyPI, agents acting on the repo,
-Claude sessions specifically) and drift erodes trust in the repo's
-self-description.
-
-## Documentation maturity standard
-
-TinyQuant should use the `/well-documented` system at **full maturity** across
-the entire repository, not just inside `docs/`.
-
-That means:
-
-- root-level documentation should remain accurate, specific, and current
-- important subtrees should have documentation proportional to their
-  responsibility and change risk
-- code, configs, tests, and operational workflows should stay aligned with the
-  docs that explain them
-- documentation updates should accompany structural or behavioral code changes
-
-Prefer evidence-first documentation work: reconcile docs to the code and repo
-layout before adding new prose.
-
-## Pre-commit verification
-
-Documentation quality is part of pre-commit verification for this repository.
-
-Before commit, verify at least the following:
-
-- `/well-documented` expectations are satisfied at full maturity, including
-  the docstring rules below
-- markdown outside `docs/` passes strict markdownlint rules
-  (`.markdownlint-cli2.jsonc`)
-- markdown inside `docs/` (excluding `docs/research/`) passes
-  `markdownlint-obsidian`, configured via `.obsidian-linter.jsonc`
-- links, paths, commands, and structural references in documentation still
-  match the current repository
-- code changes that affect behavior, architecture, layout, or workflows are
-  reflected in the relevant docs
-
-The Obsidian wiki inside `docs/` is gated by `markdownlint-obsidian`, which
-understands wikilinks, embeds, callouts, and block references. Raw sources
-under `docs/research/` are excluded from linting because this file forbids
-modifying them after initial placement.
-
-### Markdown linting surfaces
-
-| Surface | Tool | Config | Scope |
-| ---- | ---- | ---- | ---- |
-| Non-`docs/` markdown | `markdownlint-cli2` | `.markdownlint-cli2.jsonc` | everything outside `docs/` |
-| `docs/` Obsidian vault | `markdownlint-obsidian` | `.obsidian-linter.jsonc` | `docs/**/*.md` except `docs/research/` |
-
-Both tools run as pre-commit hooks via `.pre-commit-config.yaml` and as
-CI jobs under `.github/workflows/`. The Obsidian lint job is defined in
-`.github/workflows/docs-lint.yml`.
-
-### Code docstring requirement
-
-Every source file in this repository must open with a module-level
-docstring or doc comment that explains its purpose in one sentence.
-Public symbols must carry their own docstrings. The expectation is
-per-language:
-
-- Python (`src/`, `scripts/`, `tests/`): module-level `"""..."""`
-  docstring at the top of every `.py` file, plus docstrings on public
-  classes and functions (see `$python-docstrings`).
-- Rust (`rust/crates/`, `rust/xtask/`): `//!` module docstring at the
-  top of every `.rs` file and `///` doc comments on public items
-  (see `$rust-docstrings`).
-
-`scripts/verify_pre_commit.py` is the intended home for an automated
-check that enforces this requirement across the tree.
-
-## Escalation cues
-
-Pause and confirm before:
-
-- Deleting or renaming files in `docs/research/`
-- Restructuring the `docs/` directory layout
-- Changing the frontmatter schema used across wiki pages
-- Bulk-ingesting multiple sources in one pass without review
+- [README.md](README.md)
+- [docs/README.md](docs/README.md)
+- [rust/AGENTS.md](rust/AGENTS.md)
+- [src/AGENTS.md](src/AGENTS.md)
+- [tests/AGENTS.md](tests/AGENTS.md)
+- [scripts/AGENTS.md](scripts/AGENTS.md)
+- [experiments/AGENTS.md](experiments/AGENTS.md)
+- [.github/AGENTS.md](.github/AGENTS.md)
+- [javascript/@tinyquant/core/AGENTS.md](javascript/@tinyquant/core/AGENTS.md)
