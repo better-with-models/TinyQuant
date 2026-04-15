@@ -72,9 +72,23 @@ strict = true
 warn_return_any = true
 warn_unreachable = true
 no_implicit_reexport = true
+# Match pytest's import roots so repo-wide type checks can resolve the
+# frozen reference package and the Phase 24.1 dev shim.
+mypy_path = "$MYPY_CONFIG_FILE_DIR/tests/reference,$MYPY_CONFIG_FILE_DIR/src"
+explicit_package_bases = true
+# Exclude generated or transient build outputs from repo-wide type checks.
+exclude = '(^|/)(rust/target|\.worktrees|node_modules|\.venv)(/|$)'
 
 [[tool.mypy.overrides]]
 module = "psycopg.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "hypothesis.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "testcontainers.*"
 ignore_missing_imports = true
 
 # matplotlib is only used by experiments/quantization-benchmark/generate_plots.py
@@ -92,6 +106,11 @@ ignore_missing_imports = true
 # directory only.
 [[tool.mypy.overrides]]
 module = "templates.*"
+ignore_missing_imports = true
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "scripts.packaging.templates.*"
 ignore_missing_imports = true
 ignore_errors = true
 

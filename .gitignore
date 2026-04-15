@@ -79,3 +79,4 @@ docs/.obsidian/graph.json
 docs/.obsidian/hotkeys.json
 docs/.obsidian/workspace.json
 docs/.obsidian
+.pre-commit-cache

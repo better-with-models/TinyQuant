@@ -125,6 +125,8 @@ describe("@better-with-models/tinyquant-core — public surface smoke tests", ()
           return `decompressed:${(ev as CorpusDecompressedEvent).vectorCount}`;
         case "CompressionPolicyViolationDetected":
           return `violation:${(ev as CompressionPolicyViolationDetectedEvent).violationType}`;
+        default:
+          return "";
       }
     };
     void renderEvent;

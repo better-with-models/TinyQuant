@@ -96,19 +96,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu }
-          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu }
-          - { triple: x86_64-apple-darwin,        runner: macos-13,         key: darwin-x64 }
-          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64 }
-          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc }
+          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu,   napi_cross_target: "" }
+          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu, napi_cross_target: "" }
+          - { triple: x86_64-apple-darwin,        runner: macos-14,         key: darwin-x64,      napi_cross_target: x86_64-apple-darwin }
+          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64,    napi_cross_target: "" }
+          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc,  napi_cross_target: "" }
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.81.0
           targets: ${{ matrix.triple }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "20.x"
       - name: npm ci
@@ -120,6 +120,7 @@ jobs:
         shell: bash
         env:
           RUSTFLAGS: "-C strip=symbols"
+          NAPI_CROSS_TARGET: ${{ matrix.napi_cross_target }}
         run: npm run build
       - name: Verify binary exists
         working-directory: javascript/@tinyquant/core
@@ -131,7 +132,7 @@ jobs:
             ls -la binaries/ || true
             exit 1
           }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: native-${{ matrix.key }}
           path: javascript/@tinyquant/core/binaries/${{ matrix.key }}.node
@@ -144,14 +145,14 @@ jobs:
     needs: build-native
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.81.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "20.x"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           path: javascript/@tinyquant/core/binaries
           pattern: native-*
@@ -202,7 +203,7 @@ jobs:
           mkdir -p ../../../dist-npm
           npm pack --pack-destination ../../../dist-npm
           ls -la ../../../dist-npm/
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: npm-tarball
           path: dist-npm/*.tgz
@@ -217,24 +218,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [ubuntu-22.04, ubuntu-22.04-arm, macos-13, macos-14, windows-2022]
-        runtime: [node-20, node-22, bun-1.1]
+        # macos-13 (x64) removed: runner no longer available post-August 2025.
+        # darwin-x64 binary is cross-compiled from macos-14; integration covered
+        # by build-native + assemble-tarball. arm64 macOS remains in the matrix.
+        runner: [ubuntu-22.04, ubuntu-22.04-arm, macos-14, windows-2022]
+        runtime: [node-20, node-22, bun-1.2]
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: npm-tarball
           path: ./tarball
       - name: Setup Node
         if: startsWith(matrix.runtime, 'node-')
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ matrix.runtime == 'node-20' && '20.x' || '22.x' }}
       - name: Setup Bun
         if: startsWith(matrix.runtime, 'bun-')
-        uses: oven-sh/setup-bun@v1
+        uses: oven-sh/setup-bun@v2
         with:
-          bun-version: "1.1.x"
+          bun-version: "1.2.x"
       - name: Install tarball (npm)
         if: startsWith(matrix.runtime, 'node-')
         shell: bash
@@ -246,7 +250,7 @@ jobs:
           tgz=$(ls ../tarball/*.tgz | head -1)
           npm install "$tgz"
           node -e "
-            const mod = require('@tinyquant/core');
+            const mod = require('@better-with-models/tinyquant-core');
             console.log('version:', mod.version());
             if (typeof mod.version() !== 'string') {
               throw new Error('version() did not return a string');
@@ -262,7 +266,7 @@ jobs:
           tgz=$(ls ../tarball/*.tgz | head -1)
           bun add "$tgz"
           bun -e "
-            import('@tinyquant/core').then(m => {
+            import('@better-with-models/tinyquant-core').then(m => {
               console.log('version:', m.version());
               if (typeof m.version() !== 'string') {
                 throw new Error('version() did not return a string');
@@ -278,11 +282,11 @@ jobs:
     name: test (source, linux/x64, node 20)
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: 1.81.0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "20.x"
       - name: npm ci
@@ -300,11 +304,11 @@ jobs:
     needs: assemble-tarball
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v5
         with:
           name: npm-tarball
           path: ./tarball
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "20.x"
       - name: Enable pnpm
@@ -321,6 +325,6 @@ jobs:
           tgz=$(ls ../tarball/*.tgz | head -1)
           pnpm add "$tgz"
           node -e "
-            const { version } = require('@tinyquant/core');
+            const { version } = require('@better-with-models/tinyquant-core');
             console.log('version:', version());
           "

@@ -347,7 +347,11 @@ impl Corpus {
         }
         let ids_for_lookup: Vec<VectorId> = owned.iter().map(|(id, _)| id.clone()).collect();
 
-        let batch: Vec<(VectorId, &[f32], Option<tinyquant_core::corpus::EntryMetaValue>)> = owned
+        let batch: Vec<(
+            VectorId,
+            &[f32],
+            Option<tinyquant_core::corpus::EntryMetaValue>,
+        )> = owned
             .iter()
             .map(|(id, v)| (id.clone(), v.as_slice(), None))
             .collect();

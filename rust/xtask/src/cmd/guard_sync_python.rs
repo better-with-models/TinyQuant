@@ -14,7 +14,7 @@
 //! single uniform publish-gate shape. If `python-fatwheel.yml` drifts
 //! — e.g. a contributor drops the `inputs.dry_run != true` clause —
 //! this check fires in CI before the workflow can accidentally reach
-//! PyPI on a rehearsal run.
+//! `PyPI` on a rehearsal run.
 //!
 //! The module reuses `guard_sync`'s string-level extractor
 //! (`extract_if_block`, `top_level_job_name`) by re-parsing from the
@@ -50,9 +50,7 @@ pub fn run() {
 
     match check(&yaml) {
         Ok(()) => {
-            println!(
-                "check-publish-guards[python]: publish job guard matches contract \u{2713}"
-            );
+            println!("check-publish-guards[python]: publish job guard matches contract \u{2713}");
         }
         Err(report) => {
             eprintln!("{report}");
@@ -143,9 +141,7 @@ fn extract_if_block(lines: &[&str], job_idx: usize) -> Option<String> {
 fn read_if_body(lines: &[&str], if_idx: usize, rest_of_line: &str) -> String {
     let first_char = rest_of_line.chars().next();
     let mut parts: Vec<String> = Vec::new();
-    let mut start_next_line = if matches!(first_char, Some('>' | '|')) {
-        if_idx + 1
-    } else if rest_of_line.is_empty() {
+    let mut start_next_line = if matches!(first_char, Some('>' | '|')) || rest_of_line.is_empty() {
         if_idx + 1
     } else {
         parts.push(rest_of_line.to_owned());

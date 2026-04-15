@@ -772,3 +772,35 @@ fat wheel. Step 6 updated the prose surface: `AGENTS.md`, `CLAUDE.md`,
 [[entities/python-reference-implementation|python-reference-implementation]]
 and [[design/rust/phase-23-implementation-notes]]. Phase 23 is a pure
 refactor — no PyPI publish, no tag, version string stays at `0.1.1`.
+
+
+## [2026-04-14] investigation | Rust vs. Python reference throughput comparison
+
+Measured end-to-end throughput of `tinyquant_py_reference` and
+`tinyquant-core` on a 335×1536 embedding corpus to characterise the
+performance gap before the rotation-cache fix.
+
+Key findings:
+
+- Python reference (4-bit+residual): encode ~3,600 vec/s, decode ~2,646 vec/s
+- Rust batch path (release, t=1, 256×1536): ~1.3 vec/s (~2,800× regression)
+- Rust kernels (d=1536): quantize 214 Melem/s (~195× vs. Python scalar),
+  dequantize 3.2 Gelem/s (~5×), cosine ~678 Melem/s (~1× tie with NumPy BLAS)
+
+Root cause confirmed: `compress_batch_parallel` calls
+`RotationMatrix::from_config(config)` per row, triggering a full O(d³) SVD
+(~750 ms at d=1536) on every vector. `RotationCache` exists but is not wired
+into the batch path. Python avoids this via `@functools.lru_cache` on
+`_cached_build` — the SVD runs once per `(seed, dim)` pair.
+
+Created branch `fix/rotation-cache-compress-path` with:
+
+- [[plans/rust/rotation-cache-compress-path|Fix plan]] documenting root cause,
+  code locations, fix approach, and acceptance criteria
+- `experiments/rust-python-performance-comparison/` containing
+  `bench_python_reference.py`, `REPORT.md`, `AGENTS.md`, and `CLAUDE.md`
+- Updated [[index]] and this log
+- Updated `experiments/AGENTS.md` layout section
+
+No Python reference changes are proposed. The fix is Rust-only and confined to
+`batch.rs` + an internal helper in `service.rs`.
