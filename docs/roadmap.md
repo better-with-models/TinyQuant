@@ -62,6 +62,11 @@ gantt
         Phase 21 - Rayon Batch Paths        :p21, after p20, 1
     section Rust Bindings & Delivery
         Phase 22 - Pyo3, C ABI, Release     :p22, after p21, 1
+    section Rust GPU
+        Phase 26 - PreparedCodec + Residual Encoder :p26, after p22, 1
+        Phase 27 - wgpu + WGSL Kernels      :p27, after p26, 1
+        Phase 27.5 - Resident Corpus Search :p275, after p27, 1
+        Phase 28 - CUDA via cust (optional) :p28, after p275, 1
 ```
 
 ## Phase summary
@@ -103,6 +108,13 @@ gantt
 | 21 | Rayon Batch Paths & Benches | **planned** | tinyquant-core, tinyquant-bench | Phase 20 | [[plans/rust/phase-21-rayon-batch-benches\|Plan]] |
 | 22 | Pyo3, C ABI, and Release | **planned** | tinyquant-py, tinyquant-sys | Phase 21 | [[plans/rust/phase-22-pyo3-cabi-release\|Plan]] |
 | 23 | Python Reference Demotion | **complete** | tests/reference/tinyquant_py_reference, tests/parity | Phase 22 | [[plans/rust/phase-23-python-reference-demotion\|Plan]] |
+| 26 | PreparedCodec + Residual Encoder | **planned** | tinyquant-core (prepared_codec, residual encoder) | Phase 22 | — |
+| 27 | wgpu + WGSL Kernels | **planned** | tinyquant-gpu-wgpu | Phase 26 | [[design/rust/gpu-acceleration\|Design]] |
+| 27.5 | Resident Corpus GPU Search | **planned** | tinyquant-gpu-wgpu (cosine_topk kernel) | Phase 27 | [[design/rust/gpu-acceleration\|Design]] |
+| 28 | Optional CUDA Backend | **planned** | tinyquant-gpu-cuda | Phase 27.5 | [[design/rust/gpu-acceleration\|Design]] |
+
+> [!note] Phase 24 and 25 are reserved for pyo3 fat wheel (Phase 24)
+> and JS/WASM bindings (Phase 25) and are not yet fully planned.
 
 ## Design constraints per phase
 
@@ -168,6 +180,7 @@ All Rust design documents live under `docs/design/rust/`:
 - [[design/rust/feature-flags|Feature Flags and Optional Dependencies]]
 - [[design/rust/release-strategy|Release and Versioning]]
 - [[design/rust/risks-and-mitigations|Risks and Mitigations]]
+- [[design/rust/gpu-acceleration|GPU Acceleration Design]]
 
 ## See also
 

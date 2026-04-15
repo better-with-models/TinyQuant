@@ -44,6 +44,10 @@ category: design
 | R20 | Design docs in `docs/design/rust/` drift from the actual YAML / Rust source until a later phase trips over the gap | Medium | Medium | docs maintainer |
 | R21 | CI workflows that have never been successfully observed get trusted as healthy, hiding latent failures | Medium | Medium | CI lead |
 | R22 | Calibration thresholds were authored as aspirational plan targets, not measurements — ratios in particular are structurally unreachable until a real residual encoder ships | **High** | **Medium** (gate is regression-canary only until Phase 26) | codec lead |
+| R23 | `wgpu` MSRV (1.87) conflicts with workspace MSRV (1.81) — GPU crates cannot be in the same `cargo +1.81.0 check` sweep | Medium | Low (isolated) | crates lead |
+| R24 | GPU backend distribution complexity — wgpu Metal/Vulkan/D3D12 driver requirements differ per OS; users on headless servers get no GPU | Medium | Medium | release lead |
+| R25 | GPU differential tests require a physical adapter; CI runners have no GPU | **High** | Medium (compile-only CI is the workaround) | testing lead |
+| R26 | `PreparedCodec` ownership model conflicts with the stateless `Codec` design — who owns the GPU buffer lifecycle | Medium | High | codec lead |
 
 ## Detailed mitigations
 
@@ -569,6 +573,98 @@ before (R21 class of problem; the calibration gates used to be a
 matrix job inside `rust-ci.yml` that was gated behind on-demand
 triggers and also never ran). Remediation branch:
 `calibration-fix/honest-thresholds`.
+
+### R23 — `wgpu` MSRV mismatch
+
+**Problem.** `wgpu` 22 requires Rust ≥ 1.87; the workspace is pinned
+to 1.81. Placing `wgpu` in a workspace-level dep means `cargo +1.81.0
+check --workspace` fails even for consumers that never touch the GPU
+crate.
+
+**Mitigation.**
+
+1. Declare `package.rust-version = "1.87"` inside each GPU crate's own
+   `Cargo.toml` (the per-package field, not the workspace field).
+2. Exclude GPU crates from the workspace MSRV gate:
+   ```bash
+   cargo +1.81.0 check --workspace \
+     --exclude tinyquant-gpu-wgpu \
+     --exclude tinyquant-gpu-cuda
+   ```
+3. A separate CI job (`gpu-compile-check`) runs on the toolchain that
+   satisfies the GPU MSRV:
+   ```bash
+   cargo +1.87.0 check -p tinyquant-gpu-wgpu
+   ```
+4. `wgpu` is **not** added to `[workspace.dependencies]`; each GPU
+   crate pins it independently so the workspace dependency resolver
+   never forces it on the whole tree.
+
+### R24 — GPU backend distribution
+
+**Problem.** wgpu uses Metal on macOS, Vulkan or D3D12 on
+Windows/Linux. Container images (GHCR, ECS, GKE) typically have no
+GPU driver or Vulkan ICD installed. Users who `cargo add
+tinyquant-gpu-wgpu` on a headless machine will compile successfully
+but see `is_available() == false` at runtime.
+
+**Mitigation.**
+
+1. Document clearly in the crate README: GPU acceleration is opt-in
+   and falls back gracefully to CPU.
+2. `WgpuBackend::new()` returns `Ok(backend)` even if no adapter is
+   found; `backend.is_available()` differentiates the two cases.
+   No panics, no `unwrap`.
+3. Ship a `--gpu` flag in `tinyquant-cli` that prints adapter info
+   (`tinyquant info --gpu`) so operators can diagnose availability.
+4. The wgpu `dx12` and `metal` backends require no extra user action
+   (OS-bundled). The `vulkan` backend on Linux requires the
+   `vulkan-icd-loader` package; document this in the crate README.
+
+### R25 — GPU tests require physical adapter
+
+**Problem.** GitHub Actions `ubuntu-22.04` and `windows-2022` runners
+have no GPU. Differential tests (GPU vs CPU same output) and
+performance benchmarks cannot run in standard CI.
+
+**Mitigation.**
+
+1. **Compile-only CI** (`gpu-compile-check`) validates shader syntax
+   and Rust compilation without a device. Runs on every PR touching
+   `crates/tinyquant-gpu-wgpu/`.
+2. **Shader unit tests** use wgpu's software backend (`wgpu::Backends::GL`
+   via Mesa's `llvmpipe`) where available on Linux. These are slower
+   (~10× vs native GPU) but do not require a physical device.
+3. **Differential tests** are marked `#[ignore]` in standard CI and
+   promoted to a self-hosted runner job once one is available.
+4. **No GPU benchmark** is wired into the `bench-budget` gate until a
+   stable runner with a GPU is procured (R21-class concern — until
+   then, GPU benchmarks are advisory only).
+
+### R26 — `PreparedCodec` ownership and GPU buffer lifecycle
+
+**Problem.** The existing `Codec` type is a ZST (zero-size type) with
+no state. `PreparedCodec` (Phase 26) caches the rotation matrix and
+codebook so they do not need to be recomputed per-batch. The GPU
+backend additionally needs to upload those tensors to device VRAM as
+`wgpu::Buffer` objects. But `wgpu::Buffer` is not `Send + Sync` in all
+contexts, and the `PreparedCodec` struct lives in `tinyquant-core`
+which cannot depend on wgpu.
+
+**Mitigation.**
+
+1. `PreparedCodec` (in `tinyquant-core`) includes a `gpu_state:
+   Option<Box<dyn core::any::Any + Send + Sync>>` field — an opaque
+   type-erased slot. The GPU crate fills this slot on first use via
+   `ComputeBackend::prepare_for_device(&mut PreparedCodec)`.
+2. The `Box<dyn Any + Send + Sync>` bound is intentionally broad; the
+   downcast happens inside `tinyquant-gpu-wgpu`, not in core.
+3. `PreparedCodec` is owned by the application, not the codec. The
+   application decides lifetime; the GPU crate borrows it per-call.
+4. A clippy lint inside `tinyquant-gpu-wgpu` warns if
+   `compress_batch` is called with a `PreparedCodec` whose `gpu_state`
+   is `None` (device upload not done yet), guiding callers to call
+   `prepare_for_device` first.
 
 ## Open questions tracked elsewhere
 

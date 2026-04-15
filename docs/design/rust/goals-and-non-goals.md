@@ -30,8 +30,8 @@ calibration tests use.
 |---|---|---|---|
 | Single-vector `compress` (dim 1536, 4-bit + residual) | ~180 µs | ≤ 18 µs (10×) | ≤ 6 µs (30×) |
 | Single-vector `decompress` | ~95 µs | ≤ 9 µs (10×) | ≤ 3 µs (30×) |
-| Batch `compress_batch` of 10 000 vectors | ~1.9 s | ≤ 80 ms (24×) | ≤ 25 ms (75×) |
-| Batch `decompress_batch` of 10 000 vectors | ~0.95 s | ≤ 40 ms (24×) | ≤ 12 ms (80×) |
+| Batch `compress_batch` of 10 000 vectors | ~1.9 s | ≤ 80 ms (24×) | ≤ 25 ms (75×) · ≤ 5 ms GPU (380×) |
+| Batch `decompress_batch` of 10 000 vectors | ~0.95 s | ≤ 40 ms (24×) | ≤ 12 ms (80×) · ≤ 2 ms GPU (475×) |
 | `CompressedVector::to_bytes` (dim 1536) | ~5 µs | ≤ 150 ns (30×) | ≤ 80 ns |
 | `CompressedVector::from_bytes` (dim 1536) | ~8 µs | ≤ 200 ns (40×) | ≤ 100 ns |
 | `Codebook::train` on 100k values | ~45 ms | ≤ 5 ms (9×) | ≤ 1.5 ms |
@@ -90,9 +90,14 @@ implementations, `Rust::compress(...).to_bytes() == Python::compress(...).to_byt
 - **No new algorithms.** The Rust port does not change the math. No
   learned codebooks, no KMeans, no product quantization, no ANN
   indexes. Those are separate initiatives.
-- **No GPU acceleration.** CPU-only is the whole point. A CUDA/Metal
-  path would undermine the deployability story of
-  "runs in any container, no drivers required."
+- **No GPU acceleration in `tinyquant-core`.** The core codec stays
+  CPU-only and `no_std` — the deployability story of "runs in any
+  container, no drivers required" is preserved. GPU offload lives in
+  *optional, additive crates* (`tinyquant-gpu-wgpu`, `tinyquant-gpu-cuda`)
+  that depend on core but are never pulled in by default. See
+  [[design/rust/gpu-acceleration|GPU Acceleration Design]] for the
+  full plan. The GPU crates carry their own MSRV and are not wired into
+  `rust-ci.yml` until Phase 27.
 - **No async runtime.** The codec is CPU-bound; making it `async` adds
   overhead and obscures ownership. Async concerns belong in the HTTP
   layer (better-router), not the codec.
@@ -130,5 +135,6 @@ not belong in this port.
 
 - [[design/rust/README|Rust Port Overview]]
 - [[design/rust/simd-strategy|SIMD Strategy]]
+- [[design/rust/gpu-acceleration|GPU Acceleration Design]]
 - [[design/rust/benchmark-harness|Benchmark Harness and Performance Budgets]]
 - [[design/behavior-layer/score-fidelity|Score Fidelity]]

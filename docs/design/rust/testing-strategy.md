@@ -478,9 +478,87 @@ source is explicitly excluded from any wheel built from this tree via
   cross-test state leakage.
 - No `#[should_panic]` — all errors go through `Result`.
 
+## GPU testing strategy (Phase 27+)
+
+GPU tests follow the same taxonomy as the CPU tests but with additional
+physical constraints (no adapter in standard CI). See also R25 in
+[[design/rust/risks-and-mitigations|Risks and Mitigations]].
+
+### Layer 1 — Compile-only shader validation
+
+Runs on every PR touching `crates/tinyquant-gpu-wgpu/**`. No device
+required. Validates that all WGSL shaders parse and type-check under
+naga, and that the Rust crate compiles without error.
+
+```yaml
+# rust-ci.yml (Phase 27 addition)
+gpu-compile-check:
+  runs-on: ubuntu-22.04
+  steps:
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: "1.87.0"
+    - name: compile check
+      run: cargo check -p tinyquant-gpu-wgpu --features validate-shaders
+```
+
+### Layer 2 — Software-renderer differential tests
+
+Uses wgpu's `GL` backend backed by Mesa `llvmpipe` (available on
+standard Linux CI without a physical GPU) to run the actual WGSL
+kernels against CPU reference output.
+
+```rust
+// tinyquant-gpu-wgpu/tests/differential.rs
+#[test]
+fn rotate_kernel_matches_cpu_reference() {
+    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
+        backends: wgpu::Backends::GL,  // llvmpipe — no physical GPU needed
+        ..Default::default()
+    });
+    // … request adapter, run rotate kernel, compare to CPU RotationMatrix::apply_into
+    // assert element-wise error < 1e-4 f32
+}
+```
+
+Tolerance: element-wise `|gpu - cpu| < 1e-4` (f32 accumulation
+differences are expected between GPU and CPU GEMM implementations).
+
+### Layer 3 — Physical GPU smoke tests (self-hosted, advisory)
+
+End-to-end tests that run `compress_batch` / `decompress_batch_into`
+/ `cosine_topk` on real GPU hardware. These tests are marked
+`#[ignore]` in standard CI and run on a self-hosted runner with a
+discrete GPU. They block Phase 27 release but not individual PRs.
+
+```rust
+#[test]
+#[ignore = "requires physical GPU; run with `cargo test -- --ignored`"]
+fn compress_batch_gpu_matches_cpu_result() {
+    // Acquire real wgpu adapter, run 1024-vector batch,
+    // compare to tinyquant-core CPU output within 1e-4
+}
+```
+
+### Benchmark tracking
+
+Two metrics are tracked separately in `baselines/gpu-main.json` (not
+yet wired into the `bench-budget` gate — see R25):
+
+| Metric | What it measures |
+|---|---|
+| `transfer_latency_ms` | Host→device upload time for a 10k-vector batch |
+| `kernel_only_ms` | GPU kernel time excluding transfer |
+
+Separating transfer from compute allows us to determine whether the
+GPU is memory-bound (transfer dominates) or compute-bound (kernel
+dominates) as batch sizes grow. The breakeven batch size vs CPU is
+derived from these two numbers.
+
 ## See also
 
 - [[design/architecture/test-driven-development|Test-Driven Development]]
 - [[design/rust/numerical-semantics|Numerical Semantics]]
 - [[design/rust/error-model|Error Model]]
+- [[design/rust/gpu-acceleration|GPU Acceleration Design]]
 - [[design/rust/ci-cd|CI/CD]]

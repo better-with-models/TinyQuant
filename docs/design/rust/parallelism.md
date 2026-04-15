@@ -307,6 +307,54 @@ meeting the goal.
 No `unsafe impl Sync for X` anywhere outside the `SyncPtr` newtype in
 the parallel batch path.
 
+## GPU execution tier (Phase 27+)
+
+GPU offload is a **third execution tier** above `Parallelism::Serial`
+and `Parallelism::Custom(rayon)`. It is *not* an extension of the
+`Parallelism` enum — it is a separate dispatch interface (`ComputeBackend`
+trait) that lives in `tinyquant-gpu-wgpu` and `tinyquant-gpu-cuda`,
+both of which depend on `tinyquant-core` but are never imported by it.
+
+### Relationship between `Parallelism` and `ComputeBackend`
+
+| Concern | `Parallelism` | `ComputeBackend` |
+|---|---|---|
+| Where defined | `tinyquant-core` | `tinyquant-gpu-wgpu` |
+| Direction | CPU thread fan-out | Host→device transfer + kernel launch |
+| Granularity | Per-row within a batch | Entire batch (whole tensor) |
+| `no_std` compatible | Yes | No (GPU crates require `std`) |
+| Default | `Serial` (CPU) | Not wired — opt-in by application |
+
+### Threshold gating
+
+GPU dispatch is only efficient above a minimum batch size (the
+host↔device transfer overhead must be amortized). `WgpuBackend`
+exposes:
+
+```rust
+impl WgpuBackend {
+    /// Minimum row count above which GPU dispatch is faster than CPU.
+    /// Below this threshold, callers should fall back to the CPU path.
+    pub const BATCH_THRESHOLD: usize = 512;
+
+    pub fn should_use_gpu(&self, rows: usize) -> bool {
+        rows >= Self::BATCH_THRESHOLD && self.is_available()
+    }
+}
+```
+
+The threshold is advisory; callers are free to override it (e.g., a
+server with dedicated GPU capacity might lower it to 128).
+
+### Fallback guarantee
+
+`tinyquant-core` is always available as the CPU fallback. The GPU
+crates declare `ComputeBackend::is_available() -> bool`; if this
+returns `false` (no adapter found, driver unavailable, or the `cuda`
+feature is disabled), the application falls back to `Parallelism::Custom`
+on the CPU rayon pool. No GPU dependency ever bleeds into the core or
+IO crates.
+
 ## Cancellation and interruption
 
 The Rust port does not expose cancellation. Long-running batch

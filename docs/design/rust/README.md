@@ -56,6 +56,7 @@ source-count: 0
 19. [[design/rust/phase-15-implementation-notes|Phase 15 Implementation Notes]] — execution-log view of the Phase 15 landing (`Codec` service, `compute_residual`, `CompressedVector`): Rust-canonical fixture strategy due to RNG divergence, clippy constraint patterns, and fidelity gate numbers
 20. [[design/rust/phase-17-implementation-notes|Phase 17 Implementation Notes]] — execution-log view of the Phase 17 landing (`tinyquant-io` zero-copy views, Level-2 TQCV corpus file container, mmap-based reader): TQCV magic-byte layout, `mmap-lock` feature flag design, and `MmapView` lifetime safety model
 21. [[design/rust/phase-18-implementation-notes|Phase 18 Implementation Notes]] — execution-log view of the Phase 18 landing (`Corpus` aggregate root, vector insertion, batch atomicity, three-policy decompression, domain events, insertion-ordered vector map)
+22. [[design/rust/gpu-acceleration|GPU Acceleration Design]] — optional wgpu and CUDA backends: `PreparedCodec`, `ComputeBackend` trait, WGSL kernels, MSRV isolation, CI strategy, and Phase 27-28 rollout plan
 
 ## How the design layers relate
 
@@ -115,6 +116,7 @@ graph TD
 | **Standalone `tinyquant` CLI binary** cross-compiled to Linux x86_64/aarch64 (glibc and musl), macOS x86_64/aarch64, Windows x86_64/i686, and FreeBSD x86_64, plus a multi-arch GHCR container image | iOS/Android binaries |
 | Cargo library crates on crates.io, Python wheel on PyPI, binary archives on GitHub Releases — all produced from one tag in one workflow | — |
 | Benchmarks: criterion + flamegraphs + regression gates | Research-grade novel algorithms |
+| **Optional GPU acceleration** via `tinyquant-gpu-wgpu` (wgpu, Phase 27) and `tinyquant-gpu-cuda` (cust, Phase 28) — additive crates, never in core | Requiring a GPU for the base install |
 
 ## Relationship to the Python codebase
 
