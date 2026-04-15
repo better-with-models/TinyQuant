@@ -1,6 +1,6 @@
 {
   "name": "@better-with-models/tinyquant-core",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "CPU-only vector quantization codec for embedding storage compression.",
   "license": "Apache-2.0",
   "repository": {

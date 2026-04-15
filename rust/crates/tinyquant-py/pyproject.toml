@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "tinyquant-rs"
-version = "0.0.0"
+version = "1.0.0"
 description = "Ultra-high-performance Rust port of TinyQuant, the CPU-only vector quantization codec."
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
