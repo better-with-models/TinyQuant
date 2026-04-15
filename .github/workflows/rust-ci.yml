@@ -231,7 +231,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: false  # tinyquant-core tests have no LFS fixtures
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -253,7 +253,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: false  # tinyquant-core/bruteforce tests have no LFS fixtures
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -275,7 +275,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: false  # tinyquant-core/bruteforce tests have no LFS fixtures
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -297,7 +297,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: false  # tinyquant-core tests have no LFS fixtures
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -319,7 +319,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: false  # tinyquant-core tests have no LFS fixtures
+          lfs: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
