@@ -654,10 +654,11 @@ Phase B "done" (per branch):
 - [x] All 5 pr_speed tests pass on Windows x86_64 MSVC (verified
       2026-04-14, 508.42s, `--release --features simd`). Linux verified
       previously via Docker bit-identical numbers in §2.1.
-- [ ] `rust-calibration.yml` dispatch produces 6/6 green matrix cells
-      (pr-speed + 4 full-bw + 2 core-*) — to be exercised after merge;
-      full-bw cells run against `openai_10k_d1536` and are not
-      re-verified in this local pass
+- [x] Full suite (5 pr_speed + 5 full_bw* on `openai_10k_d1536`) passes
+      on Windows x86_64 MSVC — `cargo test --release -p tinyquant-bench
+      --features simd -- --ignored` 10/10 ok in 31953.17s (~8.9 hr),
+      verified 2026-04-15 on `develop`. `rust-calibration.yml` workflow
+      dispatch still to be exercised for the 2 `core-*` matrix cells.
 - [x] No change to existing `cargo test --workspace` green (only
       calibration.rs constants changed; no source-code touched)
 
