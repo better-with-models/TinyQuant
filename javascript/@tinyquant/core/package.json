@@ -49,7 +49,7 @@
     "clean:tests": "node -e \"require('fs').rmSync('dist-tests', {recursive:true, force:true})\"",
     "build:cjs": "node scripts/emit-cjs-bundle.mjs",
     "build": "node scripts/build.mjs",
-    "test": "npm run build && npm run clean:tests && tsc -p tsconfig.test.json && node --test \"dist-tests/**/*.test.js\" \"tests/**/*.test.cjs\"",
+    "test": "npm run build && npm run clean:tests && tsc -p tsconfig.test.json && node --test dist-tests tests",
     "fixtures:generate": "python ../../../scripts/packaging/generate_js_parity_fixtures.py tests/fixtures"
   },
   "devDependencies": {
