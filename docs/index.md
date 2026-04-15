@@ -179,6 +179,7 @@ status: active
 | [[plans/rust/phase-20-simd-kernels\|Phase 20: SIMD Kernels and Runtime Dispatch]] | AVX2/AVX-512/NEON SIMD kernels with is_x86_feature_detected! runtime dispatch | 2026-04-10 |
 | [[plans/rust/phase-21-rayon-batch-benches\|Phase 21: Rayon Batch Paths, Calibration, and Benchmarks]] | Rayon parallel batch paths, criterion benchmarks, performance regression gates | 2026-04-10 |
 | [[plans/rust/phase-22-pyo3-cabi-release\|Phase 22: Pyo3, C ABI, and Release]] | pyo3 bindings, C ABI via `tinyquant-sys`, standalone CLI binary, multi-arch release | 2026-04-10 |
+| [[plans/rust/rotation-cache-compress-path\|Fix: RotationMatrix rebuilt per vector in compress_batch_parallel]] | Root cause, fix plan, and acceptance criteria for the O(N·d³) SVD-per-vector error in the Rust batch path | 2026-04-14 |
 
 ## Specs
 

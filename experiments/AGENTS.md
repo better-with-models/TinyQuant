@@ -5,7 +5,7 @@ This directory holds standalone research scripts for TinyQuant. Nothing here is 
 ## What this area contains
 
 - primary responsibility: standalone research scripts and experiments, run manually outside CI — currently contains the `quantization-benchmark/` compression comparison experiment
-- main entrypoints: `quantization-benchmark/` (the active experiment subdirectory)
+- main entrypoints: `quantization-benchmark/` (compression quality baseline), `rust-python-performance-comparison/` (Rust vs Python throughput and root-cause analysis)
 - common changes: adding new experiment subdirectories, extending `quantization-benchmark/` scripts with new codec configurations or metrics
 
 ## Layout
@@ -13,6 +13,7 @@ This directory holds standalone research scripts for TinyQuant. Nothing here is 
 ```text
 experiments/
 ├── quantization-benchmark/
+├── rust-python-performance-comparison/
 └── README.md
 ```
 
