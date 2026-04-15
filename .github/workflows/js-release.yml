@@ -23,12 +23,13 @@
 # `v0.1.0` pushed directly AND `inputs.dry_run != true` (i.e. not
 # manually invoked) reaches the `npm publish` step.
 #
-# ## First-publish status
+# ## Authentication
 #
-# This workflow is release-ready but has NOT been invoked against
-# the real npm registry. The `@tinyquant` scope still needs to be
-# registered on npm and the OIDC trusted publisher bound to this
-# repo before the first real `v*` tag is pushed.
+# Publishing uses npm OIDC trusted publishing — no NPM_TOKEN secret
+# is required. The `id-token: write` permission allows GitHub to mint
+# an OIDC token; npm exchanges it automatically when `--provenance`
+# is passed. The `npm` GitHub Actions environment on this repo is
+# configured as the trusted publisher on npmjs.com.
 
 name: js-release
 
@@ -201,7 +202,10 @@ jobs:
       && inputs.dry_run != true
     environment:
       name: npm
-      url: https://www.npmjs.com/package/@tinyquant/core
+      url: https://www.npmjs.com/package/@better-with-models/tinyquant-core
+    permissions:
+      id-token: write
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -233,11 +237,9 @@ jobs:
               exit 1
             }
           done
-      - name: npm publish with provenance
+      - name: npm publish with provenance (OIDC)
         working-directory: javascript/@tinyquant/core
         shell: bash
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           set -euo pipefail
           npm publish --provenance --access public
@@ -276,8 +278,8 @@ jobs:
             gh release upload "$RELEASE_TAG" "${tarballs[@]}" --clobber
           else
             gh release create "$RELEASE_TAG" "${tarballs[@]}" \
-              --title "@tinyquant/core $RELEASE_TAG" \
-              --notes "npm tarball for @tinyquant/core $RELEASE_TAG. See CHANGELOG.md for details."
+              --title "@better-with-models/tinyquant-core $RELEASE_TAG" \
+              --notes "npm tarball for @better-with-models/tinyquant-core $RELEASE_TAG. See CHANGELOG.md for details."
           fi
 
   # -------------------------------------------------------------------
