@@ -171,6 +171,10 @@ status: active
 | [[design/rust/phase-15-implementation-notes\|Phase 15 Implementation Notes]] | Execution-log view of Phase 15: codec service, residual, and CompressedVector — Rust-canonical fixture strategy due to RNG divergence, clippy constraint patterns, and fidelity gate numbers | 2026-04-10 |
 | [[design/rust/phase-17-implementation-notes\|Phase 17 Implementation Notes]] | Execution-log view of Phase 17: `tinyquant-io` zero-copy views, Level-2 TQCV corpus file container, and mmap-based reader — TQCV magic-byte layout, `mmap-lock` feature flag, and `MmapView` lifetime safety model | 2026-04-11 |
 | [[design/rust/phase-18-implementation-notes\|Phase 18 Implementation Notes]] | Execution-log view of Phase 18: `Corpus` aggregate root, vector insertion, batch atomicity, three-policy decompression, domain events, and insertion-ordered vector map | 2026-04-11 |
+| [[design/rust/phase-22-implementation-notes\|Phase 22 Implementation Notes]] | Execution-log for Phase 22: pyo3 wheel, C ABI via cbindgen, standalone CLI, and multi-arch release workflow — declared deviations and release-gate pattern | 2026-04-14 |
+| [[design/rust/phase-23-implementation-notes\|Phase 23 Implementation Notes]] | Execution-log for Phase 23: Python reference demotion to `tests/reference/`, parity scaffold, CI guard against reference leakage into wheels | 2026-04-14 |
+| [[design/rust/phase-24-implementation-notes\|Phase 24 Implementation Notes]] | Execution-log for Phase 24: fat-wheel assembler, PEP 376 RECORD, xtask publish guards, dry-run release workflow — 6 declared deviations | 2026-04-14 |
+| [[design/rust/phase-25-implementation-notes\|Phase 25 Implementation Notes]] | Execution-log for Phase 25: `@tinyquant/core` napi-rs bindings, CJS bundle, JSDoc, and npm release workflow — 142/142 tests, slice provenance | 2026-04-14 |
 | [[plans/rust/phase-15-codec-service-residual\|Phase 15: Codec Service, Residual, and CompressedVector]] | `tinyquant-core::codec::Codec` service with compress/decompress, `compute_residual`, `CompressedVector` — Rust-canonical fixture strategy | 2026-04-10 |
 | [[plans/rust/phase-16-serialization-parity\|Phase 16: Serialization and Python Byte Parity]] | `tinyquant-io` serialization with Python byte-level parity, endian contract, version tag | 2026-04-10 |
 | [[plans/rust/phase-17-zero-copy-mmap\|Phase 17: Zero-copy Views and Mmap Corpus Files]] | `tinyquant-io` zero-copy views, Level-2 TQCV file container, mmap-based reader | 2026-04-10 |
@@ -179,6 +183,10 @@ status: active
 | [[plans/rust/phase-20-simd-kernels\|Phase 20: SIMD Kernels and Runtime Dispatch]] | AVX2/AVX-512/NEON SIMD kernels with is_x86_feature_detected! runtime dispatch | 2026-04-10 |
 | [[plans/rust/phase-21-rayon-batch-benches\|Phase 21: Rayon Batch Paths, Calibration, and Benchmarks]] | Rayon parallel batch paths, criterion benchmarks, performance regression gates | 2026-04-10 |
 | [[plans/rust/phase-22-pyo3-cabi-release\|Phase 22: Pyo3, C ABI, and Release]] | pyo3 bindings, C ABI via `tinyquant-sys`, standalone CLI binary, multi-arch release | 2026-04-10 |
+| [[plans/rust/phase-23-python-reference-demotion\|Phase 23: Python Reference Demotion]] | Move pure-Python `tinyquant_cpu` to `tests/reference/` as a frozen differential oracle; no PyPI publish — **complete** | 2026-04-13 |
+| [[plans/rust/phase-24-python-fat-wheel-official\|Phase 24: Python Fat-Wheel Official Distribution]] | Rust-backed `tinyquant-cpu==0.2.0` fat-wheel assembler, runtime selector, and dry-run release workflow — **complete** | 2026-04-13 |
+| [[plans/rust/phase-25-typescript-npm-package\|Phase 25: TypeScript / Bun npm Package]] | `@tinyquant/core` napi-rs crate and npm skeleton with codec, corpus, backend bindings, and npm release chain — **complete** | 2026-04-13 |
+| [[plans/rust/calibration-threshold-investigation\|Calibration Threshold Investigation]] | Diagnose and re-baseline `pr_speed` calibration failures; honest threshold derivation and TODO(phase-26) residual-encoder carryover | 2026-04-14 |
 | [[plans/rust/rotation-cache-compress-path\|Fix: RotationMatrix rebuilt per vector in compress_batch_parallel]] | Root cause, fix plan, and acceptance criteria for the O(N·d³) SVD-per-vector error in the Rust batch path | 2026-04-14 |
 
 ## Specs
