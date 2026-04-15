@@ -155,7 +155,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -175,7 +175,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -195,7 +195,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -215,7 +215,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - name: fixture-drift
@@ -229,7 +229,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -251,7 +251,7 @@ jobs:
     env:
       RUSTFLAGS: "-C target-feature=+avx2,+fma -D warnings"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -273,7 +273,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -295,7 +295,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -317,7 +317,7 @@ jobs:
     env:
       RUSTFLAGS: "-C target-feature=+avx2,+fma -D warnings"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -337,7 +337,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: false
       - uses: dtolnay/rust-toolchain@stable
@@ -368,7 +368,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: false
       - uses: dtolnay/rust-toolchain@stable
