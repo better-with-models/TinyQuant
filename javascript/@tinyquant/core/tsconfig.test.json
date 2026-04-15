@@ -4,9 +4,7 @@
     "outDir": "./dist-tests",
     "rootDir": "./tests",
     "declaration": false,
-    "declarationMap": false,
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext"
+    "declarationMap": false
   },
   "include": ["tests/**/*.ts"],
   "exclude": ["node_modules", "dist", "dist-tests"]
