@@ -359,7 +359,7 @@ pub fn decompress(
     config: &CodecConfig,
     codebook: &Codebook,
 ) -> napi::Result<Float32Array> {
-    let out =
-        core_decompress(&compressed.inner, &config.inner, &codebook.inner).map_err(map_codec_error)?;
+    let out = core_decompress(&compressed.inner, &config.inner, &codebook.inner)
+        .map_err(map_codec_error)?;
     Ok(vec_to_float32_array(out))
 }

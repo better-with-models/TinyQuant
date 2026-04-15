@@ -50,9 +50,7 @@ pub fn run() {
 
     match check(&yaml) {
         Ok(()) => {
-            println!(
-                "check-publish-guards[python]: publish job guard matches contract \u{2713}"
-            );
+            println!("check-publish-guards[python]: publish job guard matches contract \u{2713}");
         }
         Err(report) => {
             eprintln!("{report}");

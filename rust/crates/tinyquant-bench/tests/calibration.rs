@@ -52,7 +52,7 @@ struct Threshold {
 const BW4_RESIDUAL: Threshold = Threshold {
     rho_min: 0.99,          // floor (measured 1.0000); TODO(phase-26) tighten to 0.999
     recall_at_10_min: 0.95, // floor (measured 1.0000)
-    ratio_min: 1.50,        // floor (measured 1.6000); TODO(phase-26) raise to 7.0 after residual encoder
+    ratio_min: 1.50, // floor (measured 1.6000); TODO(phase-26) raise to 7.0 after residual encoder
 };
 // Measured: rho=0.9573, recall=0.7910, ratio=8.0000. rho/recall ceiling is
 // scalar-quantizer-inherent, not a codec defect.
@@ -65,22 +65,22 @@ const BW4_NO_RESIDUAL: Threshold = Threshold {
 const BW2_RESIDUAL: Threshold = Threshold {
     rho_min: 0.99,          // floor (measured 1.0000); TODO(phase-26) tighten to 0.999
     recall_at_10_min: 0.95, // floor (measured 1.0000)
-    ratio_min: 1.70,        // floor (measured 1.7778); TODO(phase-26) raise to 14.0 after residual encoder
+    ratio_min: 1.70, // floor (measured 1.7778); TODO(phase-26) raise to 14.0 after residual encoder
 };
 // Measured: rho=1.0000, recall=1.0000, ratio=1.3333.
 const BW8_RESIDUAL: Threshold = Threshold {
     rho_min: 0.99,          // floor (measured 1.0000); TODO(phase-26) tighten to 0.999
     recall_at_10_min: 0.95, // floor (measured 1.0000)
-    ratio_min: 1.25,        // floor (measured 1.3333); TODO(phase-26) raise to 4.0 after residual encoder
+    ratio_min: 1.25, // floor (measured 1.3333); TODO(phase-26) raise to 4.0 after residual encoder
 };
 // Measured: rho=0.5119, recall=0.3530, ratio=16.0000. Not a useful
 // configuration at the product level — 2-bit scalar quantization of 768-dim
 // unit vectors cannot preserve semantic structure without the residual path.
 // Gate exists only to catch catastrophic collapse (rho → 0).
 const BW2_NO_RESIDUAL: Threshold = Threshold {
-    rho_min: 0.50,          // floor (measured 0.5119); regression-canary, not a quality claim
+    rho_min: 0.50, // floor (measured 0.5119); regression-canary, not a quality claim
     recall_at_10_min: 0.30, // floor (measured 0.3530); regression-canary
-    ratio_min: 15.0,        // floor (measured 16.0); no residual bytes in this path
+    ratio_min: 15.0, // floor (measured 16.0); no residual bytes in this path
 };
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
