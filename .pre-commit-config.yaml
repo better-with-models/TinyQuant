@@ -21,4 +21,4 @@ repos:
         language: system
         types: [python]
         pass_filenames: false
-        args: [src/tinyquant_cpu]
+        args: [src, tests/reference, scripts, experiments]

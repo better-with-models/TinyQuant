@@ -325,7 +325,7 @@ def _cmd_codec(args: argparse.Namespace) -> int:
         same = idx_a == idx_b
         idx_b[same] = (idx_b[same] + 1) % rows
 
-        def _cosine(a: np.ndarray, b: np.ndarray) -> float:
+        def _cosine(a: Any, b: Any) -> float:
             return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b) + 1e-12))
 
         orig_cos = np.array([_cosine(orig[a], orig[b]) for a, b in zip(idx_a, idx_b)])

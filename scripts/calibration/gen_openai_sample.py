@@ -26,7 +26,7 @@ import hashlib
 import json
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Sequence, cast
 
 if TYPE_CHECKING:
     import numpy as np
@@ -38,7 +38,7 @@ def l2_normalise(arr: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
     import numpy as _np
     norms = _np.linalg.norm(arr, axis=1, keepdims=True)
     norms = _np.where(norms == 0, 1.0, norms)
-    return arr / norms  # type: ignore[return-value]
+    return cast("npt.NDArray[np.float32]", (arr / norms).astype(_np.float32))
 
 
 def generate(rng: np.random.Generator, rows: int, cols: int) -> npt.NDArray[np.float32]:

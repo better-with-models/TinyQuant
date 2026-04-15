@@ -36,6 +36,7 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import numpy.typing as npt
 
 try:
     from tinyquant_cpu.backend import BruteForceBackend
@@ -98,7 +99,7 @@ def _config_hash_cases() -> list[dict[str, object]]:
     return out
 
 
-def _round_vec(vec: np.ndarray) -> list[float]:
+def _round_vec(vec: npt.NDArray[np.float32]) -> list[float]:
     # Cast to float32 then to Python float to keep JSON output stable
     # across numpy versions.
     return [float(v) for v in vec.astype(np.float32)]
@@ -114,7 +115,7 @@ def _corpus_scenarios() -> list[dict[str, object]]:
     scenarios: list[dict[str, object]] = []
     rng = np.random.default_rng(seed=_CORPUS_FIXTURE_SEED)
 
-    policy_cases: list[tuple[str, object]] = [
+    policy_cases: list[tuple[str, CompressionPolicy]] = [
         ("insert-3-vectors-policy-compress", CompressionPolicy.COMPRESS),
         ("insert-3-vectors-policy-passthrough", CompressionPolicy.PASSTHROUGH),
         ("insert-3-vectors-policy-fp16", CompressionPolicy.FP16),
@@ -241,7 +242,7 @@ def _backend_scenarios() -> list[dict[str, object]]:
     ):
         backend = BruteForceBackend()
         corpus_vectors: dict[str, list[float]] = {}
-        ingest_map: dict[str, np.ndarray] = {}
+        ingest_map: dict[str, npt.NDArray[np.float32]] = {}
         for i in range(10):
             vec = rng.standard_normal(dim).astype(np.float32)
             corpus_vectors[f"v{i}"] = _round_vec(vec)

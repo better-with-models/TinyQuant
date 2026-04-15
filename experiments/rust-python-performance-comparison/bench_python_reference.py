@@ -13,7 +13,7 @@ from __future__ import annotations
 import statistics
 import sys
 import time
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 sys.path.insert(0, "tests/reference")
 
 import numpy as np
+import numpy.typing as npt
 from tinyquant_py_reference.codec.codebook import Codebook
 from tinyquant_py_reference.codec.codec import Codec
 from tinyquant_py_reference.codec.codec_config import CodecConfig
@@ -32,12 +33,12 @@ REPS = 5
 SEED = 42
 
 
-def load_corpus(path: str) -> np.ndarray:
+def load_corpus(path: str) -> npt.NDArray[np.float32]:
     """Load the embedding corpus, falling back to a random matrix if absent."""
     try:
         vectors = np.load(path)
         print(f"Loaded corpus: {vectors.shape} from {path}")
-        return vectors.astype(np.float32)
+        return cast("npt.NDArray[np.float32]", vectors.astype(np.float32))
     except FileNotFoundError:
         n, d = 335, 1536
         rng = np.random.default_rng(SEED)
@@ -46,7 +47,7 @@ def load_corpus(path: str) -> np.ndarray:
         norms = np.linalg.norm(vectors, axis=1, keepdims=True)
         vectors /= norms
         print(f"Corpus file not found; using {n}x{d} random unit vectors")
-        return vectors
+        return cast("npt.NDArray[np.float32]", vectors)
 
 
 def bench(
@@ -63,19 +64,19 @@ def bench(
 
 def run_config(
     codec: Codec,
-    vectors: np.ndarray,
+    vectors: npt.NDArray[np.float32],
     config: CodecConfig,
     codebook: Codebook,
     label: str,
 ) -> None:
     """Benchmark encode and decode for one CodecConfig and print results."""
     n = len(vectors)
+    compressed = [codec.compress(v, config, codebook) for v in vectors]
 
     def encode() -> list[Any]:
         return [codec.compress(v, config, codebook) for v in vectors]
 
     def decode() -> list[Any]:
-        compressed = [codec.compress(v, config, codebook) for v in vectors]
         return [codec.decompress(c, config, codebook) for c in compressed]
 
     enc_s, _enc_all = bench(label + "/encode", encode)

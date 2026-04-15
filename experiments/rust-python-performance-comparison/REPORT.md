@@ -46,7 +46,7 @@ Script: `bench_python_reference.py` in this directory.
 
 - Crate: `tinyquant-core` with `--features std,simd`, build profile `--release`
 - Parallelism: `t=1` (Rayon pool size 1) to isolate per-vector cost
-- Invocation: `cargo test -p tinyquant-core --release --features std,simd`
+- Invocation: `cargo test -p tinyquant-core --release --features std,simd -- --ignored`
 - Measured: compress time for 256×1536 batch in `#[ignore]`d integration test
 
 ### 1.4 Rust kernel micro-benchmarks
@@ -63,31 +63,31 @@ Script: `bench_python_reference.py` in this directory.
 
 Corpus: 335 vectors × 1536 dimensions, 5-rep median.
 
-| Config | Encode (ms) | Encode (vec/s) | Decode (ms) | Decode (vec/s) |
-|--------|-------------|----------------|-------------|----------------|
-| 4-bit + residual | 93 | 3,602 | 127 | 2,646 |
-| 4-bit no-residual | 73 | 4,569 | — | — |
-| 2-bit + residual | 75 | 4,485 | — | — |
-| 8-bit + residual | 88 | 3,795 | — | — |
+| Config              | Encode (ms) | Encode (vec/s) | Decode (ms) | Decode (vec/s) |
+| ------------------- | ----------: | -------------: | ----------: | -------------: |
+| 4-bit + residual    |          93 |          3,602 |         127 |          2,646 |
+| 4-bit no-residual   |          73 |          4,569 |           — |              — |
+| 2-bit + residual    |          75 |          4,485 |           — |              — |
+| 8-bit + residual    |          88 |          3,795 |           — |              — |
 
 ### 2.2 Rust end-to-end batch throughput (pre-fix)
 
 Corpus: 256 vectors × 1536 dimensions, release build, t=1.
 
-| Path | Throughput |
-|------|------------|
-| `compress_batch_parallel` | ~1.3 vec/s |
-| Ratio vs. Python 4-bit+residual | ~0.036% (2,800× slower) |
+| Path                            | Throughput                |
+| ------------------------------- | ------------------------- |
+| `compress_batch_parallel`       | ~1.3 vec/s                |
+| Ratio vs. Python 4-bit+residual | ~0.036% (2,800× slower)   |
 
 ### 2.3 Rust kernel micro-benchmarks
 
 Measured on d=1536 elements per call.
 
-| Kernel | Rust (Melem/s) | Python (Melem/s) | Speedup |
-|--------|----------------|-------------------|---------|
-| `scalar_quantize` (4-bit) | 214 | ~1.1 | ~195× |
-| `scalar_dequantize` | 3,200 | ~650 | ~5× |
-| cosine similarity | 678 | ~650 | ~1× (tie) |
+| Kernel                    | Rust (Melem/s) | Python (Melem/s) | Speedup   |
+| ------------------------- | -------------: | ---------------: | --------- |
+| `scalar_quantize` (4-bit) |            214 |             ~1.1 | ~195×     |
+| `scalar_dequantize`       |          3,200 |             ~650 | ~5×       |
+| cosine similarity         |            678 |             ~650 | ~1× (tie) |
 
 Python cosine uses NumPy's BLAS-backed dot product; the comparison is fair.
 
@@ -99,7 +99,7 @@ Python cosine uses NumPy's BLAS-backed dot product; the comparison is fair.
 
 Call graph for `compress_batch_parallel` (before fix):
 
-```
+```text
 compress_batch_parallel(rows, config, codebook)
   └── par_iter().map(|row| Codec::new().compress(row, config, codebook))
         └── compress(row, config, codebook)
@@ -128,7 +128,7 @@ same `(seed, dim)`, the SVD runs exactly once. Total rotation cost ≈ 750 ms /
 
 ### 3.3 `RotationCache` exists but is disconnected
 
-`tinyquant-core/src/codec/rotation_matrix.rs` contains a `RotationCache` struct
+`tinyquant-core/src/codec/rotation_cache.rs` contains a `RotationCache` struct
 designed to hold pre-computed matrices indexed by `(seed, dim)`. It is never
 called from `batch.rs` or `service.rs`.
 
