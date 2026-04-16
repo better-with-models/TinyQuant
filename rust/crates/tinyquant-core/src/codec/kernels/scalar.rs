@@ -3,18 +3,11 @@
 //!
 //! Each function in this module has a single responsibility:
 //!
-//! * [`quantize_into`]    — nearest-entry quantization (delegates to
-//!                          [`crate::codec::quantize::scalar_quantize`]).
-//! * [`dequantize_into`]  — gather-by-index decode (delegates to
-//!                          [`crate::codec::quantize::scalar_dequantize`]).
-//! * [`cosine`]           — dot-product / norm cosine similarity. Mirrors
-//!                          the `tinyquant-bruteforce` reference but
-//!                          drops the debug-only NaN assertions so the
-//!                          function remains `no_std`-compatible.
+//! * [`quantize_into`] — nearest-entry quantization (delegates to [`crate::codec::quantize::scalar_quantize`]).
+//! * [`dequantize_into`] — gather-by-index decode (delegates to [`crate::codec::quantize::scalar_dequantize`]).
+//! * [`cosine`] — dot-product / norm cosine similarity. Mirrors `tinyquant-bruteforce` but omits debug NaN assertions to stay `no_std`-compatible.
 //! * [`compute_residual_into`] — in-place fp16 residual encoding.
-//! * [`apply_residual_into`]   — in-place fp16 residual decoding
-//!                               (re-exports
-//!                               [`crate::codec::residual::apply_residual_into`]).
+//! * [`apply_residual_into`] — in-place fp16 residual decoding (re-exports [`crate::codec::residual::apply_residual_into`]).
 
 use crate::codec::quantize::{scalar_dequantize, scalar_quantize};
 use crate::codec::residual::apply_residual_into as residual_apply_impl;

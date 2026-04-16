@@ -126,7 +126,7 @@ impl CompressedVector {
     pub fn size_bytes(&self) -> usize {
         let dim = self.dimension as usize;
         let bw = self.bit_width as usize;
-        let packed = (dim * bw + 7) / 8;
+        let packed = (dim * bw).div_ceil(8);
         packed + self.residual.as_ref().map_or(0, |r| r.len())
     }
 }

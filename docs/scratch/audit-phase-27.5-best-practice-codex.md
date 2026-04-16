@@ -99,7 +99,7 @@ Maintenance cost:
 - tie-handling bugs are likely to reappear because the tests encode set parity,
   not result parity
 
-### 4. Medium — `cosine_topk` drifts from the repo's established search semantics for `top_k == 0`
+### 4. Medium — `cosine_topk` diverges from the repo's established search semantics for `top_k == 0`
 
 Files:
 
@@ -107,20 +107,22 @@ Files:
 - `rust/crates/tinyquant-core/src/backend/protocol.rs:95-108`
 - `rust/crates/tinyquant-bruteforce/src/backend.rs:75-78`
 
-The backend protocol says `top_k == 0` is an error. The reference brute-force
-backend returns `Err(BackendError::InvalidTopK)` accordingly. The new GPU API
-returns `Ok(Vec::new())`.
+The shared backend protocol says `top_k == 0` is an error, and the reference
+brute-force backend returns `Err(BackendError::InvalidTopK)` accordingly. The
+new GPU convenience API instead returns `Ok(Vec::new())`.
 
 This is API drift, not just a taste issue:
 
-- adjacent search surfaces now disagree on invalid input behavior
+- adjacent search surfaces in the repo now disagree on invalid input behavior
 - tests do not pin the GPU behavior either way
 - downstream callers have to special-case GPU search semantics that should be
   uniform across backends
 
-If `cosine_topk` is intentionally not a `SearchBackend`, that distinction needs
-to be documented explicitly and tested. Right now it reads like "search, but a
-little different."
+`cosine_topk` is not itself a `SearchBackend` implementation, so this is not a
+formal trait violation. But if it is intentionally meant to differ from the
+repo's normal search semantics, that distinction needs to be documented
+explicitly and tested. Right now it reads like "search, but a little
+different."
 
 ### 5. Low — `backend.rs` is becoming a shotgun-surgery hotspot
 
@@ -181,12 +183,14 @@ Executed in the detached worktree:
 
 Both passed.
 
-Also attempted:
+Also attempted, matching the plan's acceptance criterion:
 
 - `cargo +1.87.0 clippy -p tinyquant-gpu-wgpu --all-targets -- -D warnings`
+- `cargo +1.87.0 clippy -p tinyquant-gpu-wgpu -- -D warnings`
 
-That command is currently blocked by pre-existing `tinyquant-core` lint failures
-outside this branch diff, including:
+Both clippy invocations currently fail before reaching a clean verdict for
+`tinyquant-gpu-wgpu`, because `tinyquant-core` has pre-existing deny-by-default
+lint failures outside this branch diff, including:
 
 - `manual_div_ceil` in
   `rust/crates/tinyquant-core/src/codec/compressed_vector.rs:129`
@@ -195,8 +199,9 @@ outside this branch diff, including:
 - `struct_field_names` in
   `rust/crates/tinyquant-core/src/corpus/aggregate.rs:85`
 
-So the branch cannot presently claim a clean crate-level clippy gate end to end,
-but that failure is not introduced by the Phase 27.5 files themselves.
+So the branch cannot presently claim the plan's clippy acceptance criterion from
+a clean baseline, but that failure is not introduced by the Phase 27.5 files
+themselves.
 
 ## Overall Assessment
 

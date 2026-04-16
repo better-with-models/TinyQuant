@@ -81,6 +81,7 @@ pub struct BatchReport {
 /// corpus.insert(Arc::from("v1"), &vector, None)?;
 /// let events = corpus.drain_events();
 /// ```
+#[allow(clippy::struct_field_names)]
 pub struct Corpus {
     corpus_id: CorpusId,
     config: CodecConfig,

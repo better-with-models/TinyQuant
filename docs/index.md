@@ -212,6 +212,7 @@ as other vault pages.
 
 | Page | Summary | Date |
 |------|---------|------|
+| [[scratch/security-audit-repo-codex-2026-04-16\|Repo Security Audit]] | Static repo-wide security audit: 1 high, 1 medium, and 2 low findings, centered on untrusted `tinyquant-io` deserialization bounds and release-workflow hardening gaps | 2026-04-16 |
 | [[scratch/audit-phase-27.5-best-practice-codex\|Phase 27.5 Best-Practice Audit]] | Worktree-based audit of `feature/phase-27.5-resident-corpus-search`: best-practice drift, shared-contract mismatches, and code smells in `tinyquant-gpu-wgpu` | 2026-04-16 |
 | [[scratch/review-phase-27.5\|Phase 27.5 Claude Code Review]] | Structured review of commit `e78ec8e`: plan compliance, acceptance criteria status, 4 risks, 4 nits, 1 design question | 2026-04-16 |
 | [[scratch/review-phase-27.5-codex\|Phase 27.5 Branch Review]] | Ad hoc review of `feature/phase-27.5-resident-corpus-search` against `develop`: 1 high, 2 medium, 1 low finding | 2026-04-16 |

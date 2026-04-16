@@ -40,4 +40,8 @@ pub enum TinyQuantGpuError {
     /// `prepare_corpus_for_device` was not called before `cosine_topk`.
     #[error("corpus not uploaded; call prepare_corpus_for_device before cosine_topk")]
     CorpusNotPrepared,
+
+    /// `cosine_topk` called with `top_k == 0`.
+    #[error("top_k must be at least 1")]
+    InvalidTopK,
 }

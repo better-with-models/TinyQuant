@@ -78,10 +78,18 @@ tinyquant-gpu-wgpu/
 
 1. Corpus is uploaded once via `WgpuBackend::prepare_corpus_for_device`.
    The `GpuCorpusState` (in `src/prepared.rs`) holds the device buffer.
-2. `cosine_topk` (in `src/backend.rs`) scores a query against the resident
-   corpus, reads back all `n_rows` scores, and selects top-k on the host.
-3. Row indices (0-based integers rendered as strings) serve as `vector_id`s.
-4. Throughput target: ≤ 5 ms for 10 000 rows × dim=1536 on RTX 3060-class
+   Re-uploading always replaces the resident corpus; idempotency tracking is
+   the caller's responsibility.
+2. `cosine_topk` (in `src/backend.rs`) takes `&mut self` — it lazily builds
+   and caches the compute pipeline in `WgpuBackend::search_pipeline` on first
+   call.  Scores a query against the resident corpus, reads back all `n_rows`
+   scores, and selects top-k on the host.
+3. Passing `top_k == 0` returns `Err(TinyQuantGpuError::InvalidTopK)`.
+4. Results are sorted descending by score, then ascending by `vector_id`
+   (string-numeric row index) as a tiebreaker — matching the
+   `SearchResult: Ord` contract defined in `tinyquant-core`.
+5. Row indices (0-based integers rendered as strings) serve as `vector_id`s.
+6. Throughput target: ≤ 5 ms for 10 000 rows × dim=1536 on RTX 3060-class
    hardware (FR-GPU-004).  Run `cargo bench -p tinyquant-gpu-wgpu` on a GPU
    runner to collect evidence.
 

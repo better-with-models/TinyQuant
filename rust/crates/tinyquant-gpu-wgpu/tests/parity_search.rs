@@ -83,6 +83,14 @@ fn gpu_top10_overlaps_cpu_top10() {
         normalize(&mut query);
 
         let gpu_results = backend.cosine_topk(&query, 10).expect("cosine_topk");
+
+        // Results must be sorted descending by score (SearchResult ordering contract).
+        let scores: Vec<f32> = gpu_results.iter().map(|r| r.score).collect();
+        assert!(
+            scores.windows(2).all(|w| w[0] >= w[1]),
+            "query {q}: GPU results not sorted descending by score: {scores:?}"
+        );
+
         let cpu_results = cpu.search(&query, 10).expect("cpu search");
 
         let gpu_ids: std::collections::HashSet<Arc<str>> =
@@ -131,6 +139,11 @@ fn gpu_cosine_topk_returns_correct_count() {
         10,
         "must return exactly 10 results from a {n_corpus}-row corpus"
     );
+    let scores: Vec<f32> = results.iter().map(|r| r.score).collect();
+    assert!(
+        scores.windows(2).all(|w| w[0] >= w[1]),
+        "k=10 results not sorted descending: {scores:?}"
+    );
 
     // top_k > n_corpus — must return all rows.
     let results_all = backend.cosine_topk(&query, 50).expect("cosine_topk k=50");
@@ -138,5 +151,10 @@ fn gpu_cosine_topk_returns_correct_count() {
         results_all.len(),
         n_corpus,
         "top_k > n_corpus must return all {n_corpus} rows"
+    );
+    let scores_all: Vec<f32> = results_all.iter().map(|r| r.score).collect();
+    assert!(
+        scores_all.windows(2).all(|w| w[0] >= w[1]),
+        "k>n results not sorted descending: {scores_all:?}"
     );
 }

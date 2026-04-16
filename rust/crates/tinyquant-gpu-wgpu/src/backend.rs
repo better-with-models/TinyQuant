@@ -48,13 +48,15 @@ pub struct WgpuBackend {
     ctx: Option<WgpuContext>,
     /// GPU-resident corpus state; `None` until `prepare_corpus_for_device` is called.
     corpus_state: Option<GpuCorpusState>,
+    /// Lazily-cached cosine top-k compute pipeline.
+    search_pipeline: Option<wgpu::ComputePipeline>,
 }
 
 impl WgpuBackend {
     /// Initialise the backend. Returns `Err(NoAdapter)` if no wgpu adapter is present.
     pub async fn new() -> Result<Self, TinyQuantGpuError> {
         let ctx = WgpuContext::new().await?;
-        Ok(Self { ctx: Some(ctx), corpus_state: None })
+        Ok(Self { ctx: Some(ctx), corpus_state: None, search_pipeline: None })
     }
 
     /// No-adapter stub — `is_available()` returns `false`.
@@ -66,7 +68,7 @@ impl WgpuBackend {
     /// should always prefer `WgpuBackend::new().await` and inspect `is_available()`.
     #[doc(hidden)]
     pub fn unavailable() -> Self {
-        Self { ctx: None, corpus_state: None }
+        Self { ctx: None, corpus_state: None, search_pipeline: None }
     }
 
     /// Human-readable adapter name for diagnostics.
@@ -87,9 +89,10 @@ impl WgpuBackend {
     ///
     /// Must be called before [`cosine_topk`](Self::cosine_topk).
     ///
-    /// **Idempotency:** if the same shape (`n_rows × cols`) is already uploaded,
-    /// this call returns `Ok(())` without re-uploading.  To replace a corpus
-    /// with a different shape, call this method again with the new corpus.
+    /// **Re-upload:** this call always re-uploads the corpus, even when the shape
+    /// matches a previously uploaded corpus.  Callers that want to avoid redundant
+    /// GPU transfers must manage idempotency themselves (e.g. by tracking whether
+    /// the corpus slice content has changed).
     ///
     /// # Errors
     ///
@@ -102,13 +105,6 @@ impl WgpuBackend {
         cols: usize,
     ) -> Result<(), TinyQuantGpuError> {
         let ctx = self.ctx.as_ref().ok_or(TinyQuantGpuError::NoAdapter)?;
-
-        // Idempotency: skip re-upload when shape matches.
-        if let Some(ref s) = self.corpus_state {
-            if s.n_rows == n_rows && s.cols == cols {
-                return Ok(());
-            }
-        }
 
         let expected = n_rows * cols;
         if corpus.len() != expected {
@@ -146,19 +142,28 @@ impl WgpuBackend {
     /// - [`TinyQuantGpuError::CorpusNotPrepared`] — corpus not uploaded yet.
     /// - [`TinyQuantGpuError::DimensionMismatch`] — `query.len() ≠ corpus cols`.
     /// - [`TinyQuantGpuError::BufferMap`] — GPU readback failed.
+    /// - [`TinyQuantGpuError::InvalidTopK`] — `top_k == 0`.
     pub fn cosine_topk(
-        &self,
+        &mut self,
         query: &[f32],
         top_k: usize,
     ) -> Result<Vec<SearchResult>, TinyQuantGpuError> {
-        let ctx = self.ctx.as_ref().ok_or(TinyQuantGpuError::NoAdapter)?;
-        let corpus = self
-            .corpus_state
-            .as_ref()
-            .ok_or(TinyQuantGpuError::CorpusNotPrepared)?;
+        // Reject top_k == 0 to match the shared SearchBackend protocol contract.
+        if top_k == 0 {
+            return Err(TinyQuantGpuError::InvalidTopK);
+        }
 
-        let n_rows = corpus.n_rows;
-        let cols = corpus.cols;
+        // Validate adapter and corpus exist, extract shape (short-lived borrows).
+        if self.ctx.is_none() {
+            return Err(TinyQuantGpuError::NoAdapter);
+        }
+        let (n_rows, cols) = {
+            let corpus = self
+                .corpus_state
+                .as_ref()
+                .ok_or(TinyQuantGpuError::CorpusNotPrepared)?;
+            (corpus.n_rows, corpus.cols)
+        };
 
         if query.len() != cols {
             return Err(TinyQuantGpuError::DimensionMismatch {
@@ -173,11 +178,17 @@ impl WgpuBackend {
             return Ok(Vec::new());
         }
 
+        // Lazily build and cache the search pipeline.
+        if self.search_pipeline.is_none() {
+            let pipeline = build_cosine_topk_pipeline(self.ctx.as_ref().unwrap());
+            self.search_pipeline = Some(pipeline);
+        }
+        let pipeline = self.search_pipeline.as_ref().unwrap();
+
+        let ctx = self.ctx.as_ref().unwrap();
+        let corpus = self.corpus_state.as_ref().unwrap();
         let device = &ctx.device;
         let queue = &ctx.queue;
-
-        // Build pipeline.
-        let pipeline = build_cosine_topk_pipeline(ctx);
 
         // Upload query vector.
         let query_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -196,12 +207,7 @@ impl WgpuBackend {
         });
 
         // Readback staging buffer.
-        let readback_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("tinyquant/search/readback"),
-            size: scores_size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        let readback_buf = create_readback_buf(device, "tinyquant/search/readback", scores_size);
 
         // Uniform dims — must be 16-byte aligned; pad to [n_rows, dim, top_k, _pad].
         let dims: [u32; 4] = [n_rows as u32, cols as u32, top_k as u32, 0u32];
@@ -245,7 +251,7 @@ impl WgpuBackend {
                 label: Some("tinyquant/search/cosine_topk"),
                 timestamp_writes: None,
             });
-            pass.set_pipeline(&pipeline);
+            pass.set_pipeline(pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             // workgroup_size(256): dispatch ceil(n_rows / 256) workgroups.
             let wx = (n_rows as u32).div_ceil(256);
@@ -256,42 +262,27 @@ impl WgpuBackend {
         queue.submit(std::iter::once(encoder.finish()));
 
         // Readback scores.
-        let (tx, rx) = std::sync::mpsc::channel();
-        let readback_slice = readback_buf.slice(..);
-        readback_slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = tx.send(result);
-        });
-        device.poll(wgpu::Maintain::Wait);
-        rx.recv().map_err(|_| wgpu::BufferAsyncError)??;
-
-        let mapped = readback_slice.get_mapped_range();
+        poll_map_read(device, &readback_buf)?;
+        let mapped = readback_buf.slice(..).get_mapped_range();
         let raw_scores: &[f32] = bytemuck::cast_slice::<u8, f32>(&mapped);
 
-        // Host-side top-k: collect (score, row_index), sort descending, truncate.
-        let mut scored: Vec<(f32, usize)> = raw_scores
+        // Build SearchResult objects, then sort using the shared SearchResult
+        // ordering contract (descending score, vector_id ascending tiebreaker)
+        // so GPU results agree with CPU backends on equal-score cases.
+        let mut results: Vec<SearchResult> = raw_scores
             .iter()
             .copied()
             .enumerate()
-            .map(|(i, s)| (s, i))
-            .collect();
-        // Sort descending by score; NaN sorts after finite values.
-        scored.sort_by(|a, b| {
-            b.0.partial_cmp(&a.0)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
-        scored.truncate(effective_k);
-
-        drop(mapped);
-        readback_buf.unmap();
-
-        // Map row indices to SearchResult using numeric string ids.
-        let results: Vec<SearchResult> = scored
-            .into_iter()
-            .map(|(score, row)| SearchResult {
-                vector_id: Arc::from(row.to_string().as_str()),
+            .map(|(row, score)| SearchResult {
+                vector_id: Arc::from(row.to_string()),
                 score,
             })
             .collect();
+        results.sort();
+        results.truncate(effective_k);
+
+        drop(mapped);
+        readback_buf.unmap();
 
         Ok(results)
     }
@@ -391,12 +382,7 @@ impl ComputeBackend for WgpuBackend {
         // -----------------------------------------------------------------
         // Allocate readback staging buffer.
         // -----------------------------------------------------------------
-        let readback_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("tinyquant/compress/readback"),
-            size: indices_size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        let readback_buf = create_readback_buf(device, "tinyquant/compress/readback", indices_size);
 
         // -----------------------------------------------------------------
         // Uniform buffers for shader dims.
@@ -513,15 +499,8 @@ impl ComputeBackend for WgpuBackend {
         // -----------------------------------------------------------------
         // Readback: map and read indices.
         // -----------------------------------------------------------------
-        let (tx, rx) = std::sync::mpsc::channel();
-        let readback_slice = readback_buf.slice(..);
-        readback_slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = tx.send(result);
-        });
-        device.poll(wgpu::Maintain::Wait);
-        rx.recv().map_err(|_| wgpu::BufferAsyncError)??;
-
-        let mapped = readback_slice.get_mapped_range();
+        poll_map_read(device, &readback_buf)?;
+        let mapped = readback_buf.slice(..).get_mapped_range();
         // indices are u32 on GPU, one per element (rows × cols).
         let u32_indices: &[u32] = bytemuck::cast_slice::<u8, u32>(&mapped);
 
@@ -681,12 +660,7 @@ impl ComputeBackend for WgpuBackend {
         // -----------------------------------------------------------------
         // Allocate readback staging buffer.
         // -----------------------------------------------------------------
-        let readback_buf = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("tinyquant/decompress/readback"),
-            size: values_size,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
+        let readback_buf = create_readback_buf(device, "tinyquant/decompress/readback", values_size);
 
         // -----------------------------------------------------------------
         // Uniform buffer for rotate dims.
@@ -789,15 +763,8 @@ impl ComputeBackend for WgpuBackend {
         // -----------------------------------------------------------------
         // Readback.
         // -----------------------------------------------------------------
-        let (tx, rx) = std::sync::mpsc::channel();
-        let readback_slice = readback_buf.slice(..);
-        readback_slice.map_async(wgpu::MapMode::Read, move |result| {
-            let _ = tx.send(result);
-        });
-        device.poll(wgpu::Maintain::Wait);
-        rx.recv().map_err(|_| wgpu::BufferAsyncError)??;
-
-        let mapped = readback_slice.get_mapped_range();
+        poll_map_read(device, &readback_buf)?;
+        let mapped = readback_buf.slice(..).get_mapped_range();
         let result_f32: &[f32] = bytemuck::cast_slice::<u8, f32>(&mapped);
         out.copy_from_slice(result_f32);
 
@@ -895,5 +862,39 @@ impl ComputeBackend for WgpuBackend {
 
         Ok(())
     }
+}
+
+/// Allocate a CPU-mappable staging buffer for GPU readback.
+///
+/// The returned buffer has `COPY_DST | MAP_READ` usage and is sized
+/// exactly `size` bytes.
+fn create_readback_buf(device: &wgpu::Device, label: &str, size: u64) -> wgpu::Buffer {
+    device.create_buffer(&wgpu::BufferDescriptor {
+        label: Some(label),
+        size,
+        usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+        mapped_at_creation: false,
+    })
+}
+
+/// Map `buf` for reading and block until the GPU signals completion.
+///
+/// After this returns `Ok(())` the caller may call
+/// `buf.slice(..).get_mapped_range()` to access the data.  The caller is
+/// responsible for calling `buf.unmap()` when done.
+///
+/// # Errors
+///
+/// Returns the wrapped [`wgpu::BufferAsyncError`] if the map fails.
+fn poll_map_read(
+    device: &wgpu::Device,
+    buf: &wgpu::Buffer,
+) -> Result<(), TinyQuantGpuError> {
+    let (tx, rx) = std::sync::mpsc::channel::<Result<(), wgpu::BufferAsyncError>>();
+    buf.slice(..).map_async(wgpu::MapMode::Read, move |result| {
+        let _ = tx.send(result);
+    });
+    device.poll(wgpu::Maintain::Wait);
+    Ok(rx.recv().map_err(|_| wgpu::BufferAsyncError)??)
 }
 

@@ -33,6 +33,18 @@ fn bench_cosine_topk(c: &mut Criterion) {
         .map(|i| (i as f32 * 0.001_f32).sin())
         .collect();
 
+    // Pre-normalise each corpus row so the dot product equals cosine similarity,
+    // matching the documented pre-normalisation contract for the search kernel.
+    let mut corpus = corpus;
+    for row in 0..n_corpus {
+        let start = row * dim;
+        let end = start + dim;
+        let norm: f32 = corpus[start..end].iter().map(|x| x * x).sum::<f32>().sqrt();
+        if norm > 0.0_f32 {
+            corpus[start..end].iter_mut().for_each(|x| *x /= norm);
+        }
+    }
+
     backend
         .prepare_corpus_for_device(&corpus, n_corpus, dim)
         .expect("prepare_corpus_for_device");
