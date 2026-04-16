@@ -489,8 +489,29 @@ Action:       Tests are planned in docs/design/rust/testing-strategy.md §GPU te
 | GAP-GPU-001 | cargo tree grep for GPU deps | **P3** | Indirect enforcement only |
 | GAP-GPU-002–007 | GPU crates not implemented | **P3** | Phase 27+ planned |
 
+## Closing-phase assignment
+
+Each gap is assigned to a roadmap phase. See [[roadmap|Roadmap]] §Gap remediation plan for the full rationale and per-phase scope.
+
+| Gap | Closing phase |
+|---|---|
+| GAP-BACK-004, GAP-BACK-005 | Phase 21.5 |
+| GAP-QUAL-004 | Phase 26 |
+| GAP-COMP-006, GAP-COMP-007, GAP-DECOMP-003 | Phase 21.5 |
+| GAP-CORP-002, GAP-CORP-007 | Phase 21.5 |
+| GAP-BACK-003 | Phase 21.5 |
+| GAP-JS-004 | Phase 25.5 |
+| GAP-COMP-004, GAP-CORP-001, GAP-CORP-006, GAP-SER-003 | Phase 21.5 |
+| GAP-DECOMP-004 | Phase 26 |
+| GAP-QUAL-001–003,005,007,008 | Phase 26 |
+| GAP-JS-002, GAP-JS-006, GAP-JS-007, GAP-JS-008, GAP-JS-009, GAP-JS-010 | Phase 25.5 |
+| GAP-BACK-001 | Phase 21.5 |
+| GAP-GPU-001 | Phase 27 |
+| GAP-GPU-002–007 | Phases 27–28 |
+
 ## See also
 
 - [[requirements/README|Requirements Overview]]
+- [[roadmap|Roadmap]] §Gap remediation plan
 - [[design/rust/testing-strategy|Testing Strategy]]
 - [[design/rust/risks-and-mitigations|Risks and Mitigations]]
