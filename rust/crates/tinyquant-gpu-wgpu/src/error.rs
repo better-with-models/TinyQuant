@@ -24,4 +24,8 @@ pub enum TinyQuantGpuError {
     /// `prepare_for_device` was not called before `compress_batch`.
     #[error("PreparedCodec has no GPU state; call prepare_for_device first")]
     NotPrepared,
+
+    /// A codec-layer error occurred while constructing a `CompressedVector`.
+    #[error("codec error: {0}")]
+    Codec(#[from] tinyquant_core::errors::CodecError),
 }

@@ -115,7 +115,7 @@ impl ComputeBackend for WgpuBackend {
         // -----------------------------------------------------------------
         // Upload input to GPU.
         // -----------------------------------------------------------------
-        let input_bytes = bytemuck_cast_slice_f32(input);
+        let input_bytes = bytemuck::cast_slice::<f32, u8>(input);
         let input_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("tinyquant/compress/input"),
             contents: input_bytes,
@@ -160,7 +160,7 @@ impl ComputeBackend for WgpuBackend {
         let rotate_dims: [u32; 2] = [rows as u32, cols as u32];
         let rotate_dims_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("tinyquant/compress/rotate_dims"),
-            contents: bytemuck_cast_slice_u32(&rotate_dims),
+            contents: bytemuck::cast_slice::<u32, u8>(&rotate_dims),
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
@@ -168,7 +168,7 @@ impl ComputeBackend for WgpuBackend {
         let quant_dims: [u32; 2] = [(rows * cols) as u32, n_entries];
         let quant_dims_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("tinyquant/compress/quant_dims"),
-            contents: bytemuck_cast_slice_u32(&quant_dims),
+            contents: bytemuck::cast_slice::<u32, u8>(&quant_dims),
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
@@ -277,7 +277,7 @@ impl ComputeBackend for WgpuBackend {
 
         let mapped = readback_slice.get_mapped_range();
         // indices are u32 on GPU, one per element (rows × cols).
-        let u32_indices: &[u32] = cast_slice_u32(&mapped);
+        let u32_indices: &[u32] = bytemuck::cast_slice::<u8, u32>(&mapped);
 
         // -----------------------------------------------------------------
         // Construct Vec<CompressedVector>.
@@ -298,10 +298,7 @@ impl ComputeBackend for WgpuBackend {
                 dim,
                 bit_width,
             )
-            .map_err(|_| TinyQuantGpuError::DimensionMismatch {
-                expected: cols,
-                got: cols,
-            })?;
+            .map_err(TinyQuantGpuError::Codec)?;
             result.push(cv);
         }
 
@@ -360,7 +357,7 @@ impl ComputeBackend for WgpuBackend {
         // -----------------------------------------------------------------
         // Upload indices to GPU.
         // -----------------------------------------------------------------
-        let indices_bytes = bytemuck_cast_slice_u32(&flat_indices);
+        let indices_bytes = bytemuck::cast_slice::<u32, u8>(&flat_indices);
         let indices_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("tinyquant/decompress/indices"),
             contents: indices_bytes,
@@ -404,7 +401,7 @@ impl ComputeBackend for WgpuBackend {
         let rotate_dims: [u32; 2] = [rows as u32, cols as u32];
         let rotate_dims_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("tinyquant/decompress/rotate_dims"),
-            contents: bytemuck_cast_slice_u32(&rotate_dims),
+            contents: bytemuck::cast_slice::<u32, u8>(&rotate_dims),
             usage: wgpu::BufferUsages::UNIFORM,
         });
 
@@ -507,7 +504,7 @@ impl ComputeBackend for WgpuBackend {
         rx.recv().map_err(|_| wgpu::BufferAsyncError)??;
 
         let mapped = readback_slice.get_mapped_range();
-        let result_f32: &[f32] = cast_slice_f32(&mapped);
+        let result_f32: &[f32] = bytemuck::cast_slice::<u8, f32>(&mapped);
         out.copy_from_slice(result_f32);
 
         drop(mapped);
@@ -564,7 +561,7 @@ impl ComputeBackend for WgpuBackend {
         let rotation_buf = Arc::new(device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("tinyquant/rotation_T"),   // R^T for forward pass
-                contents: bytemuck_cast_slice_f32(&rot_t_f32),
+                contents: bytemuck::cast_slice::<f32, u8>(&rot_t_f32),
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             },
         ));
@@ -572,7 +569,7 @@ impl ComputeBackend for WgpuBackend {
         let rotation_t_buf = Arc::new(device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("tinyquant/rotation"),     // R for inverse pass
-                contents: bytemuck_cast_slice_f32(&rot_f32),
+                contents: bytemuck::cast_slice::<f32, u8>(&rot_f32),
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             },
         ));
@@ -585,7 +582,7 @@ impl ComputeBackend for WgpuBackend {
         let codebook_buf = Arc::new(device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
                 label: Some("tinyquant/codebook"),
-                contents: bytemuck_cast_slice_f32(entries),
+                contents: bytemuck::cast_slice::<f32, u8>(entries),
                 usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
             },
         ));
@@ -606,46 +603,3 @@ impl ComputeBackend for WgpuBackend {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Safe byte-casting helpers (avoid bytemuck dependency).
-// ---------------------------------------------------------------------------
-
-/// Cast a `&[f32]` to `&[u8]` for buffer uploads.
-fn bytemuck_cast_slice_f32(s: &[f32]) -> &[u8] {
-    // Safety: f32 has no padding, alignment is compatible with u8.
-    unsafe {
-        std::slice::from_raw_parts(
-            s.as_ptr().cast::<u8>(),
-            s.len() * std::mem::size_of::<f32>(),
-        )
-    }
-}
-
-/// Cast a `&[u32]` to `&[u8]` for buffer uploads.
-fn bytemuck_cast_slice_u32(s: &[u32]) -> &[u8] {
-    // Safety: u32 has no padding, alignment is compatible with u8.
-    unsafe {
-        std::slice::from_raw_parts(
-            s.as_ptr().cast::<u8>(),
-            s.len() * std::mem::size_of::<u32>(),
-        )
-    }
-}
-
-/// Cast a mapped `&[u8]` readback to `&[u32]`.
-fn cast_slice_u32(bytes: &[u8]) -> &[u32] {
-    assert_eq!(bytes.len() % 4, 0, "buffer not u32-aligned");
-    // Safety: buffer was allocated and filled as u32 data.
-    unsafe {
-        std::slice::from_raw_parts(bytes.as_ptr().cast::<u32>(), bytes.len() / 4)
-    }
-}
-
-/// Cast a mapped `&[u8]` readback to `&[f32]`.
-fn cast_slice_f32(bytes: &[u8]) -> &[f32] {
-    assert_eq!(bytes.len() % 4, 0, "buffer not f32-aligned");
-    // Safety: buffer was allocated and filled as f32 data.
-    unsafe {
-        std::slice::from_raw_parts(bytes.as_ptr().cast::<f32>(), bytes.len() / 4)
-    }
-}

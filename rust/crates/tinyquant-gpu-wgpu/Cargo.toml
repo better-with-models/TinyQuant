@@ -10,6 +10,7 @@ tinyquant-core = { workspace = true }
 wgpu           = { version = "22", features = ["wgsl"] }
 tokio          = { version = "1", features = ["rt"] }
 thiserror      = { workspace = true }
+bytemuck       = { workspace = true }
 
 [dev-dependencies]
 tokio          = { version = "1", features = ["rt", "macros"] }
