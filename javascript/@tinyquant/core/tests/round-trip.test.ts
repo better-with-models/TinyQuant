@@ -1,13 +1,18 @@
 // tests/round-trip.test.ts
 //
-// End-to-end round-trip: generate 10 000 uniform f32 vectors of dim
-// 128, train a codebook on the first 1 000, then compress + decompress
-// every vector and accumulate squared error. Asserts MSE < 1e-2.
+// End-to-end round-trip fidelity for the N-API codec binding.
 //
-// Why hand-rolled LCG: pulling a PRNG dep into a public package
-// with transitive install cost for one test is overkill. 64-bit
-// mulberry32-style generators give plenty of entropy for stress
-// testing a codec round-trip.
+// Test cases:
+//   (a) N=10 000, dim=128 — baseline codec fidelity gate (Phase 25).
+//   (b) N=1 000,  dim=768 — GAP-JS-002: higher-dim regression guard.
+//       A bug in the N-API Float32Array bridge for large dims would be
+//       invisible with dim=128 alone. dim=768 is the smallest typical
+//       embedding dimension where such bugs appear.
+//
+// Why hand-rolled PRNGs: pulling a PRNG dependency into a public package
+// for a single test adds transitive install cost with no benefit.
+// mulberry32 (dim=128 test) and xorshift32 (dim=768 test) both give
+// adequate entropy for codec fidelity validation.
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -105,10 +110,10 @@ describe("@better-with-models/tinyquant-core — round-trip", () => {
       }
     }
 
-    const mse = sumSq / count;
+    const meanMse = sumSq / count;
     assert.ok(
-      mse < 1e-2,
-      `expected MSE < 1e-2, got ${mse.toExponential(3)} over ${count} scalars`,
+      meanMse < 1e-2,
+      `expected MSE < 1e-2, got ${meanMse.toExponential(3)} over ${count} scalars`,
     );
   });
 

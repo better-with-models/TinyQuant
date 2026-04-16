@@ -1,13 +1,16 @@
 // tests/corpus.test.ts
 //
-// Fixture-driven corpus parity: for every scenario emitted by
-// `scripts/packaging/generate_js_parity_fixtures.py`, construct the
-// same corpus in TS and assert the vector count, contained ids, and
-// event types match the Python oracle.
+// Two describe blocks:
 //
-// The underlying numbers come from the Rust core (the Python wheel
-// is the Rust-backed fat wheel via the Phase 24.1 shim), so this
-// test also functions as a self-parity check for the napi-rs binding.
+//   (1) "corpus scenarios from Python oracle" — fixture-driven parity for
+//       every scenario emitted by scripts/packaging/generate_js_parity_fixtures.py.
+//       Asserts vector count, contained ids, and event types match the Python
+//       oracle. Because the Python wheel is backed by the same Rust core (Phase 24.1
+//       shim), this also functions as a self-parity check for the napi-rs binding.
+//
+//   (2) "corpus policy invariants (GAP-JS-004)" — closes the gap identified in
+//       testing-gaps.md §GAP-JS-004: config-hash distinctness, compressionPolicy
+//       immutability, and FP16 round-trip precision through the N-API boundary.
 
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
@@ -253,9 +256,14 @@ describe("@better-with-models/tinyquant-core — corpus policy invariants (GAP-J
     );
   });
 
-  // GAP-JS-004 (2/3): compressionPolicy is stable after insertion — the corpus
-  // retains the policy set at construction and no mutation API exists.
-  it("compressionPolicy remains stable after insertion through N-API", () => {
+  // GAP-JS-004 (2/3): compressionPolicy is immutable after insertion.
+  //
+  // The N-API binding does not expose a setCompressionPolicy() mutation method.
+  // We verify immutability in two ways:
+  //   (a) accessor methods return correct values after insertion (smoke),
+  //   (b) direct property assignment does not change the policy value
+  //       (guards against an accidental writable property on the binding object).
+  it("compressionPolicy is immutable after insertion through N-API", () => {
     const cfg = new CodecConfig({ bitWidth: 4, seed: 42n, dimension: DIM, residualEnabled: false });
     const cal = deterministicCalibration(DIM, NTRAIN, 42);
     const cb = Codebook.train(cal, cfg);
@@ -268,11 +276,28 @@ describe("@better-with-models/tinyquant-core — corpus policy invariants (GAP-J
     corpus.insert("v0", seededVector(DIM, 0));
     corpus.insert("v1", seededVector(DIM, 1));
 
+    // (a) policy accessor methods return expected values.
     assert.equal(corpus.compressionPolicy.kind, "compress");
     // requiresCodec() must return true for the COMPRESS policy.
     assert.equal(corpus.compressionPolicy.requiresCodec(), true);
     // storageDtype() must be uint8 (codec path).
     assert.equal(corpus.compressionPolicy.storageDtype(), "uint8");
+
+    // (b) direct property write must not stick.
+    // In strict mode a sealed/frozen property throws TypeError; in sloppy mode
+    // the assignment is silently ignored. Either outcome is acceptable — the
+    // invariant is that the policy does not change.
+    try {
+      (corpus as unknown as Record<string, unknown>)["compressionPolicy"] =
+        CompressionPolicy.PASSTHROUGH;
+    } catch {
+      // strict-mode TypeError from a non-writable property: expected and acceptable.
+    }
+    assert.equal(
+      corpus.compressionPolicy.kind,
+      "compress",
+      "compressionPolicy must not change via direct property write",
+    );
   });
 
   // GAP-JS-004 (3/3): FP16 policy round-trip precision through N-API.
