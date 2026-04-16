@@ -90,4 +90,13 @@ impl PreparedCodec {
     pub fn has_gpu_state(&self) -> bool {
         self.gpu_state.is_some()
     }
+
+    /// Borrow the attached GPU state, if any.
+    ///
+    /// Called by GPU backends to retrieve device-resident buffers.
+    /// Application code should not call this directly.
+    #[inline]
+    pub fn gpu_state(&self) -> Option<&(dyn core::any::Any + Send + Sync)> {
+        self.gpu_state.as_deref()
+    }
 }

@@ -20,4 +20,8 @@ pub enum TinyQuantGpuError {
     /// Buffer mapping failed.
     #[error("buffer map failed: {0}")]
     BufferMap(#[from] wgpu::BufferAsyncError),
+
+    /// `prepare_for_device` was not called before `compress_batch`.
+    #[error("PreparedCodec has no GPU state; call prepare_for_device first")]
+    NotPrepared,
 }
