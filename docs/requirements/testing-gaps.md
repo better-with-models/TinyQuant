@@ -169,6 +169,27 @@ Action:       Confirm or add in tinyquant-core/tests/corpus_aggregate.rs:
                 }
 ```
 
+### GAP-JS-004 — Corpus policy invariants not exercised through N-API boundary
+
+```
+Requirement:  FR-JS-004
+Gap:          corpus.test.ts does not test cross-config insertion rejection
+              (FR-CORP-003), FP16 policy precision bound (FR-CORP-006), or
+              compression policy immutability after first insertion (FR-CORP-007).
+              These invariants are tested in the Rust and Python layers but not
+              through the tinyquant-js N-API binding.
+Current:      [Rust]   tinyquant-core/tests/corpus_aggregate.rs (policy guards) ✅
+              [Python] tests/corpus/test_corpus.py (policy guards) ✅
+              [Node]   javascript/@tinyquant/core/tests/corpus.test.ts (lifecycle only)
+Action:       Add to corpus.test.ts:
+              (1) Insert a vector compressed with config A; attempt to insert one
+                  with config B; assert TinyQuantError with code "ConfigMismatchError".
+              (2) After one insertion, attempt to change compressionPolicy; assert
+                  TinyQuantError with code "PolicyImmutableError".
+              (3) FP16 policy: insert 100 vectors; decompressAll; measure element-wise
+                  absolute difference against originals; assert max delta ≤ 2^-13 x |v|.
+```
+
 ### GAP-BACK-003 — pgvector adapter dimensionality (offline test)
 
 ```
@@ -285,6 +306,94 @@ Action:       The existing test-mmap-dhat CI job (rust-ci.yml) runs:
               increment bound.
 ```
 
+### GAP-JS-002 — Round-trip test covers dim=128 only
+
+```
+Requirement:  FR-JS-002
+Gap:          round-trip.test.ts tests N=10 000, dim=128 only. No JS test covers
+              dim=768 (the production gold corpus dimension) or dim=1536 (the Rust
+              perf target), so a codec regression at higher dimension would be
+              invisible in the Node package.
+Current:      [Node]   javascript/@tinyquant/core/tests/round-trip.test.ts (dim=128 only)
+              [Rust]   tinyquant-bench/benches/compress.rs (dim=1536) ✅
+              [Python] tests/calibration/test_score_fidelity.py (dim=768) ✅
+Action:       Add a second it() block in round-trip.test.ts:
+                N=1000, dim=768, bit_width=4, residual=false, seed 0xdeadbeef,
+                codebook trained on first 256 vectors; assert MSE < 1e-2.
+```
+
+### GAP-JS-006 — musl Linux binary not bundled
+
+```
+Requirement:  FR-JS-006
+Gap:          The loader correctly maps linux + musl → "linux-x64-musl" / "linux-arm64-musl"
+              binary keys, but no corresponding .node files are bundled. Alpine Linux
+              users receive the missing-binary error (a clear message, not a crash), but
+              they cannot use the package.
+Current:      [Node]   loader.test.ts (unit tests covering 5 glibc platforms) ✅
+              Missing:  linux-x64-musl.node, linux-arm64-musl.node
+Action:       Add musl cross-compilation to the napi build matrix:
+                napi build --platform --release --target x86_64-unknown-linux-musl
+              Wire as a new CI matrix cell in js-ci.yml. Coordinate with Phase 27
+              (GPU crates also need a musl-clean build).
+```
+
+### GAP-JS-007 — Sub-path ESM exports not tested
+
+```
+Requirement:  FR-JS-007
+Gap:          No test imports from the sub-path exports (/codec, /corpus, /backend).
+              The test suite imports from the package root only. A broken sub-path
+              export entry in package.json would go undetected.
+Current:      [Node]   tests/round-trip.test.ts, parity.test.ts (root "." export only)
+Action:       Add a smoke test that imports CodecConfig from "@.../tinyquant-core/codec",
+              Corpus from "/corpus", and BruteForceBackend from "/backend"; assert each
+              is a constructor. One new test file (esm-subpath-smoke.test.ts) is sufficient.
+```
+
+### GAP-JS-008 — No CI package-size gate
+
+```
+Requirement:  FR-JS-008
+Gap:          No CI step runs `npm pack --dry-run` and asserts the gzipped and unpacked
+              size thresholds. Adding a musl binary or a second architecture would push
+              the package toward the 10 MB / 50 MB budget silently.
+Current:      Size documented in Phase 25 plan (~4 MB gzip / ~8.5 MB uncompressed) but
+              not automatically enforced.
+Action:       Add to js-ci.yml a step after `npm run build`:
+                npm pack --dry-run 2>&1 | grep -E "package size|unpacked size"
+              Parse the output and assert gzip < 10 MB AND unpacked < 50 MB.
+              Fail the job if either threshold is exceeded.
+```
+
+### GAP-JS-009 — Version consistency check runs at release only, not on PRs
+
+```
+Requirement:  FR-JS-009
+Gap:          verify-version is a step in js-release.yml (triggered by v* tags). It does
+              not run on PRs or pushes to main, so a PR that bumps package.json but not
+              Cargo.toml (or vice versa) would merge cleanly and only fail at release.
+Current:      [CI]  .github/workflows/js-release.yml::verify-version (release only)
+Action:       Extract the version comparison logic into a reusable composite action or
+              script (scripts/check_version_consistency.sh); call it in js-ci.yml on
+              every PR that touches package.json or Cargo.toml.
+```
+
+### GAP-JS-010 — No-subprocess loader check may not be wired in CI
+
+```
+Requirement:  FR-JS-010
+Gap:          scripts/check_no_exec.sh is documented in the Phase 25 plan as a CI step
+              in js-ci.yml, but it is not confirmed that the step was added during
+              Phase 25 implementation.
+Current:      [CI]  scripts/check_no_exec.sh (documented, wiring unverified)
+Action:       Verify that js-ci.yml contains a step calling check_no_exec.sh. If absent,
+              add:
+                - name: Verify loader has no subprocess invocations
+                  run: bash scripts/check_no_exec.sh javascript/@tinyquant/core/dist
+              Run this step after the build step so it checks the compiled output.
+```
+
 ### GAP-QUAL-001 through GAP-QUAL-003 — Rust calibration gates are #[ignore]
 
 ```
@@ -363,12 +472,19 @@ Action:       Tests are planned in docs/design/rust/testing-strategy.md §GPU te
 | GAP-CORP-002 | CodecConfig frozen at Corpus level (Rust) | **P1** | Python only |
 | GAP-CORP-007 | Policy immutability (Rust confirmation) | **P1** | Unconfirmed |
 | GAP-BACK-003 | pgvector dimensionality (offline) | **P1** | Live-db gated |
+| GAP-JS-004 | Corpus policy invariants via N-API | **P1** | Rust/Python only |
 | GAP-COMP-004 | Residual length in compress (Rust) | **P2** | Unit ≠ integration |
 | GAP-DECOMP-004 | Residual improves MSE (Rust non-ignored) | **P2** | All #[ignore] |
 | GAP-CORP-001 | Corpus ID uniqueness | **P2** | Existence checked, not uniqueness |
 | GAP-CORP-006 | FP16 precision bound | **P2** | Format checked, not bound |
 | GAP-SER-003 | Zero-copy heap measurement | **P2** | Structural, not measured |
 | GAP-QUAL-001–003,005,007,008 | Rust calibration gates #[ignore] | **P2** | Python gates active |
+| GAP-JS-002 | Round-trip test dim=128 only | **P2** | dim=768/1536 not covered |
+| GAP-JS-006 | musl Linux binary not bundled | **P2** | Loader handles gracefully |
+| GAP-JS-007 | Sub-path ESM exports not tested | **P2** | Root export only |
+| GAP-JS-008 | No CI package-size gate | **P2** | Budget met but unguarded |
+| GAP-JS-009 | Version check release-only, not PRs | **P2** | Release workflow only |
+| GAP-JS-010 | No-subprocess check wiring unverified | **P2** | Documented, not confirmed |
 | GAP-BACK-001 | FP32 boundary architectural | **P3** | Structurally enforced |
 | GAP-GPU-001 | cargo tree grep for GPU deps | **P3** | Indirect enforcement only |
 | GAP-GPU-002–007 | GPU crates not implemented | **P3** | Phase 27+ planned |

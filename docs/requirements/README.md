@@ -45,6 +45,7 @@ category: requirements
 | [quality.md](quality.md) | Score fidelity and compression ratio | FR-QUAL-* |
 | [performance.md](performance.md) | Latency and throughput budgets | FR-PERF-* |
 | [gpu.md](gpu.md) | Optional GPU acceleration layer | FR-GPU-* |
+| [js.md](js.md) | JavaScript / TypeScript N-API binding | FR-JS-* |
 | [testing-gaps.md](testing-gaps.md) | Prioritized list of all `Gap:` entries across requirements | GAP-* |
 
 ## Tag numbering convention
@@ -54,7 +55,7 @@ FR-<DOMAIN>-<NNN>
 ```
 
 - `FR` — Functional Requirement
-- `<DOMAIN>` — `COMP`, `DECOMP`, `SER`, `CORP`, `BACK`, `QUAL`, `PERF`, `GPU`
+- `<DOMAIN>` — `COMP`, `DECOMP`, `SER`, `CORP`, `BACK`, `QUAL`, `PERF`, `GPU`, `JS`
 - `<NNN>` — three-digit sequential number within domain
 
 Gaps in numbering are intentional. Reserved numbers are not filled.
