@@ -20,6 +20,10 @@ fn wgpu_backend_new_does_not_panic() {
         }
         Err(e) => {
             println!("no adapter (expected on CI): {e}");
+            assert!(
+                matches!(e, tinyquant_gpu_wgpu::TinyQuantGpuError::NoAdapter),
+                "expected NoAdapter on headless CI, got: {e}"
+            );
         }
     }
 }

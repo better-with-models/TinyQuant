@@ -19,13 +19,20 @@
 
 use tinyquant_core::codec::{CompressedVector, PreparedCodec};
 
-pub mod backend;
+/// Adapter initialisation and pipeline construction.
 pub mod context;
+/// [`WgpuBackend`]: the primary GPU backend type.
+pub mod backend;
+/// Error types for the wgpu GPU backend.
 pub mod error;
+/// Compute pipeline builders for rotate, quantize, and residual shaders.
 pub mod pipelines;
+/// GPU-resident state attachment for [`tinyquant_core::codec::PreparedCodec`].
 pub mod prepared;
 
+/// The wgpu GPU backend implementation.
 pub use backend::WgpuBackend;
+/// Errors emitted by the wgpu backend.
 pub use error::TinyQuantGpuError;
 
 /// Minimum batch size below which GPU offload is not attempted.

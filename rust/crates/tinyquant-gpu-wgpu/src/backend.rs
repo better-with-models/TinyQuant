@@ -59,8 +59,11 @@ impl ComputeBackend for WgpuBackend {
         _cols: usize,
         _prepared: &PreparedCodec,
     ) -> Result<Vec<CompressedVector>, TinyQuantGpuError> {
-        // TODO: implemented in Part C (Steps 5-6)
-        Err(TinyQuantGpuError::NoAdapter)
+        if self.ctx.is_none() {
+            return Err(TinyQuantGpuError::NoAdapter);
+        }
+        // TODO: implemented in Part C (Steps 5–6)
+        todo!("compress_batch: GPU pipeline not yet wired (Part C)")
     }
 
     fn decompress_batch_into(
@@ -69,15 +72,21 @@ impl ComputeBackend for WgpuBackend {
         _prepared: &PreparedCodec,
         _out: &mut [f32],
     ) -> Result<(), TinyQuantGpuError> {
-        // TODO: implemented in Part C (Steps 5-6)
-        Err(TinyQuantGpuError::NoAdapter)
+        if self.ctx.is_none() {
+            return Err(TinyQuantGpuError::NoAdapter);
+        }
+        // TODO: implemented in Part C (Steps 5–6)
+        todo!("decompress_batch_into: GPU pipeline not yet wired (Part C)")
     }
 
     fn prepare_for_device(
         &mut self,
         _prepared: &mut PreparedCodec,
     ) -> Result<(), TinyQuantGpuError> {
-        // TODO: implemented in Part C (Steps 5-6)
-        Ok(())
+        if self.ctx.is_none() {
+            return Err(TinyQuantGpuError::NoAdapter);
+        }
+        // TODO: implemented in Part C (Steps 5–6)
+        todo!("prepare_for_device: GPU pipeline not yet wired (Part C)")
     }
 }
