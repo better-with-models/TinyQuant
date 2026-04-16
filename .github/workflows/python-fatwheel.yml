@@ -113,7 +113,7 @@ jobs:
     name: Lint workflow YAML
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
       - name: action-validator
         shell: bash
         run: |
@@ -134,7 +134,7 @@ jobs:
     outputs:
       version: ${{ steps.resolve.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
       - id: resolve
         name: Resolve version
         shell: bash
@@ -178,7 +178,7 @@ jobs:
           fi
           python scripts/packaging/fabricate_dummy_wheels.py \
             dist/input "${{ steps.resolve.outputs.version }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: input-wheels
           path: dist/input/
@@ -190,15 +190,15 @@ jobs:
     needs: fetch-inputs
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           # Need full history so `git log -1 --format=%ct` can resolve
           # the tagged commit's ctime for SOURCE_DATE_EPOCH.
           fetch-depth: 0
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: "3.12"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: input-wheels
           path: dist/input/
@@ -248,11 +248,11 @@ jobs:
           test "$count" -eq 5 || { echo "expected 5 binaries, got $count"; exit 1; }
       - name: twine check
         run: twine check dist/tinyquant_cpu-*.whl
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: fat-wheel
           path: dist/tinyquant_cpu-*.whl
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: fat-wheel-manifest
           path: dist/tinyquant_cpu-*.manifest.json
@@ -273,11 +273,11 @@ jobs:
           - { os: windows-2022,     key: win_amd64         }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
         with:
           python-version: "3.12"
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: fat-wheel
           path: dist/
@@ -339,7 +339,7 @@ jobs:
       name: pypi
       url: https://pypi.org/project/tinyquant-cpu/
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: fat-wheel
           path: dist/
@@ -361,7 +361,7 @@ jobs:
       # downstream edit to the guard still cannot reach PyPI.
       - name: Publish to PyPI
         if: inputs.dry_run != true
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
         with:
           skip-existing: false
           packages-dir: dist/
