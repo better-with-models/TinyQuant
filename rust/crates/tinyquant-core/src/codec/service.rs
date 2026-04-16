@@ -4,12 +4,17 @@
 //!
 //! - **compress**: rotate → quantize → (optional) residual on rotated vs reconstructed
 //! - **decompress**: dequantize → (optional) add residual → inverse rotate
+//!
+//! Phase 26 adds `compress_prepared` / `decompress_prepared_into` which accept a
+//! pre-built [`PreparedCodec`] so the `O(dim²)` rotation factorization is paid
+//! only once per session rather than on every call.
 
 use crate::codec::{
     codebook::Codebook,
     codec_config::CodecConfig,
     compressed_vector::CompressedVector,
     parallelism::Parallelism,
+    prepared::PreparedCodec,
     residual::{apply_residual_into, compute_residual},
     rotation_matrix::RotationMatrix,
 };
@@ -57,8 +62,51 @@ impl Codec {
                 got: codebook.bit_width(),
             });
         }
-
         let rotation = RotationMatrix::from_config(config);
+        Self::compress_with_rotation(vector, config, codebook, &rotation)
+    }
+
+    /// Compress using a pre-built [`PreparedCodec`] (hot path — rotation not rebuilt).
+    ///
+    /// Identical output to [`Self::compress`] for the same inputs.
+    ///
+    /// # Errors
+    ///
+    /// [`CodecError::DimensionMismatch`] if `vector.len() != prepared.config().dimension()`.
+    pub fn compress_prepared(
+        &self,
+        vector: &[f32],
+        prepared: &PreparedCodec,
+    ) -> Result<CompressedVector, CodecError> {
+        let dim = prepared.config().dimension() as usize;
+        if vector.len() != dim {
+            #[allow(clippy::cast_possible_truncation)]
+            let got = vector.len() as u32;
+            return Err(CodecError::DimensionMismatch {
+                expected: prepared.config().dimension(),
+                got,
+            });
+        }
+        Self::compress_with_rotation(
+            vector,
+            prepared.config(),
+            prepared.codebook(),
+            prepared.rotation(),
+        )
+    }
+
+    /// Inner compute path — caller supplies an already-built rotation.
+    ///
+    /// Preconditions (asserted by callers):
+    /// - `vector.len() == config.dimension()`
+    /// - `codebook.bit_width() == config.bit_width()`
+    fn compress_with_rotation(
+        vector: &[f32],
+        config: &CodecConfig,
+        codebook: &Codebook,
+        rotation: &RotationMatrix,
+    ) -> Result<CompressedVector, CodecError> {
+        let dim = config.dimension() as usize;
         let mut rotated = vec![0.0_f32; dim];
         rotation.apply_into(vector, &mut rotated)?;
 
@@ -140,7 +188,56 @@ impl Codec {
                 got,
             });
         }
+        let rotation = RotationMatrix::from_config(config);
+        Self::decompress_into_with_rotation(compressed, codebook, &rotation, output)
+    }
 
+    /// Decompress into a caller-allocated buffer using a pre-built [`PreparedCodec`]
+    /// (hot path — rotation not rebuilt).
+    ///
+    /// Identical output to [`Self::decompress_into`] for the same inputs.
+    ///
+    /// # Errors
+    ///
+    /// - [`CodecError::ConfigMismatch`] if `cv.config_hash() != prepared.config().config_hash()`
+    /// - [`CodecError::DimensionMismatch`] if `out.len() != prepared.config().dimension()`
+    pub fn decompress_prepared_into(
+        &self,
+        cv: &CompressedVector,
+        prepared: &PreparedCodec,
+        out: &mut [f32],
+    ) -> Result<(), CodecError> {
+        if cv.config_hash() != prepared.config().config_hash() {
+            return Err(CodecError::ConfigMismatch {
+                expected: prepared.config().config_hash().clone(),
+                got: cv.config_hash().clone(),
+            });
+        }
+        // cv.bit_width() is not checked separately — the config_hash equality
+        // above already covers all config fields including bit_width.  The
+        // codebook bit_width is validated once at PreparedCodec::new time.
+        if out.len() != prepared.config().dimension() as usize {
+            #[allow(clippy::cast_possible_truncation)]
+            let got = out.len() as u32;
+            return Err(CodecError::DimensionMismatch {
+                expected: prepared.config().dimension(),
+                got,
+            });
+        }
+        Self::decompress_into_with_rotation(cv, prepared.codebook(), prepared.rotation(), out)
+    }
+
+    /// Inner compute path — caller supplies an already-built rotation.
+    ///
+    /// Preconditions (asserted by callers):
+    /// - `output.len() == config dimension`
+    /// - `codebook` is compatible with the compressed vector
+    fn decompress_into_with_rotation(
+        compressed: &CompressedVector,
+        codebook: &Codebook,
+        rotation: &RotationMatrix,
+        output: &mut [f32],
+    ) -> Result<(), CodecError> {
         let mut rotated = vec![0.0_f32; output.len()];
         codebook.dequantize_into(compressed.indices(), &mut rotated)?;
 
@@ -148,7 +245,6 @@ impl Codec {
             apply_residual_into(&mut rotated, residual)?;
         }
 
-        let rotation = RotationMatrix::from_config(config);
         rotation.apply_inverse_into(&rotated, output)
     }
 

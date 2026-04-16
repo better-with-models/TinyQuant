@@ -63,14 +63,14 @@ Action:       Add a test that wraps a BruteForceBackend with a spy adapter that
 
 ```
 Requirement:  FR-QUAL-004
-Gap:          No Rust test measures top-10 neighbor overlap. The only test is
-              Python-only (tests/calibration/test_score_fidelity.py::test_top10_overlap_4bit).
-Current:      The Rust calibration suite (tinyquant-bench/tests/calibration.rs) does
-              not include a top-k overlap metric at all.
-Action:       Add an #[ignore] calibration test in tinyquant-bench/tests/calibration.rs
-              measuring mean Jaccard overlap for 100 query vectors on the gold corpus.
-              Must gate: ≥ 80%. Promote to non-ignored once CI runner provides the
-              gold corpus fixture.
+Gap:          Test body exists but remains #[ignore] — gold corpus fixture helpers
+              not yet provisioned in CI. Promote to non-ignored in the same PR
+              that provisions the corpus LFS object (Phase 28).
+Current:      [Python] tests/calibration/test_score_fidelity.py::test_top10_overlap_4bit ✅
+              [Rust]   tinyquant-bench/tests/calibration.rs::jaccard_top10_overlap_4bit
+                       (Phase 26 stub: #[ignore], Must gate ≥ 80% mean Jaccard)
+Action:       Remove #[ignore] in the same PR that provisions the corpus LFS object.
+              Phase 28.
 ```
 
 ---
@@ -228,22 +228,12 @@ Action:       Add to tinyquant-core/tests/codec_service.rs:
 
 ```
 Requirement:  FR-DECOMP-004
-Gap:          No non-ignored Rust test computes and compares MSE for residual-on vs
-              residual-off on the same vectors. The calibration tests that exercise
-              this are all #[ignore].
+Gap:          None. Closed Phase 26.
 Current:      [Python] tests/codec/test_codec.py::TestRoundTrip::test_round_trip_with_residual_has_lower_error ✅
               [Python] tests/calibration/test_score_fidelity.py::test_residual_improves_rho ✅
-              [Rust]   tinyquant-core/tests/residual.rs::residual_round_trip (round-trip only, not MSE comparison)
-              [Rust]   tinyquant-bench/tests/calibration.rs::* (all #[ignore])
-Action:       Add a lightweight (< 1 s) MSE comparison test to
-              tinyquant-core/tests/codec_service.rs using the dim=64 fixture:
-                #[test]
-                fn residual_on_has_lower_mse_than_residual_off() {
-                    // compress + decompress with and without residual;
-                    // compute MSE; assert mse_on < mse_off for ≥ 95% of 100 test vectors
-                }
-              This is feasible without the gold corpus because dim=64 fixtures are
-              already in LFS and the test runs in < 100 ms.
+              [Rust]   tinyquant-core/tests/residual.rs::residual_round_trip ✅
+              [Rust]   tinyquant-core/tests/codec_service.rs::residual_on_has_lower_mse_than_residual_off ✅
+                       (dim=64, 100 vectors, ≥ 95% must have lower MSE with residual — runs in < 100 ms)
 ```
 
 ### GAP-CORP-001 — Corpus ID uniqueness
@@ -371,17 +361,13 @@ Current:      [CI]  scripts/check_no_exec.sh created and called in test-source j
 
 ```
 Requirements: FR-QUAL-001, FR-QUAL-002, FR-QUAL-003, FR-QUAL-005, FR-QUAL-007, FR-QUAL-008
-Gap:          All Rust Pearson ρ and compression ratio tests in
-              tinyquant-bench/tests/calibration.rs are #[ignore]. They exist and
-              pass locally but are not blocking CI gates. The comment in rust-ci.yml
-              explains why (calibration jobs removed from the matrix in Phase 21).
-Current:      [Python] tests/calibration/test_score_fidelity.py ✅ (active Python gates)
-              [Rust]   tinyquant-bench/tests/calibration.rs (all #[ignore])
-Action:       No new tests needed. The roadmap calls for restoring the Rust calibration
-              gates in Phase 26 once the residual encoder improves the compression ratio
-              to meet the planned thresholds. Until then, the Python calibration tests
-              serve as the binding quality gate.
-              Track in docs/plans/rust/phase-26-*.md.
+Gap:          None. Closed Phase 26.
+Current:      [Python] tests/calibration/test_score_fidelity.py ✅
+              [Rust]   tinyquant-bench/tests/calibration.rs ✅
+                       Five PR-speed gates (pr_speed_bw*) de-ignored in Phase 26;
+                       run automatically in `cargo test --workspace`.
+                       Full-corpus gates (openai_10k_d1536) remain #[ignore] until
+                       Phase 28 provisions a dedicated CI calibration job.
 ```
 
 ---
@@ -407,15 +393,11 @@ Action:       Add an architecture test (mirroring tests/architecture/ in Python)
 
 ```
 Requirement:  FR-GPU-001
-Gap:          The no_std CI job catches GPU leakage indirectly (a wgpu dep would
-              break the no_std build). A direct grep of `cargo tree -p tinyquant-core`
-              for GPU-related crates is not yet automated.
+Gap:          None. Closed Phase 26.
 Current:      [CI]  rust-ci.yml::no-std-check (indirect; fails if GPU dep leaks)
-Action:       Add to xtask simd audit or a new xtask gpu-isolation-check:
-                cargo tree -p tinyquant-core --no-default-features \
-                  | grep -E "wgpu|cust|gpu" && exit 1 || exit 0
-              Wire as a CI step on PRs touching crates/tinyquant-gpu-*.
-              Target phase: Phase 27 prerequisite.
+              [CI]  rust-ci.yml::test — "Verify tinyquant-core has no GPU dependencies"
+                    step added (Phase 26). Runs before cargo test --workspace.
+                    Checks for \bwgpu\b|\bcust\b|\btinyquant-gpu\b in cargo tree output.
 ```
 
 ### GAP-GPU-002 through GAP-GPU-007 — GPU crates not yet implemented
@@ -438,7 +420,7 @@ Action:       Tests are planned in docs/design/rust/testing-strategy.md §GPU te
 |---|---|---|---|
 | GAP-BACK-004 | Batch error isolation (partial-success) | **P0** | No test |
 | GAP-BACK-005 | Query vector passthrough behavioral | **P0** | No behavioral test |
-| GAP-QUAL-004 | Top-10 neighbor overlap (Rust) | **P0** | Python only |
+| GAP-QUAL-004 | Top-10 neighbor overlap (Rust) | **P0** | Phase 26 stub (`#[ignore]`); Phase 28 to un-ignore |
 | GAP-COMP-006 | Dimension mismatch rejection (Rust e2e) | **P1** | Python only |
 | GAP-COMP-007 | Config hash embedded (Rust e2e) | **P1** | Python only |
 | GAP-DECOMP-003 | Config mismatch at decompress (Rust e2e) | **P1** | Python only |
@@ -447,11 +429,11 @@ Action:       Tests are planned in docs/design/rust/testing-strategy.md §GPU te
 | GAP-BACK-003 | pgvector dimensionality (offline) | **P1** | Live-db gated |
 | ~~GAP-JS-004~~ | ~~Corpus policy invariants via N-API~~ | ~~**P1**~~ | Closed Phase 25.5 |
 | GAP-COMP-004 | Residual length in compress (Rust) | **P2** | Unit ≠ integration |
-| GAP-DECOMP-004 | Residual improves MSE (Rust non-ignored) | **P2** | All #[ignore] |
+| ~~GAP-DECOMP-004~~ | ~~Residual improves MSE (Rust non-ignored)~~ | ~~**P2**~~ | Closed Phase 26 |
 | GAP-CORP-001 | Corpus ID uniqueness | **P2** | Existence checked, not uniqueness |
 | GAP-CORP-006 | FP16 precision bound | **P2** | Format checked, not bound |
 | GAP-SER-003 | Zero-copy heap measurement | **P2** | Structural, not measured |
-| GAP-QUAL-001–003,005,007,008 | Rust calibration gates #[ignore] | **P2** | Python gates active |
+| ~~GAP-QUAL-001–003,005,007,008~~ | ~~Rust calibration gates #[ignore]~~ | ~~**P2**~~ | Closed Phase 26 |
 | ~~GAP-JS-002~~ | ~~Round-trip test dim=128 only~~ | ~~**P2**~~ | Closed Phase 25.5 |
 | ~~GAP-JS-006~~ | ~~musl Linux binary not bundled~~ | ~~**P2**~~ | Closed Phase 25.5 |
 | ~~GAP-JS-007~~ | ~~Sub-path ESM exports not tested~~ | ~~**P2**~~ | Closed Phase 25.5 |
@@ -459,7 +441,7 @@ Action:       Tests are planned in docs/design/rust/testing-strategy.md §GPU te
 | ~~GAP-JS-009~~ | ~~Version check release-only, not PRs~~ | ~~**P2**~~ | Closed Phase 25.5 |
 | ~~GAP-JS-010~~ | ~~No-subprocess check wiring unverified~~ | ~~**P2**~~ | Closed Phase 25.5 |
 | GAP-BACK-001 | FP32 boundary architectural | **P3** | Structurally enforced |
-| GAP-GPU-001 | cargo tree grep for GPU deps | **P3** | Indirect enforcement only |
+| ~~GAP-GPU-001~~ | ~~cargo tree grep for GPU deps~~ | ~~**P3**~~ | Closed Phase 26 |
 | GAP-GPU-002–007 | GPU crates not implemented | **P3** | Phase 27+ planned |
 
 ## Closing-phase assignment
@@ -469,7 +451,7 @@ Each gap is assigned to a roadmap phase. See [[roadmap|Roadmap]] §Gap remediati
 | Gap | Closing phase |
 |---|---|
 | GAP-BACK-004, GAP-BACK-005 | Phase 21.5 |
-| GAP-QUAL-004 | Phase 26 |
+| GAP-QUAL-004 | Phase 28 |
 | GAP-COMP-006, GAP-COMP-007, GAP-DECOMP-003 | Phase 21.5 |
 | GAP-CORP-002, GAP-CORP-007 | Phase 21.5 |
 | GAP-BACK-003 | Phase 21.5 |
@@ -477,9 +459,9 @@ Each gap is assigned to a roadmap phase. See [[roadmap|Roadmap]] §Gap remediati
 | GAP-COMP-004, GAP-CORP-001, GAP-CORP-006, GAP-SER-003 | Phase 21.5 |
 | GAP-DECOMP-004 | Phase 26 |
 | GAP-QUAL-001–003,005,007,008 | Phase 26 |
+| GAP-GPU-001 | Phase 26 |
 | GAP-JS-002, GAP-JS-006, GAP-JS-007, GAP-JS-008, GAP-JS-009, GAP-JS-010 | Phase 25.5 |
 | GAP-BACK-001 | Phase 21.5 |
-| GAP-GPU-001 | Phase 27 |
 | GAP-GPU-002–007 | Phases 27–28 |
 
 ## See also

@@ -119,6 +119,18 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust -> target
+      - name: Verify tinyquant-core has no GPU dependencies
+        # GAP-GPU-001: tinyquant-core must never pull in GPU crates.
+        # Anchored to full crate names to avoid false positives from
+        # crate names that merely contain the letters "gpu".
+        run: |
+          OUTPUT=$(cargo tree -p tinyquant-core --no-default-features 2>&1)
+          if echo "$OUTPUT" | grep -qE '\bwgpu\b|\bcust\b|\btinyquant-gpu\b'; then
+            echo "FAIL: GPU dependency found in tinyquant-core dep tree:"
+            echo "$OUTPUT" | grep -E '\bwgpu\b|\bcust\b|\btinyquant-gpu\b'
+            exit 1
+          fi
+          echo "PASS: tinyquant-core dep tree is GPU-free"
       - name: test
         # --all-features omitted: tinyquant-pgvector's live-db feature activates
         # postgres 0.19 which requires getrandom 0.4 (edition2024, Rust > 1.81).
@@ -380,15 +392,11 @@ jobs:
       - name: cargo xtask simd audit
         run: cargo run -p xtask -- simd audit
 
-  # NOTE: Phase 21 calibration quality gates (calibration / calibration-arm64)
-  # are intentionally NOT wired into CI. The current codec's residual encoding
-  # (2 bytes/elem f16) cannot meet the planned compression-ratio thresholds,
-  # and bw=2/4 no-residual Pearson ρ falls below the planned floor on the
-  # OpenAI fixtures. The tests still exist in
-  # `crates/tinyquant-bench/tests/calibration.rs` and can be exercised locally
-  # via `cargo test -p tinyquant-bench -- --ignored`. Restore the matrix once
-  # either the codec is improved or the thresholds are reconciled with what
-  # the codec actually delivers.
+  # NOTE: Phase 26 promoted the five PR-speed calibration gates from
+  # `#[ignore]` to always-on. They run inside `cargo test --workspace` in the
+  # `test` job above (LFS fixtures are fetched by `git lfs pull`).
+  # Full-corpus gates (openai_10k_d1536) remain `#[ignore]` and are intended
+  # for a separate `rust-ci/calibration` job to be added in Phase 28.
 
   # ── Phase 21: Benchmark budget gate ──────────────────────────────────────────
   #

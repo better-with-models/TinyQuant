@@ -1,15 +1,20 @@
-//! Calibration quality gates (Phase 21).
+//! Calibration quality gates (Phase 21 / Phase 26).
 //!
-//! All tests are `#[ignore]` and run on the LFS-tracked fixtures.
-//! They exercise the PR-speed fixture (`openai_1k_d768`) by default;
-//! the main-only fixture (`openai_10k_d1536`) runs in the dedicated
-//! `rust-ci/calibration` CI job via `--include-ignored`.
+//! PR-speed tests (openai_1k_d768) run in `cargo test --workspace` after
+//! Phase 26 de-ignored them — all measured values exceed their thresholds.
 //!
-//! Run locally:
+//! Full-corpus tests (openai_10k_d1536) remain `#[ignore]` — they are
+//! intended for the dedicated `rust-ci/calibration` CI job via
+//! `--include-ignored`.
+//!
+//! The top-10 Jaccard overlap test (GAP-QUAL-004) remains `#[ignore]` until
+//! the gold corpus fixture gains brute-force neighbor helpers in CI.
+//!
+//! Run PR-speed gates automatically:
+//!   `cargo test -p tinyquant-bench`
+//!
+//! Run all ignored gates locally (needs LFS fixtures):
 //!   `cargo test -p tinyquant-bench -- --ignored`
-//!
-//! CI gate:
-//!   `cargo test --workspace --all-features -- --ignored`
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::cast_precision_loss)]
 
@@ -202,15 +207,18 @@ fn run_gate(corpus: GoldCorpus, bw: u8, residual: bool, threshold: &Threshold) {
 }
 
 // ── PR-speed tests (openai_1k_d768) ─────────────────────────────────────────
+//
+// Phase 26: #[ignore] removed from all five PR-speed gates.
+// Measured values (1k_d768, seed=42, --release --features simd) exceed
+// every threshold; tests run automatically in `cargo test --workspace`
+// once the LFS fixture is present (CI checkout includes lfs: true).
 
 #[test]
-#[ignore = "calibration; run with --ignored or in rust-ci/calibration job"]
 fn pr_speed_bw4_residual_on_meets_thresholds() {
     run_gate(GoldCorpus::load_openai_1k_d768(), 4, true, &BW4_RESIDUAL);
 }
 
 #[test]
-#[ignore = "calibration; run with --ignored or in rust-ci/calibration job"]
 fn pr_speed_bw4_residual_off_meets_thresholds() {
     run_gate(
         GoldCorpus::load_openai_1k_d768(),
@@ -221,13 +229,11 @@ fn pr_speed_bw4_residual_off_meets_thresholds() {
 }
 
 #[test]
-#[ignore = "calibration; run with --ignored or in rust-ci/calibration job"]
 fn pr_speed_bw2_residual_on_meets_thresholds() {
     run_gate(GoldCorpus::load_openai_1k_d768(), 2, true, &BW2_RESIDUAL);
 }
 
 #[test]
-#[ignore = "calibration; run with --ignored or in rust-ci/calibration job"]
 fn pr_speed_bw2_residual_off_meets_thresholds() {
     run_gate(
         GoldCorpus::load_openai_1k_d768(),
@@ -238,7 +244,6 @@ fn pr_speed_bw2_residual_off_meets_thresholds() {
 }
 
 #[test]
-#[ignore = "calibration; run with --ignored or in rust-ci/calibration job"]
 fn pr_speed_bw8_residual_on_meets_thresholds() {
     run_gate(GoldCorpus::load_openai_1k_d768(), 8, true, &BW8_RESIDUAL);
 }
@@ -283,6 +288,100 @@ fn full_bw2_residual_off_meets_thresholds() {
 #[ignore = "calibration/full; run on main with: cargo test -- --ignored"]
 fn full_bw8_residual_on_meets_thresholds() {
     run_gate(GoldCorpus::load_openai_10k_d1536(), 8, true, &BW8_RESIDUAL);
+}
+
+// ── Top-10 Jaccard overlap (GAP-QUAL-004) ────────────────────────────────────
+
+/// GAP-QUAL-004: mean Jaccard overlap of top-10 neighbors for 100 queries.
+///
+/// Remains `#[ignore]` until the gold corpus fixture is available in CI
+/// (remove `#[ignore]` in the same PR that provisions the corpus LFS object).
+///
+/// Must: ≥ 0.80 mean Jaccard (FR-QUAL-004).
+#[test]
+#[ignore = "gold corpus fixture not yet available in CI — see GAP-QUAL-004"]
+fn jaccard_top10_overlap_4bit() {
+    let corpus = GoldCorpus::load_openai_1k_d768();
+    let config = CodecConfig::new(4, 42, corpus.cols as u32, false).unwrap();
+    let cb = Codebook::train(&corpus.vectors, &config).unwrap();
+    let codec = Codec::new();
+
+    let query_count = 100;
+    let k = 10;
+
+    // Pre-compress the full corpus once — avoids O(N×Q) codec calls in the
+    // query loop below (N=1k vectors × Q=100 queries = 200k calls otherwise).
+    let corpus_cvs: Vec<_> = (0..corpus.rows)
+        .map(|i| {
+            let row = &corpus.vectors[i * corpus.cols..(i + 1) * corpus.cols];
+            codec.compress(row, &config, &cb).unwrap()
+        })
+        .collect();
+    let mut corpus_reconstructed = vec![0f32; corpus.rows * corpus.cols];
+    codec
+        .decompress_batch_into(&corpus_cvs, &config, &cb, &mut corpus_reconstructed)
+        .unwrap();
+
+    // Brute-force top-k by cosine similarity on the original (uncompressed) corpus.
+    let top_k_original = |query: &[f32]| -> Vec<usize> {
+        let mut scores: Vec<(usize, f32)> = (0..corpus.rows)
+            .map(|i| {
+                let row = &corpus.vectors[i * corpus.cols..(i + 1) * corpus.cols];
+                (i, cosine_similarity(query, row))
+            })
+            .collect();
+        scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(core::cmp::Ordering::Equal));
+        scores.iter().take(k).map(|(i, _)| *i).collect()
+    };
+
+    // Top-k by cosine similarity on the reconstructed (compressed+decompressed) corpus.
+    // Corpus vectors are already reconstructed; only the query is compressed per call.
+    let top_k_compressed = |query: &[f32]| -> Vec<usize> {
+        let cv_q = codec.compress(query, &config, &cb).unwrap();
+        let mut out_q = vec![0f32; corpus.cols];
+        codec
+            .decompress_into(&cv_q, &config, &cb, &mut out_q)
+            .unwrap();
+        let mut scores: Vec<(usize, f32)> = (0..corpus.rows)
+            .map(|i| {
+                let row = &corpus_reconstructed[i * corpus.cols..(i + 1) * corpus.cols];
+                (i, cosine_similarity(&out_q, row))
+            })
+            .collect();
+        scores.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(core::cmp::Ordering::Equal));
+        scores.iter().take(k).map(|(i, _)| *i).collect()
+    };
+
+    let jaccard = |a: &[usize], b: &[usize]| -> f64 {
+        let intersection = a.iter().filter(|x| b.contains(x)).count();
+        let union = {
+            let mut u: Vec<usize> = a.to_vec();
+            for &v in b {
+                if !u.contains(&v) {
+                    u.push(v);
+                }
+            }
+            u.len()
+        };
+        if union == 0 {
+            1.0
+        } else {
+            intersection as f64 / union as f64
+        }
+    };
+
+    let mut total_jaccard = 0.0_f64;
+    for q in 0..query_count {
+        let query = &corpus.vectors[q * corpus.cols..(q + 1) * corpus.cols];
+        let orig_top = top_k_original(query);
+        let comp_top = top_k_compressed(query);
+        total_jaccard += jaccard(&orig_top, &comp_top);
+    }
+    let mean_jaccard = total_jaccard / query_count as f64;
+    assert!(
+        mean_jaccard >= 0.80,
+        "mean Jaccard overlap = {mean_jaccard:.4}, must be ≥ 0.80 (FR-QUAL-004)"
+    );
 }
 
 // ── Passthrough identity (not ignore — always runs) ──────────────────────────

@@ -26,6 +26,10 @@ required-features = ["simd"]
 name    = "batch_parallel"
 harness = false
 
+[[bench]]
+name    = "compress"
+harness = false
+
 [dependencies]
 # Phase 21: calibration fixture SHA-256 verification
 sha2       = { workspace = true }

@@ -216,7 +216,7 @@ Extends the existing PreparedCodec work with calibration gate restoration.
   FR-QUAL-008 (GAP-QUAL-001–003,005,007,008)
 - Add `residual_on_has_lower_mse_than_residual_off` (non-ignored, dim=64
   fixture, < 100 ms) (GAP-DECOMP-004)
-- Add `pearson_rho_top10_overlap_4bit` `#[ignore]` calibration test; promote
+- Add `jaccard_top10_overlap_4bit` `#[ignore]` calibration test; promote
   once gold corpus fixture is in CI (GAP-QUAL-004)
 
 ### Phase 27 — wgpu + WGSL Kernels
