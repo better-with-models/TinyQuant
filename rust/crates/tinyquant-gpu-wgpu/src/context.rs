@@ -38,7 +38,7 @@ impl WgpuContext {
     ///
     /// Does not require an adapter for compilation validation —
     /// use `device.create_shader_module` directly for that.
-    pub fn build_compute_pipeline(
+    pub(crate) fn build_compute_pipeline(
         &self,
         label: &str,
         wgsl: &str,

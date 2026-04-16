@@ -28,4 +28,12 @@ pub enum TinyQuantGpuError {
     /// A codec-layer error occurred while constructing a `CompressedVector`.
     #[error("codec error: {0}")]
     Codec(#[from] tinyquant_core::errors::CodecError),
+
+    /// GPU backend does not support `residual_enabled = true` (Phase 28).
+    #[error("GPU backend does not support residual_enabled=true; use the CPU path or wait for Phase 28")]
+    ResidualNotSupported,
+
+    /// A vector in the batch is incompatible with the `PreparedCodec`.
+    #[error("batch vector mismatch: {detail}")]
+    BatchMismatch { detail: String },
 }

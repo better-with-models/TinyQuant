@@ -1,6 +1,6 @@
 # rust/crates
 
-This directory contains all ten library and binary crates in the TinyQuant Rust workspace. Each crate is independent and has its own `Cargo.toml`; shared version metadata is inherited from the workspace root at `rust/Cargo.toml`. Crates are listed below by name with a one-line purpose.
+This directory contains all eleven library and binary crates in the TinyQuant Rust workspace. Each crate is independent and has its own `Cargo.toml`; shared version metadata is inherited from the workspace root at `rust/Cargo.toml`. Crates are listed below by name with a one-line purpose.
 
 ## What lives here
 
@@ -16,6 +16,7 @@ This directory contains all ten library and binary crates in the TinyQuant Rust 
 | `tinyquant-js` | WASM / `wasm-bindgen` bindings for browser and Node.js consumers. |
 | `tinyquant-pgvector` | PostgreSQL `pgvector` integration (extension or client glue). |
 | `tinyquant-fuzz` | `cargo-fuzz` targets for codec and serialization fuzzing. |
+| `tinyquant-gpu-wgpu` | wgpu/WGSL GPU-accelerated batch compression backend (Phase 27+; requires Rust 1.87, `publish = false`). |
 
 ## How this area fits the system
 

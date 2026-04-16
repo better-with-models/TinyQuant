@@ -1,9 +1,13 @@
 //! Rotate / inverse-rotate compute pipeline.
 //!
-//! Both the forward and inverse (transpose) passes use the same `rotate.wgsl`
-//! shader. The difference is which rotation buffer is bound: the forward pass
-//! binds the original rotation matrix `R`; the inverse pass binds `R^T` (valid
-//! because `R` is orthogonal, so `R^{-1} = R^T`).
+//! Both the forward and inverse passes use the same `rotate.wgsl` shader.
+//! The difference is which rotation buffer is bound:
+//!
+//! - **Forward (compress):** binds `R^T` (`rotation_t_buf`). The shader computes
+//!   `output = input @ R^T`, which matches the CPU column-vector convention `R @ v`.
+//! - **Inverse (decompress):** binds `R` (`rotation_buf`). The shader computes
+//!   `output = values @ R`, which matches `R^T @ v` (valid because `R` is
+//!   orthogonal: `R^{-1} = R^T`).
 
 use crate::context::WgpuContext;
 

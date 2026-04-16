@@ -8,6 +8,11 @@
 fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
     let i = gid.x;
     if (i < arrayLength(&indices)) {
-        out[i] = entries[indices[i]];
+        // Clamp the index to [0, n_entries - 1] to guard against a malformed or
+        // corrupted CompressedVector carrying an out-of-range index.  GPU
+        // out-of-bounds reads are platform-defined (likely zero on wgpu/Vulkan
+        // but not guaranteed), so we clamp rather than rely on that behaviour.
+        let safe_idx = min(indices[i], arrayLength(&entries) - 1u);
+        out[i] = entries[safe_idx];
     }
 }

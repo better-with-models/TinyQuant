@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 rust-version    = "1.87"
 publish         = false
+description     = "wgpu/WGSL GPU-accelerated batch compression backend for TinyQuant"
 
 [dependencies]
 tinyquant-core = { workspace = true }

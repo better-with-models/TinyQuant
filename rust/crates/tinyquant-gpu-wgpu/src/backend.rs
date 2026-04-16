@@ -47,9 +47,13 @@ impl WgpuBackend {
         Ok(Self { ctx: Some(ctx) })
     }
 
-    /// Test-only no-adapter stub. `is_available()` returns `false`.
+    /// No-adapter stub — `is_available()` returns `false`.
     ///
-    /// `#[doc(hidden)]` — not part of the public API; only for tests.
+    /// `pub` rather than `#[cfg(test)]` so that integration test crates outside
+    /// this crate (e.g. future `tinyquant-gpu-tests`) can construct the no-adapter
+    /// path without requiring test-feature gates on the whole dependency graph.
+    /// `#[doc(hidden)]` keeps it out of the public rustdoc surface — callers
+    /// should always prefer `WgpuBackend::new().await` and inspect `is_available()`.
     #[doc(hidden)]
     pub fn unavailable() -> Self {
         Self { ctx: None }
@@ -88,6 +92,20 @@ impl ComputeBackend for WgpuBackend {
     ) -> Result<Vec<CompressedVector>, TinyQuantGpuError> {
         let ctx = self.ctx.as_ref().ok_or(TinyQuantGpuError::NoAdapter)?;
 
+        // Validate codec dimension matches the supplied column count.
+        let codec_dim = prepared.config().dimension() as usize;
+        if cols != codec_dim {
+            return Err(TinyQuantGpuError::DimensionMismatch {
+                expected: codec_dim,
+                got: cols,
+            });
+        }
+
+        // GPU backend does not implement the residual stage yet (Phase 28).
+        if prepared.config().residual_enabled() {
+            return Err(TinyQuantGpuError::ResidualNotSupported);
+        }
+
         // Validate input length.
         let expected = rows * cols;
         if input.len() != expected {
@@ -107,7 +125,10 @@ impl ComputeBackend for WgpuBackend {
         let queue = &ctx.queue;
 
         // -----------------------------------------------------------------
-        // Build pipelines (built per-call; cached in a follow-up phase).
+        // Build pipelines.
+        // TODO(phase-28): cache pipelines in WgpuBackend to avoid per-call shader
+        // compilation (order of milliseconds per call). Required before the
+        // FR-GPU-004 ≤ 5 ms throughput gate can be satisfied on real hardware.
         // -----------------------------------------------------------------
         let rotate_pipeline = build_rotate_pipeline(ctx);
         let quantize_pipeline = build_quantize_pipeline(ctx);
@@ -185,7 +206,9 @@ impl ComputeBackend for WgpuBackend {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: gpu_state.rotation_buf.as_entire_binding(),
+                    // Forward compress binds R^T so the shader computes
+                    // `input @ R^T` = CPU's `R @ input` (row-vector convention).
+                    resource: gpu_state.rotation_t_buf.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
@@ -290,7 +313,20 @@ impl ComputeBackend for WgpuBackend {
         let mut result = Vec::with_capacity(rows);
         for row in 0..rows {
             let row_indices = &u32_indices[row * cols..(row + 1) * cols];
-            let byte_indices: Vec<u8> = row_indices.iter().map(|&v| v as u8).collect();
+            let byte_indices: Vec<u8> = row_indices
+                .iter()
+                .map(|&v| {
+                    // Safe for bit_width ∈ {2, 4, 8} (max index ≤ 255).
+                    // If bit_width is ever widened beyond 8 this cast silently
+                    // truncates — the assertion catches that in debug builds.
+                    debug_assert!(
+                        v <= u8::MAX as u32,
+                        "quantized index {v} exceeds u8::MAX for bit_width {bit_width}"
+                    );
+                    v as u8
+                })
+                .collect();
+            // Phase 28 TODO: add residual_encode pass for residual_enabled=true configs.
             let cv = CompressedVector::new(
                 byte_indices.into_boxed_slice(),
                 None,
@@ -321,6 +357,37 @@ impl ComputeBackend for WgpuBackend {
             return Ok(());
         }
         let cols = compressed[0].dimension() as usize;
+
+        // Validate every vector in the batch against the PreparedCodec.
+        let expected_config_hash = prepared.config().config_hash();
+        let expected_bit_width = prepared.config().bit_width();
+        let expected_dim = prepared.config().dimension();
+        for (i, cv) in compressed.iter().enumerate() {
+            if cv.dimension() != expected_dim {
+                return Err(TinyQuantGpuError::BatchMismatch {
+                    detail: format!(
+                        "vector[{i}] dimension {} ≠ codec dimension {}",
+                        cv.dimension(),
+                        expected_dim
+                    ),
+                });
+            }
+            if cv.config_hash() != expected_config_hash {
+                return Err(TinyQuantGpuError::BatchMismatch {
+                    detail: format!("vector[{i}] config_hash mismatch"),
+                });
+            }
+            if cv.bit_width() != expected_bit_width {
+                return Err(TinyQuantGpuError::BatchMismatch {
+                    detail: format!(
+                        "vector[{i}] bit_width {} ≠ codec bit_width {}",
+                        cv.bit_width(),
+                        expected_bit_width
+                    ),
+                });
+            }
+        }
+
         let expected = rows * cols;
         if out.len() != expected {
             return Err(TinyQuantGpuError::DimensionMismatch {
@@ -350,6 +417,9 @@ impl ComputeBackend for WgpuBackend {
 
         // -----------------------------------------------------------------
         // Build pipelines.
+        // TODO(phase-28): cache pipelines in WgpuBackend to avoid per-call shader
+        // compilation (order of milliseconds per call). Required before the
+        // FR-GPU-004 ≤ 5 ms throughput gate can be satisfied on real hardware.
         // -----------------------------------------------------------------
         let dequantize_pipeline = build_dequantize_pipeline(ctx);
         let rotate_pipeline = build_rotate_pipeline(ctx);
@@ -427,7 +497,8 @@ impl ComputeBackend for WgpuBackend {
             ],
         });
 
-        // Inverse-rotate uses the transposed rotation matrix buffer.
+        // Inverse-rotate binds R (`rotation_buf`) so the shader computes
+        // `values @ R` = CPU's `R^T @ values` (R is orthogonal: R^{-1} = R^T).
         let rotate_inv_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("tinyquant/decompress/rotate_inv_bg"),
             layout: &rotate_pipeline.get_bind_group_layout(0),
@@ -438,7 +509,7 @@ impl ComputeBackend for WgpuBackend {
                 },
                 wgpu::BindGroupEntry {
                     binding: 1,
-                    resource: gpu_state.rotation_t_buf.as_entire_binding(),
+                    resource: gpu_state.rotation_buf.as_entire_binding(),
                 },
                 wgpu::BindGroupEntry {
                     binding: 2,
@@ -555,22 +626,22 @@ impl ComputeBackend for WgpuBackend {
         // -----------------------------------------------------------------
         // Upload rotation and transposed rotation to GPU buffers.
         //
-        // rotation_buf    = R^T  → used for compress (forward rotate)
-        // rotation_t_buf  = R    → used for decompress (inverse rotate)
+        // rotation_buf   = R    → bound by decompress (inverse rotate pass)
+        // rotation_t_buf = R^T  → bound by compress   (forward rotate pass)
         // -----------------------------------------------------------------
         let rotation_buf = Arc::new(device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
-                label: Some("tinyquant/rotation_T"),   // R^T for forward pass
-                contents: bytemuck::cast_slice::<f32, u8>(&rot_t_f32),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                label: Some("tinyquant/rotation"),      // R for inverse pass
+                contents: bytemuck::cast_slice::<f32, u8>(&rot_f32),
+                usage: wgpu::BufferUsages::STORAGE,     // read-only shader input
             },
         ));
 
         let rotation_t_buf = Arc::new(device.create_buffer_init(
             &wgpu::util::BufferInitDescriptor {
-                label: Some("tinyquant/rotation"),     // R for inverse pass
-                contents: bytemuck::cast_slice::<f32, u8>(&rot_f32),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                label: Some("tinyquant/rotation_T"),    // R^T for forward pass
+                contents: bytemuck::cast_slice::<f32, u8>(&rot_t_f32),
+                usage: wgpu::BufferUsages::STORAGE,     // read-only shader input
             },
         ));
 
@@ -583,7 +654,7 @@ impl ComputeBackend for WgpuBackend {
             &wgpu::util::BufferInitDescriptor {
                 label: Some("tinyquant/codebook"),
                 contents: bytemuck::cast_slice::<f32, u8>(entries),
-                usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+                usage: wgpu::BufferUsages::STORAGE,     // read-only shader input
             },
         ));
 

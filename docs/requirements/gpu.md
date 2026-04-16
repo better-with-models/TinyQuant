@@ -99,7 +99,7 @@ Function:   For any batch of N FP32 vectors V, GPU compress → decompress
             i in [0, N) and j in [0, dim).
 Scale:      Max element-wise absolute difference between GPU and CPU
             decompressed output on the same input batch.
-Meter:      Differential test (tinyquant-gpu-wgpu/tests/differential.rs):
+Meter:      Differential test (tinyquant-gpu-wgpu/tests/parity_compress.rs):
             compress_batch then decompress_batch on 512 dim-768 vectors
             using GPU (llvmpipe software renderer) and CPU; record max delta.
 Must:       Max delta ≤ 1e-3 (f32; accumulation difference from GPU matmul)
@@ -191,8 +191,9 @@ Function:   A second call to ComputeBackend::prepare_for_device(prepared)
 Scale:      Fraction of repeated prepare_for_device() calls that return
             Ok(()) and produce no additional GPU buffer allocation.
 Meter:      Call prepare_for_device() twice on the same PreparedCodec;
-            assert Ok returned both times; assert GPU buffer count unchanged
-            between calls (via a test instrumentation hook).
+            assert Ok returned both times; assert has_gpu_state() remains true.
+            The no-reallocation guarantee is structural (early-return on
+            has_gpu_state() before any device work) rather than instrumented.
 Must:       100%
 Plan:       Same.
 Qualify:    Same WgpuBackend instance and PreparedCodec between both calls.
