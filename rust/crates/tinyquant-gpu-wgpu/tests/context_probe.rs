@@ -54,6 +54,7 @@ fn all_shaders_compile_without_device() {
         ("quantize",        include_str!("../shaders/quantize.wgsl")),
         ("dequantize",      include_str!("../shaders/dequantize.wgsl")),
         ("residual_encode", include_str!("../shaders/residual_encode.wgsl")),
+        ("cosine_topk",     include_str!("../shaders/cosine_topk.wgsl")),
     ];
     for (name, src) in shaders {
         let module = naga::front::wgsl::parse_str(src)

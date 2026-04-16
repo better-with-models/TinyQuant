@@ -8,11 +8,12 @@ but does not modify it — GPU state is stored in `PreparedCodec` as opaque
 ## What this area contains
 
 - primary responsibility: implement the `ComputeBackend` trait using wgpu +
-  WGSL compute shaders; compress and decompress embedding batches on GPU.
+  WGSL compute shaders; compress and decompress embedding batches on GPU; and
+  perform GPU-resident corpus nearest-neighbour search (`cosine_topk`).
 - main entrypoints: `src/lib.rs` (public API surface), `src/backend.rs`
-  (`WgpuBackend` implementation).
+  (`WgpuBackend` implementation with `prepare_corpus_for_device` / `cosine_topk`).
 - common changes: new or updated WGSL shaders, pipeline wiring, error variants,
-  GPU buffer layout for new codec features.
+  GPU buffer layout for new codec or search features.
 
 ## Layout
 
@@ -22,22 +23,27 @@ tinyquant-gpu-wgpu/
 │   ├── rotate.wgsl
 │   ├── quantize.wgsl
 │   ├── dequantize.wgsl
-│   └── residual_encode.wgsl
+│   ├── residual_encode.wgsl
+│   └── cosine_topk.wgsl        ← Phase 27.5: corpus search scoring
 ├── src/
 │   ├── lib.rs
 │   ├── backend.rs
 │   ├── context.rs
 │   ├── error.rs
-│   ├── prepared.rs
+│   ├── prepared.rs              ← GpuPreparedState + GpuCorpusState
 │   └── pipelines/
 │       ├── mod.rs
 │       ├── rotate.rs
 │       ├── quantize.rs
-│       └── residual.rs
+│       ├── residual.rs
+│       └── search.rs            ← Phase 27.5: cosine_topk pipeline
+├── benches/
+│   └── throughput_search.rs    ← FR-GPU-004 criterion bench
 ├── tests/
 │   ├── batch_threshold.rs
 │   ├── context_probe.rs
-│   └── parity_compress.rs
+│   ├── parity_compress.rs
+│   └── parity_search.rs        ← Phase 27.5: CPU vs GPU top-k parity
 ├── Cargo.toml
 ├── README.md
 └── AGENTS.md
@@ -62,9 +68,22 @@ tinyquant-gpu-wgpu/
 
 ### Update GPU buffer layout
 
-1. Update `GpuPreparedState` in `src/prepared.rs`.
-2. Update `prepare_for_device` in `src/backend.rs` to populate the new field.
+1. Update `GpuPreparedState` (codec) or `GpuCorpusState` (search) in
+   `src/prepared.rs`.
+2. Update `prepare_for_device` / `prepare_corpus_for_device` in `src/backend.rs`
+   to populate the new field.
 3. Update bind group construction in the affected pass in `src/backend.rs`.
+
+### Extend corpus search
+
+1. Corpus is uploaded once via `WgpuBackend::prepare_corpus_for_device`.
+   The `GpuCorpusState` (in `src/prepared.rs`) holds the device buffer.
+2. `cosine_topk` (in `src/backend.rs`) scores a query against the resident
+   corpus, reads back all `n_rows` scores, and selects top-k on the host.
+3. Row indices (0-based integers rendered as strings) serve as `vector_id`s.
+4. Throughput target: ≤ 5 ms for 10 000 rows × dim=1536 on RTX 3060-class
+   hardware (FR-GPU-004).  Run `cargo bench -p tinyquant-gpu-wgpu` on a GPU
+   runner to collect evidence.
 
 ## Invariants — Do Not Violate
 
@@ -85,4 +104,5 @@ tinyquant-gpu-wgpu/
 - [Parent AGENTS.md](../AGENTS.md)
 - [Root AGENTS.md](../../../AGENTS.md)
 - [docs/plans/rust/phase-27-wgpu-wgsl-kernels.md](../../../docs/plans/rust/phase-27-wgpu-wgsl-kernels.md)
+- [docs/plans/rust/phase-27.5-resident-corpus-search.md](../../../docs/plans/rust/phase-27.5-resident-corpus-search.md)
 - [docs/design/rust/phase-27-implementation-notes.md](../../../docs/design/rust/phase-27-implementation-notes.md)

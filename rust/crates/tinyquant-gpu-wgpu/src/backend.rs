@@ -22,12 +22,16 @@ use crate::{
     pipelines::{
         quantize::{build_dequantize_pipeline, build_quantize_pipeline},
         rotate::build_rotate_pipeline,
+        search::build_cosine_topk_pipeline,
     },
-    prepared::GpuPreparedState,
+    prepared::{GpuCorpusState, GpuPreparedState},
     ComputeBackend,
 };
 use std::sync::Arc;
-use tinyquant_core::codec::{CompressedVector, PreparedCodec};
+use tinyquant_core::{
+    backend::SearchResult,
+    codec::{CompressedVector, PreparedCodec},
+};
 use wgpu::util::DeviceExt;
 
 /// GPU compute backend backed by wgpu.
@@ -35,16 +39,22 @@ use wgpu::util::DeviceExt;
 /// Construct with [`WgpuBackend::new`]. If no adapter is available,
 /// `new()` returns `Err(TinyQuantGpuError::NoAdapter)` — the caller should
 /// fall back to the CPU path.
+///
+/// After construction, call [`prepare_corpus_for_device`](Self::prepare_corpus_for_device)
+/// to upload a corpus for GPU nearest-neighbour search, then call
+/// [`cosine_topk`](Self::cosine_topk) to score queries against it.
 pub struct WgpuBackend {
     /// `None` when constructed via `unavailable()` (no-adapter stub).
     ctx: Option<WgpuContext>,
+    /// GPU-resident corpus state; `None` until `prepare_corpus_for_device` is called.
+    corpus_state: Option<GpuCorpusState>,
 }
 
 impl WgpuBackend {
     /// Initialise the backend. Returns `Err(NoAdapter)` if no wgpu adapter is present.
     pub async fn new() -> Result<Self, TinyQuantGpuError> {
         let ctx = WgpuContext::new().await?;
-        Ok(Self { ctx: Some(ctx) })
+        Ok(Self { ctx: Some(ctx), corpus_state: None })
     }
 
     /// No-adapter stub — `is_available()` returns `false`.
@@ -56,7 +66,7 @@ impl WgpuBackend {
     /// should always prefer `WgpuBackend::new().await` and inspect `is_available()`.
     #[doc(hidden)]
     pub fn unavailable() -> Self {
-        Self { ctx: None }
+        Self { ctx: None, corpus_state: None }
     }
 
     /// Human-readable adapter name for diagnostics.
@@ -71,6 +81,219 @@ impl WgpuBackend {
     /// A pure function — does not check whether an adapter is present.
     pub fn should_use_gpu(rows: usize) -> bool {
         rows >= crate::GPU_BATCH_THRESHOLD
+    }
+
+    /// Upload a decompressed FP32 corpus to device-resident memory.
+    ///
+    /// Must be called before [`cosine_topk`](Self::cosine_topk).
+    ///
+    /// **Idempotency:** if the same shape (`n_rows × cols`) is already uploaded,
+    /// this call returns `Ok(())` without re-uploading.  To replace a corpus
+    /// with a different shape, call this method again with the new corpus.
+    ///
+    /// # Errors
+    ///
+    /// - [`TinyQuantGpuError::NoAdapter`] — called on a no-adapter stub.
+    /// - [`TinyQuantGpuError::DimensionMismatch`] — `corpus.len() ≠ n_rows * cols`.
+    pub fn prepare_corpus_for_device(
+        &mut self,
+        corpus: &[f32],
+        n_rows: usize,
+        cols: usize,
+    ) -> Result<(), TinyQuantGpuError> {
+        let ctx = self.ctx.as_ref().ok_or(TinyQuantGpuError::NoAdapter)?;
+
+        // Idempotency: skip re-upload when shape matches.
+        if let Some(ref s) = self.corpus_state {
+            if s.n_rows == n_rows && s.cols == cols {
+                return Ok(());
+            }
+        }
+
+        let expected = n_rows * cols;
+        if corpus.len() != expected {
+            return Err(TinyQuantGpuError::DimensionMismatch {
+                expected,
+                got: corpus.len(),
+            });
+        }
+
+        let corpus_buf = ctx.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("tinyquant/corpus"),
+            contents: bytemuck::cast_slice::<f32, u8>(corpus),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+
+        self.corpus_state = Some(GpuCorpusState { corpus_buf, n_rows, cols });
+        Ok(())
+    }
+
+    /// Score `query` against the GPU-resident corpus and return the top-k results
+    /// sorted by descending cosine similarity.
+    ///
+    /// The GPU kernel writes all `n_rows` similarity scores; the host then sorts
+    /// and truncates to `top_k`.  If `top_k > n_rows`, all rows are returned.
+    ///
+    /// **Pre-normalisation:** vectors must be unit-length before upload.  Under that
+    /// contract the dot product equals cosine similarity.  See
+    /// `shaders/cosine_topk.wgsl` for details.
+    ///
+    /// Row indices (0-based) are used as [`SearchResult::vector_id`] strings.
+    ///
+    /// # Errors
+    ///
+    /// - [`TinyQuantGpuError::NoAdapter`] — called on a no-adapter stub.
+    /// - [`TinyQuantGpuError::CorpusNotPrepared`] — corpus not uploaded yet.
+    /// - [`TinyQuantGpuError::DimensionMismatch`] — `query.len() ≠ corpus cols`.
+    /// - [`TinyQuantGpuError::BufferMap`] — GPU readback failed.
+    pub fn cosine_topk(
+        &self,
+        query: &[f32],
+        top_k: usize,
+    ) -> Result<Vec<SearchResult>, TinyQuantGpuError> {
+        let ctx = self.ctx.as_ref().ok_or(TinyQuantGpuError::NoAdapter)?;
+        let corpus = self
+            .corpus_state
+            .as_ref()
+            .ok_or(TinyQuantGpuError::CorpusNotPrepared)?;
+
+        let n_rows = corpus.n_rows;
+        let cols = corpus.cols;
+
+        if query.len() != cols {
+            return Err(TinyQuantGpuError::DimensionMismatch {
+                expected: cols,
+                got: query.len(),
+            });
+        }
+
+        // Return at most n_rows results (handles top_k > n_rows).
+        let effective_k = top_k.min(n_rows);
+        if effective_k == 0 {
+            return Ok(Vec::new());
+        }
+
+        let device = &ctx.device;
+        let queue = &ctx.queue;
+
+        // Build pipeline.
+        let pipeline = build_cosine_topk_pipeline(ctx);
+
+        // Upload query vector.
+        let query_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("tinyquant/search/query"),
+            contents: bytemuck::cast_slice::<f32, u8>(query),
+            usage: wgpu::BufferUsages::STORAGE,
+        });
+
+        // Allocate scores output buffer (n_rows × f32).
+        let scores_size = (n_rows * std::mem::size_of::<f32>()) as u64;
+        let scores_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("tinyquant/search/scores"),
+            size: scores_size,
+            usage: wgpu::BufferUsages::STORAGE | wgpu::BufferUsages::COPY_SRC,
+            mapped_at_creation: false,
+        });
+
+        // Readback staging buffer.
+        let readback_buf = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("tinyquant/search/readback"),
+            size: scores_size,
+            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
+            mapped_at_creation: false,
+        });
+
+        // Uniform dims — must be 16-byte aligned; pad to [n_rows, dim, top_k, _pad].
+        let dims: [u32; 4] = [n_rows as u32, cols as u32, top_k as u32, 0u32];
+        let dims_buf = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("tinyquant/search/dims"),
+            contents: bytemuck::cast_slice::<u32, u8>(&dims),
+            usage: wgpu::BufferUsages::UNIFORM,
+        });
+
+        // Bind group: dims, corpus, query, scores.
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("tinyquant/search/bg"),
+            layout: &pipeline.get_bind_group_layout(0),
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: dims_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: corpus.corpus_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: query_buf.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: scores_buf.as_entire_binding(),
+                },
+            ],
+        });
+
+        // Encode and submit GPU commands.
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("tinyquant/search"),
+        });
+
+        {
+            let mut pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                label: Some("tinyquant/search/cosine_topk"),
+                timestamp_writes: None,
+            });
+            pass.set_pipeline(&pipeline);
+            pass.set_bind_group(0, &bind_group, &[]);
+            // workgroup_size(256): dispatch ceil(n_rows / 256) workgroups.
+            let wx = (n_rows as u32).div_ceil(256);
+            pass.dispatch_workgroups(wx, 1, 1);
+        }
+
+        encoder.copy_buffer_to_buffer(&scores_buf, 0, &readback_buf, 0, scores_size);
+        queue.submit(std::iter::once(encoder.finish()));
+
+        // Readback scores.
+        let (tx, rx) = std::sync::mpsc::channel();
+        let readback_slice = readback_buf.slice(..);
+        readback_slice.map_async(wgpu::MapMode::Read, move |result| {
+            let _ = tx.send(result);
+        });
+        device.poll(wgpu::Maintain::Wait);
+        rx.recv().map_err(|_| wgpu::BufferAsyncError)??;
+
+        let mapped = readback_slice.get_mapped_range();
+        let raw_scores: &[f32] = bytemuck::cast_slice::<u8, f32>(&mapped);
+
+        // Host-side top-k: collect (score, row_index), sort descending, truncate.
+        let mut scored: Vec<(f32, usize)> = raw_scores
+            .iter()
+            .copied()
+            .enumerate()
+            .map(|(i, s)| (s, i))
+            .collect();
+        // Sort descending by score; NaN sorts after finite values.
+        scored.sort_by(|a, b| {
+            b.0.partial_cmp(&a.0)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+        scored.truncate(effective_k);
+
+        drop(mapped);
+        readback_buf.unmap();
+
+        // Map row indices to SearchResult using numeric string ids.
+        let results: Vec<SearchResult> = scored
+            .into_iter()
+            .map(|(score, row)| SearchResult {
+                vector_id: Arc::from(row.to_string().as_str()),
+                score,
+            })
+            .collect();
+
+        Ok(results)
     }
 }
 

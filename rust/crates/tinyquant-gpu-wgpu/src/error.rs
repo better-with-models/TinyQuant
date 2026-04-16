@@ -36,4 +36,8 @@ pub enum TinyQuantGpuError {
     /// A vector in the batch is incompatible with the `PreparedCodec`.
     #[error("batch vector mismatch: {detail}")]
     BatchMismatch { detail: String },
+
+    /// `prepare_corpus_for_device` was not called before `cosine_topk`.
+    #[error("corpus not uploaded; call prepare_corpus_for_device before cosine_topk")]
+    CorpusNotPrepared,
 }

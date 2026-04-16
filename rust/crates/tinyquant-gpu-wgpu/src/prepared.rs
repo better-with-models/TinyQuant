@@ -1,7 +1,11 @@
-//! GPU-resident state for a `PreparedCodec` session.
+//! GPU-resident state for codec sessions and corpus search.
 //!
-//! `GpuPreparedState` holds device buffers for the rotation matrix and
-//! codebook, uploaded once via [`crate::backend::WgpuBackend::prepare_for_device`].
+//! - [`GpuPreparedState`] holds device buffers for the rotation matrix and
+//!   codebook, uploaded once via
+//!   [`crate::backend::WgpuBackend::prepare_for_device`].
+//! - [`GpuCorpusState`] holds the corpus buffer uploaded via
+//!   [`crate::backend::WgpuBackend::prepare_corpus_for_device`] and used by
+//!   [`crate::backend::WgpuBackend::cosine_topk`].
 
 use std::sync::Arc;
 use wgpu::Buffer;
@@ -24,4 +28,18 @@ pub(crate) struct GpuPreparedState {
     pub dim: usize,
     /// Number of codebook entries.
     pub n_entries: usize,
+}
+
+/// Device-resident corpus buffer for GPU nearest-neighbour search.
+///
+/// Uploaded once via [`crate::backend::WgpuBackend::prepare_corpus_for_device`]
+/// and held inside [`crate::backend::WgpuBackend`] for the lifetime of the
+/// backend instance.  Re-uploading with the same shape is a no-op.
+pub(crate) struct GpuCorpusState {
+    /// Row-major FP32 corpus buffer (`n_rows × cols` elements).
+    pub corpus_buf: Buffer,
+    /// Number of corpus rows.
+    pub n_rows: usize,
+    /// Embedding dimension (number of columns per row).
+    pub cols: usize,
 }
