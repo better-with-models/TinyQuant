@@ -116,10 +116,10 @@ gantt
 | 24 | Python Fat Wheel (official) | **complete** | tinyquant-py (fat wheel, PyPI) | Phase 22 | [[plans/rust/phase-24-python-fat-wheel-official\|Plan]] |
 | 25 | TypeScript / npm Package | **complete** | tinyquant-js, javascript/@tinyquant/core | Phase 24 | [[plans/rust/phase-25-typescript-npm-package\|Plan]] |
 | 25.5 | JS Test Gap Remediation | **planned** | javascript/@tinyquant/core/tests | Phase 25 | [[plans/rust/phase-25.5-js-test-gap-remediation\|Plan]] |
-| 26 | PreparedCodec + Calibration Gates | **planned** | tinyquant-core (prepared_codec), tinyquant-bench (calibration) | Phase 25.5 | — |
-| 27 | wgpu + WGSL Kernels | **planned** | tinyquant-gpu-wgpu | Phase 26 | [[design/rust/gpu-acceleration\|Design]] |
-| 27.5 | Resident Corpus GPU Search | **planned** | tinyquant-gpu-wgpu (cosine_topk kernel) | Phase 27 | [[design/rust/gpu-acceleration\|Design]] |
-| 28 | Optional CUDA Backend | **planned** | tinyquant-gpu-cuda | Phase 27.5 | [[design/rust/gpu-acceleration\|Design]] |
+| 26 | PreparedCodec + Calibration Gates | **planned** | tinyquant-core (prepared_codec), tinyquant-bench (calibration) | Phase 25.5 | [[plans/rust/phase-26-preparedcodec-calibration\|Plan]] |
+| 27 | wgpu + WGSL Kernels | **planned** | tinyquant-gpu-wgpu | Phase 26 | [[plans/rust/phase-27-wgpu-wgsl-kernels\|Plan]] |
+| 27.5 | Resident Corpus GPU Search | **planned** | tinyquant-gpu-wgpu (cosine_topk kernel) | Phase 27 | [[plans/rust/phase-27.5-resident-corpus-search\|Plan]] |
+| 28 | Optional CUDA Backend | **planned** | tinyquant-gpu-cuda | Phase 27.5 | [[plans/rust/phase-28-cuda-backend\|Plan]] |
 
 ## Gap remediation plan
 
