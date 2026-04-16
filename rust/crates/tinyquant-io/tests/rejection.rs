@@ -2,6 +2,7 @@
 
 use std::sync::Arc;
 use tinyquant_core::codec::CompressedVector;
+use tinyquant_io::codec_file::reader::CodecFileReader;
 use tinyquant_io::compressed_vector::{from_bytes, to_bytes};
 use tinyquant_io::errors::IoError;
 
@@ -132,4 +133,86 @@ fn from_codec_error_compiles() {
         matches!(tq_err, IoError::Decode(_)),
         "expected IoError::Decode variant, got: {tq_err:?}"
     );
+}
+
+/// Craft a minimal Level-2 header byte stream whose metadata_len field exceeds
+/// the decode-time cap. The streaming reader must reject before allocating.
+#[test]
+fn oversized_metadata_len_in_codec_file_header_rejected() {
+    // Fixed 24-byte header: magic=TQCV, version=0x01, reserved=[0;3],
+    // vector_count=1, dimension=4, bit_width=8, residual=0, config_hash_len=4
+    let mut buf: Vec<u8> = Vec::new();
+    buf.extend_from_slice(b"TQCV"); // magic
+    buf.push(0x01);                 // version
+    buf.extend_from_slice(&[0u8; 3]); // reserved
+    buf.extend_from_slice(&1u64.to_le_bytes()); // vector_count
+    buf.extend_from_slice(&4u32.to_le_bytes()); // dimension=4
+    buf.push(8u8);                  // bit_width=8
+    buf.push(0u8);                  // residual=false
+    buf.extend_from_slice(&4u16.to_le_bytes()); // config_hash_len=4
+    // 4-byte config hash
+    buf.extend_from_slice(b"test");
+    // metadata_len = MAX_METADATA_LEN + 1 = 16 MiB + 1
+    let bad_len: u32 = (16 * 1024 * 1024 + 1) as u32;
+    buf.extend_from_slice(&bad_len.to_le_bytes());
+    // Stream ends here — no metadata bytes present
+
+    let cursor = std::io::Cursor::new(buf);
+    match CodecFileReader::new(cursor) {
+        Err(IoError::InvalidHeader) => {}
+        Err(e) => panic!("expected InvalidHeader for oversized metadata_len, got: {e:?}"),
+        Ok(_) => panic!("expected Err for oversized metadata_len, got Ok"),
+    }
+}
+
+/// Craft a valid Level-2 header followed by a record_len field that exceeds the
+/// derived per-header maximum. The reader must reject before allocating the record.
+#[test]
+fn oversized_record_len_in_codec_file_rejected() {
+    // Construct a minimal but complete Level-2 header:
+    // config_hash_len=0, metadata_len=0 → header_end=28, body_offset=32
+    let mut buf: Vec<u8> = Vec::new();
+    buf.extend_from_slice(b"TQCV"); // magic
+    buf.push(0x01);                 // version
+    buf.extend_from_slice(&[0u8; 3]); // reserved
+    buf.extend_from_slice(&1u64.to_le_bytes()); // vector_count=1 (needed so next_vector doesn't short-circuit)
+    buf.extend_from_slice(&4u32.to_le_bytes()); // dimension=4
+    buf.push(8u8);                  // bit_width=8
+    buf.push(0u8);                  // residual=false
+    buf.extend_from_slice(&0u16.to_le_bytes()); // config_hash_len=0
+    // metadata_len field = 0
+    buf.extend_from_slice(&0u32.to_le_bytes());
+    // padding to reach body_offset=32 (header_end=28, needs 4 bytes of padding)
+    buf.extend_from_slice(&[0u8; 4]);
+    // Now at body_offset=32 — append an oversized record_len
+    // MAX_RECORD_LEN = 4 MiB; use 4 MiB + 1
+    let bad_record_len: u32 = 4 * 1024 * 1024 + 1;
+    buf.extend_from_slice(&bad_record_len.to_le_bytes());
+    // Stream ends here (no payload bytes)
+
+    let cursor = std::io::Cursor::new(buf);
+    let mut reader = CodecFileReader::new(cursor).unwrap();
+    let err = reader.next_vector().unwrap_err();
+    assert!(
+        matches!(err, IoError::InvalidHeader),
+        "expected InvalidHeader for oversized record_len, got: {err:?}"
+    );
+}
+
+/// Verify that an extreme dimension value in the Level-1 header does not
+/// cause integer overflow or an unconditional panic in `from_bytes`.
+#[test]
+fn extreme_dimension_does_not_panic_in_from_bytes() {
+    use tinyquant_io::compressed_vector::from_bytes;
+    // Construct a 70-byte Level-1 header with dimension = u32::MAX and bit_width = 8.
+    // The packed_len computation must not overflow; the Truncated check must fire.
+    let mut buf = vec![0u8; 70];
+    buf[0] = 0x01; // FORMAT_VERSION
+    // config_hash bytes 1..65 remain zero
+    // dimension at bytes 65..69 = u32::MAX
+    buf[65..69].copy_from_slice(&u32::MAX.to_le_bytes());
+    buf[69] = 8; // bit_width = 8
+    // from_bytes must return an error (not panic)
+    let result = from_bytes(&buf);
+    assert!(result.is_err(), "expected error for extreme dimension, got success");
 }
