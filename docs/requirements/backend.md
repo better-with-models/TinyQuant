@@ -38,6 +38,11 @@ Plan:       100%
 Rationale:  The backend protocol boundary is an anti-corruption layer. Search
             backends must not need to understand the codec; coupling them to
             the compressed format would make the codec a leaky abstraction.
+Tests:      [Rust]   rust/crates/tinyquant-core/tests/backend_trait.rs (SearchBackend trait definition)
+Gap:        GAP-BACK-001 — No runtime instrumentation test verifies that compressed
+            bytes never reach the backend. Enforcement is structural (trait signature),
+            which is P3 (structurally guaranteed by the type system).
+            See testing-gaps.md §GAP-BACK-001.
 ```
 
 ---
@@ -66,6 +71,9 @@ Qualify:    All vectors in the backend are finite FP32 and the query vector
             is finite FP32 with the same dimension.
 Rationale:  A search result list that is not sorted defeats the purpose of
             top-k retrieval; consumers rely on result[0] being the best match.
+Tests:      [Rust]   rust/crates/tinyquant-core/tests/backend_trait.rs::test_backend_trait_search_returns_results_sorted_by_score
+            [Python] tests/backend/test_brute_force_backend.py::TestSearch::test_results_ordered_by_score
+Gap:        None.
 ```
 
 ---
@@ -91,6 +99,11 @@ Qualify:    Adapter is pgvector; vector elements are within the representable
             range of the wire format (pgvector TEXT: full float32 precision).
 Rationale:  Dimensionality corruption turns every similarity score wrong;
             adapters must be lossless format converters.
+Tests:      [Rust]   rust/crates/tinyquant-io/tests/pgvector_adapter.rs (pgvector round-trip)
+Gap:        GAP-BACK-003 — The pgvector adapter test requires a live PostgreSQL instance
+            and is gated behind a feature flag or environment variable; it does not run
+            in standard CI. P1: only the mock/offline path is tested automatically.
+            See testing-gaps.md §GAP-BACK-003.
 ```
 
 ---
@@ -121,6 +134,11 @@ Plan:       Same.
 Rationale:  Poisoning an entire batch because of one bad entry would make
             TinyQuant unusable in append-heavy production corpora where
             occasional corruption is expected.
+Tests:      None.
+Gap:        GAP-BACK-004 — No test injects a corrupt vector into a batch and verifies
+            that the remaining (N-1) vectors are still delivered. This is a P0 blocker:
+            the partial-success contract is entirely untested.
+            See testing-gaps.md §GAP-BACK-004.
 ```
 
 ---
@@ -148,6 +166,12 @@ Plan:       100%
 Rationale:  Query vectors and corpus vectors are compared in the same space.
             Applying the codec rotation to the query but not re-compressing
             it introduces a space mismatch that corrupts similarity scores.
+Tests:      None.
+Gap:        GAP-BACK-005 — No test intercepts the query vector at the backend boundary
+            and asserts element-wise equality to the consumer-supplied vector. Behavioral
+            correctness relies on the search result ordering tests (FR-BACK-002) passing,
+            not direct query passthrough verification. P0 blocker.
+            See testing-gaps.md §GAP-BACK-005.
 ```
 
 ---

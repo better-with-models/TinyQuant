@@ -34,6 +34,11 @@ Must:       100%
 Plan:       100%
 Rationale:  Identity is a precondition for cross-corpus operations and
             config-hash enforcement at insertion time.
+Tests:      [Python] tests/corpus/test_corpus.py::TestCreation::test_create_empty_corpus
+            [Rust]   rust/crates/tinyquant-core/tests/corpus_aggregate.rs::create_corpus_begins_empty
+Gap:        GAP-CORP-001 — Neither test asserts uniqueness across multiple Corpus instances.
+            Both verify that a corpus has an id, not that all ids are distinct.
+            See testing-gaps.md §GAP-CORP-001.
 ```
 
 ---
@@ -56,6 +61,12 @@ Must:       100%
 Plan:       100%
 Rationale:  Allowing config mutation after insertion would make existing
             CompressedVectors undecompressable.
+Tests:      [Python] tests/corpus/test_corpus.py::TestCreation::test_create_corpus_freezes_config
+            [Python] tests/corpus/test_corpus.py::TestCreation::test_create_corpus_freezes_codebook
+            [Rust]   rust/crates/tinyquant-core/tests/vector_entry.rs::vector_entry_immutable_after_construction
+Gap:        GAP-CORP-002 — The Rust immutability test covers VectorEntry, not Corpus-level
+            CodecConfig. No Rust test attempts to replace the config on an existing Corpus.
+            See testing-gaps.md §GAP-CORP-002.
 ```
 
 ---
@@ -80,6 +91,9 @@ Plan:       100%
 Rationale:  A corpus must hold only vectors that can be decompressed with
             the same config; mixed-config corpora would produce silent
             garbage during batch decompression.
+Tests:      [Rust]   rust/crates/tinyquant-io/tests/rejection.rs::rejection_config_hash_mismatch
+            [Python] tests/corpus/test_corpus.py (cross-config insertion scenario)
+Gap:        None.
 ```
 
 ---
@@ -103,6 +117,9 @@ Plan:       100%
 Qualify:    compression_policy == "compress".
 Rationale:  The primary purpose of TinyQuant is codec compression; the
             "compress" policy is the default production path.
+Tests:      [Rust]   rust/crates/tinyquant-core/tests/compression_policy.rs::test_compress_policy_builds_codebook
+            [Python] tests/corpus/test_corpus.py::TestInsert (insertion tests)
+Gap:        None.
 ```
 
 ---
@@ -127,6 +144,9 @@ Plan:       100%
 Qualify:    compression_policy == "passthrough".
 Rationale:  The passthrough policy is the escape hatch for vectors that must
             be stored losslessly (e.g., centroids, reference anchors).
+Tests:      [Rust]   rust/crates/tinyquant-core/tests/compression_policy.rs::test_no_operation_policy_stores_raw
+            [Python] tests/corpus/test_corpus.py (passthrough insertion scenario)
+Gap:        None.
 ```
 
 ---
@@ -154,6 +174,10 @@ Qualify:    compression_policy == "fp16" AND |original[i]| < 65 504
 Rationale:  The "fp16" policy exists as a mid-point between "passthrough"
             (lossless) and "compress" (maximum compression); it must not
             apply codec quantization.
+Tests:      [Rust]   rust/crates/tinyquant-core/tests/residual.rs::residual_encodes_fp16
+Gap:        GAP-CORP-006 — The Rust test confirms FP16 encoding exists but does not
+            measure the element-wise precision bound (≤ 2^-13 × |original[i]|).
+            See testing-gaps.md §GAP-CORP-006.
 ```
 
 ---
@@ -178,6 +202,10 @@ Must:       100%
 Plan:       100%
 Rationale:  Mixed-policy corpora would make it impossible to guarantee a
             uniform decompression path for batch operations.
+Tests:      [Python] tests/corpus/test_corpus.py::TestInsert (policy variant tests)
+Gap:        GAP-CORP-007 — No Rust test attempts a policy change on a populated corpus.
+            Python coverage is partial (policy immutability not isolated in its own test).
+            See testing-gaps.md §GAP-CORP-007.
 ```
 
 ---
@@ -205,6 +233,9 @@ Qualify:    The decompress_batch call succeeds (no unhandled errors). If the
 Rationale:  Domain events are the observable signal that allows downstream
             systems (search backends, audit logs) to react to corpus state
             changes.
+Tests:      [Rust]   rust/crates/tinyquant-core/tests/corpus_events.rs::corpus_decompressed_event_emitted
+            [Python] tests/corpus/test_corpus.py::TestEvents::test_corpus_raised_event
+Gap:        None.
 ```
 
 ---
@@ -228,6 +259,9 @@ Plan:       100%
 Rationale:  An empty corpus that cannot accept its first insertion is not
             usable; this requirement rules out any initialization race or
             policy bootstrap error.
+Tests:      [Rust]   rust/crates/tinyquant-core/tests/corpus_aggregate.rs::create_corpus_begins_empty
+            [Python] tests/corpus/test_corpus.py::TestCreation::test_create_empty_corpus
+Gap:        None.
 ```
 
 ---

@@ -48,6 +48,11 @@ Rationale:  This is the primary fidelity gate for the production use case
             0.995, approximate nearest-neighbor ranking degrades measurably.
 Authority:  Codec lead
 Ref:        [[design/behavior-layer/score-fidelity]]
+Tests:      [Rust]   rust/crates/tinyquant-bench/tests/calibration.rs (pearson_rho_4bit_residual — #[ignore])
+            [Python] tests/calibration/test_score_fidelity.py::test_pearson_rho_4bit_residual
+Gap:        GAP-QUAL-001 — The Rust calibration test is #[ignore] and does not run in CI.
+            Only the Python gate is binding. P2: Must threshold is tested but only in one
+            implementation. See testing-gaps.md §GAP-QUAL-001.
 ```
 
 ---
@@ -71,6 +76,10 @@ Rationale:  The no-residual path trades fidelity for storage density;
             0.98 preserves enough ranking quality for use cases that
             cannot afford the extra 2 bytes/element residual.
 Ref:        FR-QUAL-001
+Tests:      [Rust]   rust/crates/tinyquant-bench/tests/calibration.rs (pearson_rho_4bit_no_residual — #[ignore])
+            [Python] tests/calibration/test_score_fidelity.py::test_pearson_rho_4bit_no_residual
+Gap:        GAP-QUAL-002 — Same #[ignore] gap as GAP-QUAL-001; Rust gate not binding.
+            See testing-gaps.md §GAP-QUAL-002.
 ```
 
 ---
@@ -94,6 +103,10 @@ Rationale:  2-bit is the maximum-compression setting; 0.95 is the floor
             below which similarity scores become unreliable for approximate
             retrieval.
 Ref:        FR-QUAL-001
+Tests:      [Rust]   rust/crates/tinyquant-bench/tests/calibration.rs (pearson_rho_2bit_residual — #[ignore])
+            [Python] tests/calibration/test_score_fidelity.py::test_pearson_rho_2bit_residual
+Gap:        GAP-QUAL-003 — Same #[ignore] gap as GAP-QUAL-001; Rust gate not binding.
+            See testing-gaps.md §GAP-QUAL-003.
 ```
 
 ---
@@ -123,6 +136,11 @@ Rationale:  ANN quality is the ultimate downstream metric; a 4-bit codec
             that preserves 80% of top-10 neighbors is commercially useful
             for re-ranking pipelines.
 Ref:        FR-QUAL-001
+Tests:      None.
+Gap:        GAP-QUAL-004 — No test measures top-10 neighbor overlap (Jaccard metric).
+            The calibration suite measures Pearson ρ only. P0 blocker: the primary
+            ANN quality metric has no automated gate.
+            See testing-gaps.md §GAP-QUAL-004.
 ```
 
 ---
@@ -146,6 +164,10 @@ Rationale:  If residuals ever degrade fidelity, the Stage-2 implementation
             is incorrect. This requirement is a logical invariant, not a
             calibration threshold.
 Ref:        FR-DECOMP-004
+Tests:      [Rust]   rust/crates/tinyquant-bench/tests/calibration.rs (residual_monotone_* — #[ignore])
+            [Python] tests/calibration/test_score_fidelity.py::test_residual_monotonically_improves_rho
+Gap:        GAP-QUAL-005 — Rust monotonicity test is #[ignore]; only Python gate is binding.
+            See testing-gaps.md §GAP-QUAL-005.
 ```
 
 ---
@@ -170,6 +192,10 @@ Qualify:    compression_policy == "passthrough"; vectors are finite FP32.
 Rationale:  The passthrough policy promises lossless storage; any fidelity
             loss is a bug.
 Ref:        FR-CORP-005
+Tests:      [Rust]   rust/crates/tinyquant-bench/tests/calibration.rs::passthrough_cosine_similarity_is_one
+            [Python] tests/calibration/test_score_fidelity.py::test_passthrough_exact_fidelity
+Gap:        None. The Rust test for passthrough fidelity is the only calibration test
+            not marked #[ignore]; it runs in standard CI as a hard gate.
 ```
 
 ---
@@ -196,6 +222,10 @@ Rationale:  The primary value proposition of TinyQuant is storage compression.
             Below 7× the codec is not competitive with simpler quantization
             schemes (e.g., int8 gives 4×).
 Authority:  Codec lead
+Tests:      [Rust]   rust/crates/tinyquant-bench/tests/calibration.rs (compression_ratio_4bit — #[ignore])
+            [Python] tests/calibration/test_compression_ratio.py::test_ratio_4bit_no_residual
+Gap:        GAP-QUAL-007 — Rust compression ratio test is #[ignore]; Python gate only.
+            See testing-gaps.md §GAP-QUAL-007.
 ```
 
 ---
@@ -222,6 +252,10 @@ Rationale:  The residual payload adds 2 bytes/element (FP16); at 5× we
             Below 5× the quality gain from residuals may not justify the
             storage cost in latency-sensitive deployments.
 Ref:        FR-QUAL-007
+Tests:      [Rust]   rust/crates/tinyquant-bench/tests/calibration.rs (compression_ratio_4bit_residual — #[ignore])
+            [Python] tests/calibration/test_compression_ratio.py::test_ratio_4bit_residual
+Gap:        GAP-QUAL-008 — Rust test is #[ignore]; Python gate only.
+            See testing-gaps.md §GAP-QUAL-008.
 ```
 
 ---

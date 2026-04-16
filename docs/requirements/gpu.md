@@ -47,6 +47,12 @@ Rationale:  The core deployability promise is "runs in any container, no
             drivers required." That promise lives in tinyquant-core.
             Breaking no_std would also eliminate embedded and WASM targets.
 Ref:        [[design/rust/gpu-acceleration]] §Core invariants
+Tests:      [CI]     .github/workflows/rust-ci.yml::no-std-check
+            (`cargo build -p tinyquant-core --no-default-features --target thumbv7em-none-eabihf`)
+Gap:        GAP-GPU-001 — The `cargo tree` grep for "wgpu|cust|gpu" is not yet wired
+            as a CI step; only the no_std build job currently exists. P2: build fails
+            if a GPU dep leaks, but the tree audit is advisory only.
+            See testing-gaps.md §GAP-GPU-001.
 ```
 
 ---
@@ -74,6 +80,10 @@ Rationale:  GPU is an additive feature; its absence must never crash a
             production server. Operators on CPU-only infrastructure should
             not need to change their deployment config.
 Ref:        [[design/rust/risks-and-mitigations]] §R24
+Tests:      None — tinyquant-gpu-wgpu crate not yet implemented (Phase 27).
+Gap:        GAP-GPU-002 — WgpuBackend does not exist yet. No graceful-degradation test
+            can be written until Phase 27 delivers the crate.
+            See testing-gaps.md §GAP-GPU-002.
 ```
 
 ---
@@ -103,6 +113,10 @@ Rationale:  The GPU path is a performance optimization; it must not produce
             than CPU determinism (1e-3 vs 0) because GPU FP32 GEMM can
             differ in reduction order.
 Ref:        FR-COMP-003, [[design/rust/gpu-acceleration]] §Synchronization model
+Tests:      None — tinyquant-gpu-wgpu crate not yet implemented (Phase 27).
+Gap:        GAP-GPU-003 — Differential test (GPU vs CPU compress_batch) cannot be
+            written until Phase 27 delivers the WgpuBackend and WGSL kernels.
+            See testing-gaps.md §GAP-GPU-003.
 ```
 
 ---
@@ -131,6 +145,10 @@ Rationale:  The GPU path must be meaningfully faster than the already-fast
             5 ms vs 80 ms is a 16× speedup over the CPU target.
 Authority:  Perf lead
 Ref:        FR-PERF-003, [[design/rust/risks-and-mitigations]] §R25
+Tests:      None — tinyquant-gpu-wgpu crate not yet implemented (Phase 27).
+Gap:        GAP-GPU-004 — GPU throughput benchmark requires a physical discrete GPU on a
+            self-hosted runner; no such test can exist before Phase 27.
+            See testing-gaps.md §GAP-GPU-004.
 ```
 
 ---
@@ -158,6 +176,9 @@ Rationale:  Host↔device transfer overhead makes GPU dispatch inefficient
             GPU path slower than CPU for the common interactive (single-
             vector) use case.
 Ref:        [[design/rust/parallelism]] §GPU execution tier, FR-GPU-004
+Tests:      None — tinyquant-gpu-wgpu crate not yet implemented (Phase 27).
+Gap:        GAP-GPU-005 — should_use_gpu() and BATCH_THRESHOLD unit tests cannot be
+            written until Phase 27. See testing-gaps.md §GAP-GPU-005.
 ```
 
 ---
@@ -184,6 +205,9 @@ Rationale:  Callers may call prepare_for_device() defensively before each
             batch without performance penalty; idempotency makes the API
             safe to use in retry loops.
 Ref:        [[design/rust/risks-and-mitigations]] §R26
+Tests:      None — tinyquant-gpu-wgpu crate not yet implemented (Phase 27).
+Gap:        GAP-GPU-006 — prepare_for_device() idempotency test requires Phase 27
+            WgpuBackend. See testing-gaps.md §GAP-GPU-006.
 ```
 
 ---
@@ -210,6 +234,9 @@ Rationale:  If the CUDA crate fails to compile without a CUDA toolkit,
             users. The stub pattern keeps the door open.
 Ref:        [[design/rust/feature-flags]] §tinyquant-gpu-cuda,
             [[design/rust/risks-and-mitigations]] §R23
+Tests:      None — tinyquant-gpu-cuda crate not yet implemented (Phase 28).
+Gap:        GAP-GPU-007 — CUDA stub compile-check CI job and is_available() test cannot
+            be written until Phase 28. See testing-gaps.md §GAP-GPU-007.
 ```
 
 ---

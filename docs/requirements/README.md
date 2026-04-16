@@ -32,6 +32,8 @@ category: requirements
 | `Past` | Baseline from the Python reference implementation |
 | `Qualify` | Conditions under which this requirement applies |
 | `Rationale` | Why the requirement exists |
+| `Tests` | Known test coverage — `[Rust]` or `[Python]` or `[CI]` prefixed paths |
+| `Gap` | Missing coverage with a `GAP-<DOMAIN>-<NNN>` tag; "None." if fully covered |
 
 ## Requirement files
 
@@ -43,6 +45,7 @@ category: requirements
 | [quality.md](quality.md) | Score fidelity and compression ratio | FR-QUAL-* |
 | [performance.md](performance.md) | Latency and throughput budgets | FR-PERF-* |
 | [gpu.md](gpu.md) | Optional GPU acceleration layer | FR-GPU-* |
+| [testing-gaps.md](testing-gaps.md) | Prioritized list of all `Gap:` entries across requirements | GAP-* |
 
 ## Tag numbering convention
 

@@ -39,6 +39,9 @@ Qualify:    V.dim == C.dim AND B is trained with C AND all elements of V are
             finite (not NaN, not Inf).
 Rationale:  Every valid input must compress; silent failures are unacceptable
             in a storage codec.
+Tests:      [Python] tests/codec/test_codec.py::TestCompress::test_compress_returns_compressed_vector
+            [Rust]   rust/crates/tinyquant-core/tests/codec_service.rs::compress_single_vector
+Gap:        None.
 ```
 
 ---
@@ -61,6 +64,10 @@ Plan:       100%
 Qualify:    FR-COMP-001 applies.
 Rationale:  Out-of-range indices produce undefined behavior during codebook
             lookup at decompression time.
+Tests:      [Python] tests/codec/test_codec.py::TestCompress::test_compress_indices_in_valid_range
+            [Rust]   rust/crates/tinyquant-core/tests/codebook.rs::quantize_indices_always_in_codebook_across_random_inputs
+            [Rust]   rust/crates/tinyquant-core/tests/quantize.rs::test_quantize_returns_valid_indices
+Gap:        None.
 ```
 
 ---
@@ -82,6 +89,11 @@ Qualify:    Both calls run in the same process on the same hardware with the
             same rotation cache state.
 Rationale:  Determinism enables reproducible storage, content-addressable
             caching, and parity testing against the Python reference.
+Tests:      [Python] tests/codec/test_codec.py::TestCompress::test_compress_deterministic
+            [Python] tests/calibration/test_determinism.py::test_compress_deterministic_across_calls
+            [Rust]   rust/crates/tinyquant-core/tests/batch_determinism.rs::full_pipeline_deterministic_across_repeat_runs
+            [Rust]   rust/crates/tinyquant-core/tests/batch_determinism.rs::full_pipeline_deterministic_across_thread_counts
+Gap:        None.
 ```
 
 ---
@@ -104,6 +116,11 @@ Plan:       100%
 Qualify:    FR-COMP-001 applies AND C.residual_enabled is true.
 Rationale:  The residual payload is the mechanism for Stage-2 correction;
             its absence silently degrades reconstruction quality.
+Tests:      [Python] tests/codec/test_codec.py::TestCompress::test_compress_with_residual
+            [Rust]   rust/crates/tinyquant-core/tests/compressed_vector.rs::new_with_residual_payload
+Gap:        GAP-COMP-004 — No Rust integration test verifies CV.residual.len() == dim * 2
+            after a full compress() call. The Rust unit test constructs the type directly,
+            bypassing the compress path. See testing-gaps.md §GAP-COMP-004.
 ```
 
 ---
@@ -126,6 +143,9 @@ Plan:       100%
 Qualify:    FR-COMP-001 applies AND C.residual_enabled is false.
 Rationale:  Unexpected residual data wastes storage and could mislead
             consumers that inspect the field.
+Tests:      [Python] tests/codec/test_codec.py::TestCompress::test_compress_without_residual
+            [Rust]   rust/crates/tinyquant-core/tests/compressed_vector.rs::has_residual_flag_accuracy
+Gap:        None.
 ```
 
 ---
@@ -149,6 +169,12 @@ Plan:       100%
 Qualify:    V.dim ≠ C.dim.
 Rationale:  Silent truncation or padding would corrupt the rotation matrix
             application and produce garbage output with no observable failure.
+Tests:      [Python] tests/codec/test_codec.py::TestCompress::test_compress_dimension_mismatch_raises
+            [Rust]   rust/crates/tinyquant-core/tests/errors.rs::dimension_mismatch_error_format
+Gap:        GAP-COMP-006 — The Rust test validates error display format only. No Rust
+            integration test calls compress() with a mismatched dimension and verifies
+            both CodecError::DimensionMismatch is raised and no CompressedVector is
+            returned. See testing-gaps.md §GAP-COMP-006.
 ```
 
 ---
@@ -171,6 +197,12 @@ Plan:       100%
 Qualify:    FR-COMP-001 applies.
 Rationale:  Config traceability is the guard against decompressing a
             CompressedVector with the wrong codebook or rotation matrix.
+Tests:      [Python] tests/codec/test_codec.py::TestCompress::test_compress_config_hash_matches
+            [Rust]   rust/crates/tinyquant-core/tests/codec_config.rs::test_config_hash_is_deterministic
+Gap:        GAP-COMP-007 — No Rust integration test asserts CV.config_hash == C.hash()
+            after a full compress() call. The codec_config test verifies hash stability
+            in isolation, not the end-to-end embedding in a CompressedVector.
+            See testing-gaps.md §GAP-COMP-007.
 ```
 
 ---
@@ -193,6 +225,10 @@ Plan:       100%
 Qualify:    All N input rows satisfy FR-COMP-001's qualify conditions.
 Rationale:  A partial result would silently lose data; the caller cannot
             distinguish which vectors succeeded.
+Tests:      [Python] tests/codec/test_codec.py::TestBatch::test_compress_batch_count_matches
+            [Rust]   rust/crates/tinyquant-core/tests/codec_service.rs::batch_compress_matches_individual
+            [Rust]   rust/crates/tinyquant-core/tests/batch_parallel.rs::compress_batch_serial_matches_codec_compress
+Gap:        None.
 ```
 
 ---
@@ -220,6 +256,11 @@ Qualify:    CV was produced by FR-COMP-001 with the same C and B that are
             supplied to decompress.
 Rationale:  A consumer that receives a vector of the wrong dimension or
             containing NaN cannot safely use it for similarity search.
+Tests:      [Python] tests/codec/test_codec.py::TestDecompress::test_decompress_returns_fp32_array
+            [Python] tests/codec/test_codec.py::TestDecompress::test_decompress_correct_dimension
+            [Rust]   rust/crates/tinyquant-core/tests/codec_service.rs::decompress_compressed_vector
+            [Rust]   rust/crates/tinyquant-core/tests/codec_service.rs::round_trip_preserves_shape
+Gap:        None.
 ```
 
 ---
@@ -242,6 +283,9 @@ Plan:       100%
 Qualify:    Same CV, C, B in both calls; same process, same hardware.
 Rationale:  Non-deterministic decompression breaks caching, testing, and
             any downstream system that expects reproducible vectors.
+Tests:      [Python] tests/codec/test_codec.py::TestDecompress::test_decompress_deterministic
+            [Rust]   rust/crates/tinyquant-core/tests/batch_determinism.rs::full_pipeline_deterministic_across_repeat_runs
+Gap:        None.
 ```
 
 ---
@@ -265,6 +309,12 @@ Plan:       100%
 Qualify:    CV.config_hash ≠ C.hash().
 Rationale:  Applying the wrong rotation matrix or codebook produces
             plausible-looking garbage; the mismatch must be caught.
+Tests:      [Python] tests/codec/test_codec.py::TestDecompress::test_decompress_config_mismatch_raises
+            [Rust]   rust/crates/tinyquant-core/tests/errors.rs::config_mismatch_error
+Gap:        GAP-DECOMP-003 — The Rust test validates error display format only. No Rust
+            integration test supplies a CV with hash H1 and attempts decompress with config
+            hash H2, verifying CodecError::ConfigMismatch and no output produced.
+            See testing-gaps.md §GAP-DECOMP-003.
 ```
 
 ---
@@ -289,6 +339,13 @@ Plan:       99%
 Rationale:  The residual stage exists to improve fidelity; if it does not
             improve the result in the majority of cases the implementation
             is incorrect.
+Tests:      [Python] tests/codec/test_codec.py::TestRoundTrip::test_round_trip_with_residual_has_lower_error
+            [Python] tests/calibration/test_score_fidelity.py::test_residual_improves_rho
+            [Rust]   rust/crates/tinyquant-core/tests/residual.rs::residual_round_trip
+            [Rust]   rust/crates/tinyquant-bench/tests/calibration.rs::* (#[ignore])
+Gap:        GAP-DECOMP-004 — No non-ignored Rust test computes MSE for residual-on vs
+            residual-off on the same inputs. The only Rust quality coverage is #[ignore].
+            See testing-gaps.md §GAP-DECOMP-004.
 Ref:        FR-QUAL-002, FR-QUAL-003
 ```
 
@@ -310,6 +367,9 @@ Plan:       100%
 Qualify:    All N CompressedVectors satisfy FR-DECOMP-003's qualify condition
             (config hashes match C).
 Rationale:  Symmetry with FR-COMP-008; partial output silently loses data.
+Tests:      [Python] tests/codec/test_codec.py::TestBatch::test_decompress_batch_count_matches
+            [Rust]   rust/crates/tinyquant-core/tests/batch_parallel.rs::decompress_batch_serial_matches_individual
+Gap:        None.
 ```
 
 ---
@@ -338,6 +398,10 @@ Must:       100%
 Plan:       100%
 Rationale:  The serialization format is the storage contract; lossy
             round-trips corrupt stored embeddings.
+Tests:      [Rust]   rust/crates/tinyquant-io/tests/roundtrip.rs (11 parametrized cases:
+            bw2/bw4/bw8 × dim768/dim1/dim17/dim1536 × residual on/off)
+            [Python] tests/codec/test_compressed_vector.py (serialization round-trip)
+Gap:        None.
 ```
 
 ---
@@ -362,6 +426,10 @@ Past:       N/A — constraint applied at Rust port inception.
 Qualify:    The triple (C, B, V) is in the canonical parity fixture set.
 Rationale:  Byte-level parity is required for the Rust port to be a drop-in
             replacement for the Python reference.
+Tests:      [Rust]   rust/crates/tinyquant-io/tests/python_parity.rs::case_01 through case_10
+            (10 byte-for-byte cross-language parity cases covering bw2/bw4/bw8,
+            dim768/dim1/dim17/dim1536, residual on/off)
+Gap:        None.
 Authority:  Codec lead + IO lead
 ```
 
@@ -390,6 +458,14 @@ Past:       Python from_bytes allocates one NumPy array per vector (~768 × 4
 Qualify:    Rust only (tinyquant-io mmap feature). Python is exempt.
 Rationale:  Reading a gigabyte of compressed vectors must be SSD-limited,
             not allocator-limited.
+Tests:      [Rust]   rust/crates/tinyquant-io/tests/zero_copy.rs::zero_copy_slice_indices_no_allocation
+            [Rust]   rust/crates/tinyquant-io/tests/mmap_corpus.rs::mmap_corpus_memory_mapped_not_copied
+            [Rust]   rust/crates/tinyquant-io/tests/mmap_corpus.rs::mmap_corpus_zero_copy_slicing
+            [CI]     rust-ci.yml::test-mmap-dhat (cargo test -p tinyquant-io --features "mmap dhat-heap")
+Gap:        GAP-SER-003 — The tests assert structural no-allocation but do not enforce
+            the ≤ 4 KiB/1 000 vectors Must threshold numerically. The dhat-heap CI job
+            exists but does not assert the bound from the heap output file.
+            See testing-gaps.md §GAP-SER-003.
 ```
 
 ---

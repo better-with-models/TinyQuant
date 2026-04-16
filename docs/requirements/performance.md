@@ -48,6 +48,10 @@ Rationale:  A 10× latency improvement enables TinyQuant to run inline in
             visible tail latency.
 Authority:  Perf lead
 Ref:        [[design/rust/goals-and-non-goals]]
+Tests:      [Rust]   rust/crates/tinyquant-bench/benches/compress.rs::bench_single_compress
+Gap:        GAP-PERF-ALL — No CI job enforces latency thresholds as blocking gates.
+            Criterion benchmarks produce reports but do not fail on regression.
+            See testing-gaps.md §GAP-PERF-ALL.
 ```
 
 ---
@@ -69,6 +73,8 @@ Qualify:    Same as FR-PERF-001.
 Rationale:  Decompression is on the read path; it should not add more
             latency than a typical network round-trip (< 1 ms).
 Ref:        FR-PERF-001
+Tests:      [Rust]   rust/crates/tinyquant-bench/benches/decompress.rs::bench_single_decompress
+Gap:        GAP-PERF-ALL — see FR-PERF-001 gap; same issue applies to all perf requirements.
 ```
 
 ---
@@ -94,6 +100,8 @@ Rationale:  Batch throughput governs corpus ingestion rate. A 24× speedup
             over Python means a 1M-vector corpus index takes < 8 s instead
             of ~3 min.
 Ref:        FR-PERF-001
+Tests:      [Rust]   rust/crates/tinyquant-bench/benches/batch_compress.rs::bench_batch_compress_10k
+Gap:        GAP-PERF-ALL — see FR-PERF-001 gap.
 ```
 
 ---
@@ -112,6 +120,8 @@ Stretch:    Median ≤ 12 ms
 Past:       Python reference: ~0.95 s
 Qualify:    Same as FR-PERF-003.
 Ref:        FR-PERF-003
+Tests:      [Rust]   rust/crates/tinyquant-bench/benches/batch_decompress.rs::bench_batch_decompress_10k
+Gap:        GAP-PERF-ALL — see FR-PERF-001 gap.
 ```
 
 ---
@@ -133,6 +143,8 @@ Past:       Python reference: ~5 µs
 Qualify:    Rust port; dim 1536; bit_width 4; residual on.
 Rationale:  to_bytes is called on every vector written to disk or network.
             At ≤ 150 ns it is not the bottleneck in any realistic IO path.
+Tests:      [Rust]   rust/crates/tinyquant-bench/benches/serialization.rs::bench_to_bytes
+Gap:        GAP-PERF-ALL — see FR-PERF-001 gap.
 ```
 
 ---
@@ -153,6 +165,8 @@ Stretch:    Median ≤ 100 ns
 Past:       Python reference: ~8 µs
 Qualify:    Rust port; dim 1536; byte buffer already in L1/L2 cache.
 Ref:        FR-PERF-005
+Tests:      [Rust]   rust/crates/tinyquant-bench/benches/serialization.rs::bench_from_bytes
+Gap:        GAP-PERF-ALL — see FR-PERF-001 gap.
 ```
 
 ---
@@ -176,6 +190,8 @@ Qualify:    Rust port; 100 000 f32 values; bit_width 4 (16 codebook entries);
             single thread.
 Rationale:  Codebook training is called once per corpus setup, not per
             vector, so the absolute threshold is more lenient than compress.
+Tests:      [Rust]   rust/crates/tinyquant-bench/benches/codebook.rs::bench_codebook_train
+Gap:        GAP-PERF-ALL — see FR-PERF-001 gap.
 ```
 
 ---
@@ -199,6 +215,8 @@ Qualify:    Rust port; dim 1536; cold rotation cache; faer QR.
 Rationale:  The cold-build path is a one-time cost per (seed, dim) pair
             per process. At ≤ 35 ms it does not noticeably delay the
             first request in a server process.
+Tests:      [Rust]   rust/crates/tinyquant-bench/benches/rotation.rs::bench_rotation_cold_build
+Gap:        GAP-PERF-ALL — see FR-PERF-001 gap.
 ```
 
 ---
@@ -222,6 +240,8 @@ Qualify:    Rust port; ArcSwapOption hot-entry path; same (seed, dim) as
 Rationale:  Every compress call hits the rotation cache; at ≤ 40 ns this
             path is not the bottleneck relative to the quantization kernel.
 Ref:        [[design/rust/parallelism]] §Lock-free read paths
+Tests:      [Rust]   rust/crates/tinyquant-bench/benches/rotation.rs::bench_rotation_cache_hit
+Gap:        GAP-PERF-ALL — see FR-PERF-001 gap.
 ```
 
 ---
