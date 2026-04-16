@@ -437,3 +437,26 @@ jobs:
             echo "No committed baseline found; skipping budget check."
             echo "Run 'cargo xtask bench --capture-baseline main' on a CI runner to establish one."
           fi
+
+  gpu-compile:
+    name: GPU crate — compile + shader validation
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.87.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: build GPU crate
+        run: cargo build -p tinyquant-gpu-wgpu
+      - name: shader validation (adapter-less)
+        run: cargo test -p tinyquant-gpu-wgpu --test context_probe all_shaders_compile_without_device
+      - name: clippy GPU crate
+        run: cargo clippy -p tinyquant-gpu-wgpu -- -D warnings
