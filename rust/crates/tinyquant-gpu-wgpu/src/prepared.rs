@@ -34,7 +34,8 @@ pub(crate) struct GpuPreparedState {
 ///
 /// Uploaded once via [`crate::backend::WgpuBackend::prepare_corpus_for_device`]
 /// and held inside [`crate::backend::WgpuBackend`] for the lifetime of the
-/// backend instance.  Re-uploading with the same shape is a no-op.
+/// backend instance.  Re-uploading always replaces the resident corpus;
+/// idempotency tracking is the caller's responsibility.
 pub(crate) struct GpuCorpusState {
     /// Row-major FP32 corpus buffer (`n_rows × cols` elements).
     pub corpus_buf: Buffer,
