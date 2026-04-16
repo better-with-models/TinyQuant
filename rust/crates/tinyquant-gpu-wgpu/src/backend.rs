@@ -20,12 +20,10 @@ impl WgpuBackend {
         Ok(Self { ctx: Some(ctx) })
     }
 
-    /// Construct a no-adapter stub for testing.
+    /// Test-only no-adapter stub. `is_available()` returns `false`.
     ///
-    /// Returns a `WgpuBackend` with no context — `is_available()` returns `false`
-    /// and all GPU operations return `Err(NoAdapter)`.  Useful in unit and
-    /// integration tests running on headless CI with no GPU present.
-    #[cfg_attr(not(test), doc(hidden))]
+    /// `#[doc(hidden)]` — not part of the public API; only for tests.
+    #[doc(hidden)]
     pub fn unavailable() -> Self {
         Self { ctx: None }
     }
