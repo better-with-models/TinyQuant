@@ -1,10 +1,10 @@
 # AGENTS.md — Guide for AI Agents Working in `rust/crates`
 
-This directory is the Cargo workspace containing all 10 TinyQuant Rust crates. Each crate has a distinct responsibility and its own `AGENTS.md`. The workspace is built from `rust/Cargo.toml`; a change to any crate here may affect CI, the C ABI header, the Python extension wheel, or the `tinyquant` binary. Cross-crate dependency changes and version bumps are the most common operations that touch this directory rather than a single sub-crate.
+This directory is the Cargo workspace containing all 11 TinyQuant Rust crates. Each crate has a distinct responsibility and its own `AGENTS.md`. The workspace is built from `rust/Cargo.toml`; a change to any crate here may affect CI, the C ABI header, the Python extension wheel, or the `tinyquant` binary. Cross-crate dependency changes and version bumps are the most common operations that touch this directory rather than a single sub-crate.
 
 ## What this area contains
 
-- primary responsibility: houses the 10-crate Cargo workspace — `tinyquant-bench`, `tinyquant-bruteforce`, `tinyquant-cli`, `tinyquant-core`, `tinyquant-fuzz`, `tinyquant-io`, `tinyquant-js`, `tinyquant-pgvector`, `tinyquant-py`, and `tinyquant-sys`
+- primary responsibility: houses the 11-crate Cargo workspace — `tinyquant-bench`, `tinyquant-bruteforce`, `tinyquant-cli`, `tinyquant-core`, `tinyquant-fuzz`, `tinyquant-gpu-wgpu`, `tinyquant-io`, `tinyquant-js`, `tinyquant-pgvector`, `tinyquant-py`, and `tinyquant-sys`
 - main entrypoints: the crate subdirectory matching the area of interest; `rust/Cargo.toml` for workspace-level dependency and version management
 - common changes: adding a new crate, updating inter-crate dependency versions, adjusting workspace-level feature flags
 
@@ -17,7 +17,9 @@ crates/
 ├── tinyquant-cli/
 ├── tinyquant-core/
 ├── tinyquant-fuzz/
+├── tinyquant-gpu-wgpu/
 ├── tinyquant-io/
+├── tinyquant-js/
 ├── tinyquant-pgvector/
 ├── tinyquant-py/
 ├── tinyquant-sys/

@@ -60,8 +60,13 @@ This phase adds one new crate. The only change to existing files is:
 - `.github/workflows/rust-ci.yml` — add Layer 2 CI job.
 - `.github/workflows/gpu-ci.yml` (new) — Layer 3 runtime smoke job.
 
-No existing crate's public API changes. The `ComputeBackend` trait is
-defined inside `tinyquant-gpu-wgpu`; it is not in `tinyquant-core`.
+The `ComputeBackend` trait is defined inside `tinyquant-gpu-wgpu`; it is
+not in `tinyquant-core`. Three additive methods were added to `PreparedCodec`
+in `tinyquant-core` to support opaque GPU state attachment (`set_gpu_state`,
+`has_gpu_state`, `gpu_state`). No existing call sites break; the core crate
+remains GPU-free. See
+[[design/rust/phase-27-implementation-notes|Phase 27 Implementation Notes]]
+for full scope notes.
 
 ## Deliverables
 
@@ -498,7 +503,7 @@ declared complete.
 - [ ] `all_shaders_compile_without_device` passes on GitHub-hosted runner.
 - [ ] `wgpu_backend_new_does_not_panic` passes on a runner with no GPU.
 - [ ] `should_use_gpu_returns_false_below_threshold` passes.
-- [ ] `cargo clippy -p tinyquant-gpu-wgpu -- -D warnings` clean.
+- [ ] `cargo clippy --no-deps -p tinyquant-gpu-wgpu -- -D warnings` clean (`--no-deps` excludes pre-existing `tinyquant-core` lints at Rust 1.87, which are tracked separately in the 1.81 clippy job).
 - [ ] `gpu-ci.yml` workflow exists and runs (advisory).
 - [ ] `parity_compress.rs` and `prepare_for_device_is_idempotent` pass on a
       runner with a wgpu-compatible adapter.

@@ -1,0 +1,18 @@
+[package]
+name            = "tinyquant-gpu-wgpu"
+version.workspace = true
+edition.workspace = true
+rust-version    = "1.87"
+publish         = false
+description     = "wgpu/WGSL GPU-accelerated batch compression backend for TinyQuant"
+
+[dependencies]
+tinyquant-core = { workspace = true }
+wgpu           = { version = "22", features = ["wgsl"] }
+tokio          = { version = "1", features = ["rt"] }
+thiserror      = { workspace = true }
+bytemuck       = { workspace = true }
+
+[dev-dependencies]
+tokio          = { version = "1", features = ["rt", "macros"] }
+naga           = { version = "22.1.0", features = ["wgsl-in"] }

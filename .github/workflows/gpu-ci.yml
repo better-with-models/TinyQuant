@@ -1,0 +1,36 @@
+name: GPU runtime smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rust/crates/tinyquant-gpu-wgpu/**"
+      - ".github/workflows/gpu-ci.yml"
+  pull_request:
+    paths:
+      - "rust/crates/tinyquant-gpu-wgpu/**"
+      - ".github/workflows/gpu-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  gpu-smoke:
+    name: wgpu runtime smoke
+    runs-on: [self-hosted, gpu]
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.87.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: Run parity tests (requires wgpu adapter)
+        run: cargo test -p tinyquant-gpu-wgpu --test parity_compress

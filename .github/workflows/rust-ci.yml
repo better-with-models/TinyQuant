@@ -86,7 +86,9 @@ jobs:
         # which transitively requires getrandom 0.4 (edition2024, Rust > 1.81).
         # The live-db / test-containers features are tested separately in
         # environments with Docker and a live PostgreSQL server.
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        # tinyquant-gpu-wgpu requires rust-version = "1.87" and is excluded from
+        # the 1.81 MSRV gate. It is linted separately in the gpu-compile job.
+        run: cargo clippy --workspace --exclude tinyquant-gpu-wgpu --all-targets -- -D warnings
 
   test:
     name: Test
@@ -134,7 +136,9 @@ jobs:
       - name: test
         # --all-features omitted: tinyquant-pgvector's live-db feature activates
         # postgres 0.19 which requires getrandom 0.4 (edition2024, Rust > 1.81).
-        run: cargo test --workspace
+        # tinyquant-gpu-wgpu requires rust-version = "1.87" and is tested in the
+        # gpu-compile job.
+        run: cargo test --workspace --exclude tinyquant-gpu-wgpu
       - name: test (bruteforce)
         run: cargo test -p tinyquant-bruteforce
 
@@ -437,3 +441,28 @@ jobs:
             echo "No committed baseline found; skipping budget check."
             echo "Run 'cargo xtask bench --capture-baseline main' on a CI runner to establish one."
           fi
+
+  gpu-compile:
+    name: GPU crate — compile + shader validation
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.87.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: build GPU crate
+        run: cargo build -p tinyquant-gpu-wgpu
+      - name: shader validation (adapter-less)
+        run: cargo test -p tinyquant-gpu-wgpu --test context_probe all_shaders_compile_without_device
+      - name: clippy GPU crate
+        # --no-deps: pre-existing tinyquant-core lints fail at 1.87 clippy;
+        # those are tracked separately in the 1.81 clippy job.
+        run: cargo clippy --no-deps -p tinyquant-gpu-wgpu -- -D warnings
