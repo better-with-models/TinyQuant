@@ -25,7 +25,7 @@ impl WgpuBackend {
     /// Returns a `WgpuBackend` with no context — `is_available()` returns `false`
     /// and all GPU operations return `Err(NoAdapter)`.  Useful in unit and
     /// integration tests running on headless CI with no GPU present.
-    #[doc(hidden)]
+    #[cfg_attr(not(test), doc(hidden))]
     pub fn unavailable() -> Self {
         Self { ctx: None }
     }
