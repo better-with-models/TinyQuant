@@ -80,10 +80,8 @@ Rationale:  GPU is an additive feature; its absence must never crash a
             production server. Operators on CPU-only infrastructure should
             not need to change their deployment config.
 Ref:        [[design/rust/risks-and-mitigations]] §R24
-Tests:      None — tinyquant-gpu-wgpu crate not yet implemented (Phase 27).
-Gap:        GAP-GPU-002 — WgpuBackend does not exist yet. No graceful-degradation test
-            can be written until Phase 27 delivers the crate.
-            See testing-gaps.md §GAP-GPU-002.
+Tests:      [Crate]  tinyquant-gpu-wgpu/tests/context_probe.rs::wgpu_backend_new_does_not_panic
+Gap:        None.
 ```
 
 ---
@@ -113,10 +111,8 @@ Rationale:  The GPU path is a performance optimization; it must not produce
             than CPU determinism (1e-3 vs 0) because GPU FP32 GEMM can
             differ in reduction order.
 Ref:        FR-COMP-003, [[design/rust/gpu-acceleration]] §Synchronization model
-Tests:      None — tinyquant-gpu-wgpu crate not yet implemented (Phase 27).
-Gap:        GAP-GPU-003 — Differential test (GPU vs CPU compress_batch) cannot be
-            written until Phase 27 delivers the WgpuBackend and WGSL kernels.
-            See testing-gaps.md §GAP-GPU-003.
+Tests:      [Crate]  tinyquant-gpu-wgpu/tests/parity_compress.rs::gpu_decompress_matches_cpu_within_tolerance
+Gap:        None.
 ```
 
 ---
@@ -176,9 +172,8 @@ Rationale:  Host↔device transfer overhead makes GPU dispatch inefficient
             GPU path slower than CPU for the common interactive (single-
             vector) use case.
 Ref:        [[design/rust/parallelism]] §GPU execution tier, FR-GPU-004
-Tests:      None — tinyquant-gpu-wgpu crate not yet implemented (Phase 27).
-Gap:        GAP-GPU-005 — should_use_gpu() and BATCH_THRESHOLD unit tests cannot be
-            written until Phase 27. See testing-gaps.md §GAP-GPU-005.
+Tests:      [Crate]  tinyquant-gpu-wgpu/tests/batch_threshold.rs::should_use_gpu_returns_false_below_threshold
+Gap:        None.
 ```
 
 ---
@@ -205,9 +200,8 @@ Rationale:  Callers may call prepare_for_device() defensively before each
             batch without performance penalty; idempotency makes the API
             safe to use in retry loops.
 Ref:        [[design/rust/risks-and-mitigations]] §R26
-Tests:      None — tinyquant-gpu-wgpu crate not yet implemented (Phase 27).
-Gap:        GAP-GPU-006 — prepare_for_device() idempotency test requires Phase 27
-            WgpuBackend. See testing-gaps.md §GAP-GPU-006.
+Tests:      [Crate]  tinyquant-gpu-wgpu/tests/parity_compress.rs::prepare_for_device_is_idempotent
+Gap:        None.
 ```
 
 ---
