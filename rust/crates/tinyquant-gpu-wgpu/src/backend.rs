@@ -239,8 +239,8 @@ impl ComputeBackend for WgpuBackend {
             pass.set_pipeline(&rotate_pipeline);
             pass.set_bind_group(0, &rotate_bind_group, &[]);
             // workgroup_size(16, 16): dispatch ceil(cols/16) × ceil(rows/16)
-            let wx = (cols as u32 + 15) / 16;
-            let wy = (rows as u32 + 15) / 16;
+            let wx = (cols as u32).div_ceil(16);
+            let wy = (rows as u32).div_ceil(16);
             pass.dispatch_workgroups(wx, wy, 1);
         }
 
@@ -255,7 +255,7 @@ impl ComputeBackend for WgpuBackend {
             pass.set_bind_group(0, &quantize_bind_group, &[]);
             // workgroup_size(256)
             let total = (rows * cols) as u32;
-            let wx = (total + 255) / 256;
+            let wx = total.div_ceil(256);
             pass.dispatch_workgroups(wx, 1, 1);
         }
 
@@ -469,7 +469,7 @@ impl ComputeBackend for WgpuBackend {
             pass.set_pipeline(&dequantize_pipeline);
             pass.set_bind_group(0, &dequant_bind_group, &[]);
             let total = (rows * cols) as u32;
-            let wx = (total + 255) / 256;
+            let wx = total.div_ceil(256);
             pass.dispatch_workgroups(wx, 1, 1);
         }
 
@@ -482,8 +482,8 @@ impl ComputeBackend for WgpuBackend {
                 });
             pass.set_pipeline(&rotate_pipeline);
             pass.set_bind_group(0, &rotate_inv_bind_group, &[]);
-            let wx = (cols as u32 + 15) / 16;
-            let wy = (rows as u32 + 15) / 16;
+            let wx = (cols as u32).div_ceil(16);
+            let wy = (rows as u32).div_ceil(16);
             pass.dispatch_workgroups(wx, wy, 1);
         }
 

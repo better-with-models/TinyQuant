@@ -23,7 +23,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           lfs: false
       - uses: dtolnay/rust-toolchain@stable

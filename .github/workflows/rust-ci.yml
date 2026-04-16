@@ -445,7 +445,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v4
         with:
           lfs: false
       - uses: dtolnay/rust-toolchain@stable
@@ -459,4 +459,6 @@ jobs:
       - name: shader validation (adapter-less)
         run: cargo test -p tinyquant-gpu-wgpu --test context_probe all_shaders_compile_without_device
       - name: clippy GPU crate
-        run: cargo clippy -p tinyquant-gpu-wgpu -- -D warnings
+        # --no-deps: pre-existing tinyquant-core lints fail at 1.87 clippy;
+        # those are tracked separately in the 1.81 clippy job.
+        run: cargo clippy --no-deps -p tinyquant-gpu-wgpu -- -D warnings

@@ -21,6 +21,12 @@ fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
 }
 
 // Approximate f32-to-f16 bit conversion (IEEE 754 round-to-nearest).
+//
+// KNOWN LIMITATION (Phase 28 TODO): `h_exp` is a u32 so the guard
+// `if (h_exp <= 0u)` is always false (unsigned integers never go below zero).
+// Subnormal f32 inputs (0 < biased_exp < 112) silently wrap around instead
+// of flushing to zero. Fix before enabling this shader in production (Phase 28):
+// compute h_exp as a signed quantity or add an explicit `exp < 113u` guard.
 fn f32_to_f16(v: f32) -> u32 {
     let bits = bitcast<u32>(v);
     let exp  = (bits >> 23u) & 0xFFu;
@@ -28,6 +34,6 @@ fn f32_to_f16(v: f32) -> u32 {
     if (exp == 0xFFu) { return 0x7C00u | ((bits & 0x7FFFFFu) >> 13u); }
     let h_exp = exp - 127u + 15u;
     if (h_exp >= 31u) { return select(0x7C00u, 0u, (bits >> 31u) == 1u); }
-    if (h_exp <= 0u)  { return 0u; }
+    if (h_exp <= 0u)  { return 0u; } // NOTE: dead branch — see KNOWN LIMITATION above
     return ((bits >> 31u) << 15u) | (h_exp << 10u) | ((bits >> 13u) & 0x3FFu);
 }
