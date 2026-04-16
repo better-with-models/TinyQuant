@@ -13,6 +13,29 @@ status: active
 > Append-only record of documentation-system changes. Use the format
 > `## [YYYY-MM-DD] operation | description`.
 
+## [2026-04-16] review | Phase 27.5 Claude code review note added
+
+Added [[scratch/review-phase-27.5]] as a structured code review of commit `e78ec8e`
+on `feature/phase-27.5-resident-corpus-search`. Covers plan compliance, acceptance
+criteria status, and nine findings (four risks, four nits, one design question)
+against [[plans/rust/phase-27.5-resident-corpus-search]]. Normalized to Obsidian
+vault conventions: full frontmatter, callouts for all finding entries, and
+wikilink for the plan cross-reference.
+
+## [2026-04-16] review | Phase 27.5 best-practice and code-smell audit added
+
+Added [[scratch/audit-phase-27.5-best-practice-codex]] as a worktree-based audit
+of `feature/phase-27.5-resident-corpus-search`, focused on best-practice drift,
+shared search-contract mismatches, and maintainability/code-smell findings in
+`tinyquant-gpu-wgpu`.
+
+## [2026-04-16] review | Phase 27.5 branch review note added
+
+Added [[scratch/review-phase-27.5-codex]] as an ad hoc review note for the branch
+`feature/phase-27.5-resident-corpus-search`, covering code-review findings
+against `develop` and against
+[[plans/rust/phase-27.5-resident-corpus-search]].
+
 ## [2026-04-08] init | Documentation system scaffolding created
 
 Initialized the TinyQuant documentation system using the same structural model
@@ -804,3 +827,4 @@ Created branch `fix/rotation-cache-compress-path` with:
 
 No Python reference changes are proposed. The fix is Rust-only and confined to
 `batch.rs` + an internal helper in `service.rs`.
+
