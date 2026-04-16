@@ -11,6 +11,7 @@ members = [
     "crates/tinyquant-cli",
     "crates/tinyquant-bench",
     "crates/tinyquant-fuzz",
+    "crates/tinyquant-gpu-wgpu",
     "xtask",
 ]
 

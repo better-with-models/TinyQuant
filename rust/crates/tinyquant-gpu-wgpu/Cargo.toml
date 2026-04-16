@@ -1,0 +1,15 @@
+[package]
+name            = "tinyquant-gpu-wgpu"
+version.workspace = true
+edition.workspace = true
+rust-version    = "1.87"
+publish         = false
+
+[dependencies]
+tinyquant-core = { workspace = true }
+wgpu           = { version = "22", features = ["wgsl"] }
+tokio          = { version = "1", features = ["rt"] }
+thiserror      = { workspace = true }
+
+[dev-dependencies]
+tokio          = { version = "1", features = ["rt", "macros"] }
