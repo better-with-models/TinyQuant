@@ -7,9 +7,11 @@
 ```text
 javascript/@tinyquant/core/tests/
 ├── backend.test.ts
-├── corpus.test.ts
+├── corpus.test.ts           — lifecycle + GAP-JS-004 policy invariants
+├── esm-subpath-smoke.test.ts — GAP-JS-007: sub-path export resolution
+├── loader.test.ts            — GAP-JS-006: binaryKey() all platforms + musl
 ├── parity.test.ts
-├── round-trip.test.ts
+├── round-trip.test.ts        — dim=128 + GAP-JS-002 dim=768
 ├── types.test.ts
 ├── cjs-smoke.test.cjs
 ├── fixtures/

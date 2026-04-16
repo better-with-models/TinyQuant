@@ -87,6 +87,20 @@ function deterministicCalibration(dim: number, rows: number, seed: number): Floa
   return out;
 }
 
+// GAP-JS-004: xorshift32 deterministic vector for policy invariant tests.
+// Returns Float32Array of `dim` values in [-1, 1].
+function seededVector(dim: number, seed: number): Float32Array {
+  let s = seed >>> 0;
+  const out = new Float32Array(dim);
+  for (let i = 0; i < dim; i++) {
+    s ^= s << 13;
+    s ^= s >> 17;
+    s ^= s << 5;
+    out[i] = ((s >>> 0) / 0xffffffff) * 2 - 1;
+  }
+  return out;
+}
+
 describe("@better-with-models/tinyquant-core — corpus scenarios from Python oracle", () => {
   const scenarios = loadScenarios();
 
@@ -183,5 +197,120 @@ describe("@better-with-models/tinyquant-core — corpus scenarios from Python or
     assert.equal(corpus.remove("x"), true);
     assert.equal(corpus.remove("x"), false);
     assert.equal(corpus.vectorCount, 0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GAP-JS-004 — Corpus policy invariants exercised through the N-API boundary.
+//
+// These three cases close the gap identified in testing-gaps.md §GAP-JS-004:
+// cross-config hash distinctness, policy stability, and FP16 round-trip
+// precision. They run in a separate describe block so CI output is easy to
+// grep.
+//
+// Note on cross-config rejection: the full rejection test requires
+// `corpus.insertCompressed()`, which is not yet exposed by the N-API binding.
+// The test below verifies the config-hash mechanism that underpins the check
+// (distinct seeds → distinct hashes; VectorEntry hash matches corpus hash).
+// ---------------------------------------------------------------------------
+describe("@better-with-models/tinyquant-core — corpus policy invariants (GAP-JS-004)", () => {
+  const DIM = 64;
+  const NTRAIN = 256;
+
+  // GAP-JS-004 (1/3): Two corpora with different seeds produce distinct config
+  // hashes, and the hash recorded on a VectorEntry matches the corpus config.
+  // This exercises the config-hash path through the N-API boundary and lays the
+  // groundwork for cross-config rejection (which requires insertCompressed).
+  it("config hash differs between seeds and matches VectorEntry through N-API", () => {
+    const cfgA = new CodecConfig({ bitWidth: 4, seed: 1n, dimension: DIM, residualEnabled: false });
+    const cfgB = new CodecConfig({ bitWidth: 4, seed: 2n, dimension: DIM, residualEnabled: false });
+
+    assert.notEqual(
+      cfgA.configHash,
+      cfgB.configHash,
+      "configs with different seeds must have distinct hashes",
+    );
+
+    const calA = deterministicCalibration(DIM, NTRAIN, 1);
+    const cbA = Codebook.train(calA, cfgA);
+    const corpusA = new Corpus({
+      corpusId: "gap-004-a",
+      codecConfig: cfgA,
+      codebook: cbA,
+      compressionPolicy: CompressionPolicy.COMPRESS,
+    });
+    const entry = corpusA.insert("v0", seededVector(DIM, 10));
+
+    assert.equal(
+      entry.configHash,
+      cfgA.configHash,
+      "VectorEntry.configHash must equal the corpus config hash through N-API",
+    );
+    assert.notEqual(
+      entry.configHash,
+      cfgB.configHash,
+      "VectorEntry.configHash must not match a different config",
+    );
+  });
+
+  // GAP-JS-004 (2/3): compressionPolicy is stable after insertion — the corpus
+  // retains the policy set at construction and no mutation API exists.
+  it("compressionPolicy remains stable after insertion through N-API", () => {
+    const cfg = new CodecConfig({ bitWidth: 4, seed: 42n, dimension: DIM, residualEnabled: false });
+    const cal = deterministicCalibration(DIM, NTRAIN, 42);
+    const cb = Codebook.train(cal, cfg);
+    const corpus = new Corpus({
+      corpusId: "gap-004-pi",
+      codecConfig: cfg,
+      codebook: cb,
+      compressionPolicy: CompressionPolicy.COMPRESS,
+    });
+    corpus.insert("v0", seededVector(DIM, 0));
+    corpus.insert("v1", seededVector(DIM, 1));
+
+    assert.equal(corpus.compressionPolicy.kind, "compress");
+    // requiresCodec() must return true for the COMPRESS policy.
+    assert.equal(corpus.compressionPolicy.requiresCodec(), true);
+    // storageDtype() must be uint8 (codec path).
+    assert.equal(corpus.compressionPolicy.storageDtype(), "uint8");
+  });
+
+  // GAP-JS-004 (3/3): FP16 policy round-trip precision through N-API.
+  // Each decompressed element must be within 2^-10 × |original| of the
+  // original (IEEE 754 half-precision machine epsilon). This is looser than
+  // the 2^-13 bound referenced in the plan to avoid false failures at the
+  // FP16 rounding boundary for arbitrary xorshift32 values in [-1, 1].
+  it("FP16 policy preserves each element within FP16 precision through N-API", () => {
+    const cfg = new CodecConfig({ bitWidth: 4, seed: 42n, dimension: DIM, residualEnabled: false });
+    const cal = deterministicCalibration(DIM, NTRAIN, 42);
+    const cb = Codebook.train(cal, cfg);
+    const corpus = new Corpus({
+      corpusId: "gap-004-fp16",
+      codecConfig: cfg,
+      codebook: cb,
+      compressionPolicy: CompressionPolicy.FP16,
+    });
+
+    const original = seededVector(DIM, 7);
+    corpus.insert("v0", original);
+    const all = corpus.decompressAll();
+
+    assert.ok("v0" in all, "decompressAll must contain the inserted id");
+    const decompressed = all["v0"]!;
+    assert.equal(decompressed.length, DIM);
+
+    // FP16 machine epsilon is 2^-10; allow one ULP of headroom.
+    const REL_BOUND = Math.pow(2, -10);
+    const ABS_FLOOR = 1e-6; // handles near-zero elements
+
+    for (let i = 0; i < DIM; i++) {
+      const o = original[i]!;
+      const r = decompressed[i]!;
+      const allowed = Math.abs(o) * REL_BOUND + ABS_FLOOR;
+      assert.ok(
+        Math.abs(o - r) <= allowed,
+        `element ${i}: |${o.toFixed(6)} - ${r.toFixed(6)}| = ${Math.abs(o - r).toExponential(3)} exceeds FP16 bound ${allowed.toExponential(3)}`,
+      );
+    }
   });
 });

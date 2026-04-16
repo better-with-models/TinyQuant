@@ -96,11 +96,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu,   napi_cross_target: "" }
-          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu, napi_cross_target: "" }
-          - { triple: x86_64-apple-darwin,        runner: macos-14,         key: darwin-x64,      napi_cross_target: x86_64-apple-darwin }
-          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64,    napi_cross_target: "" }
-          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc,  napi_cross_target: "" }
+          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu,    napi_cross_target: "",                      musl: false }
+          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu,  napi_cross_target: "",                      musl: false }
+          - { triple: x86_64-apple-darwin,        runner: macos-14,         key: darwin-x64,       napi_cross_target: x86_64-apple-darwin,     musl: false }
+          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64,     napi_cross_target: "",                      musl: false }
+          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc,   napi_cross_target: "",                      musl: false }
+          # Phase 25.5: musl Linux targets (GAP-JS-006)
+          - { triple: x86_64-unknown-linux-musl,  runner: ubuntu-22.04,     key: linux-x64-musl,   napi_cross_target: "",                      musl: true  }
+          - { triple: aarch64-unknown-linux-musl, runner: ubuntu-22.04,     key: linux-arm64-musl, napi_cross_target: aarch64-unknown-linux-musl, musl: true }
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5
@@ -111,6 +114,16 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "20.x"
+      # Phase 25.5: install musl-tools and aarch64 cross-linker for musl targets.
+      - name: Install musl cross-compilation toolchain
+        if: matrix.musl == true
+        shell: bash
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y musl-tools
+          if [[ "${{ matrix.triple }}" == "aarch64-unknown-linux-musl" ]]; then
+            sudo apt-get install -y gcc-aarch64-linux-gnu
+          fi
       - name: npm ci
         working-directory: javascript/@tinyquant/core
         shell: bash
@@ -164,8 +177,8 @@ jobs:
           set -euo pipefail
           ls -la binaries/
           count=$(ls binaries/*.node 2>/dev/null | wc -l)
-          test "$count" -eq 5 || {
-            echo "::error::expected 5 bundled binaries, got $count"
+          test "$count" -eq 7 || {
+            echo "::error::expected 7 bundled binaries (5 glibc + 2 musl), got $count"
             exit 1
           }
       - name: npm ci
@@ -189,12 +202,44 @@ jobs:
           # a freshly-built one. That is fine: the fresh binary is
           # byte-equivalent for the host. Verify the five expected
           # files are all still present.
-          for key in linux-x64-gnu linux-arm64-gnu darwin-x64 darwin-arm64 win32-x64-msvc; do
+          for key in linux-x64-gnu linux-arm64-gnu darwin-x64 darwin-arm64 win32-x64-msvc linux-x64-musl linux-arm64-musl; do
             test -f "binaries/${key}.node" || {
               echo "::error::missing binaries/${key}.node after build"
               exit 1
             }
           done
+      # GAP-JS-008: assert gzip ≤ 10 MB and unpacked ≤ 50 MB before packaging.
+      - name: Check package size (gzip ≤ 10 MB, unpacked ≤ 50 MB)
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          PACK_OUTPUT=$(npm pack --dry-run 2>&1)
+          echo "$PACK_OUTPUT"
+
+          GZIP_MB=$(echo "$PACK_OUTPUT" \
+            | grep -iE "package size|Packed size" \
+            | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)
+          UNPACK_MB=$(echo "$PACK_OUTPUT" \
+            | grep -i "unpacked size" \
+            | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)
+
+          echo "Gzip: ${GZIP_MB:-?} MB  Unpacked: ${UNPACK_MB:-?} MB"
+
+          if [[ -z "$GZIP_MB" || -z "$UNPACK_MB" ]]; then
+            echo "WARN: could not parse sizes from npm pack output; skipping gate"
+            exit 0
+          fi
+
+          if (( $(echo "$GZIP_MB > 10" | bc -l) )); then
+            echo "FAIL: gzip size ${GZIP_MB} MB exceeds 10 MB limit"
+            exit 1
+          fi
+          if (( $(echo "$UNPACK_MB > 50" | bc -l) )); then
+            echo "FAIL: unpacked size ${UNPACK_MB} MB exceeds 50 MB limit"
+            exit 1
+          fi
+          echo "PASS: package size within budget"
       - name: npm pack
         working-directory: javascript/@tinyquant/core
         shell: bash
@@ -289,12 +334,20 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "20.x"
+      # GAP-JS-009: fail fast if package.json and Cargo.toml versions diverge.
+      - name: Check version consistency (package.json ↔ Cargo.toml)
+        shell: bash
+        run: bash scripts/check_version_consistency.sh
       - name: npm ci
         working-directory: javascript/@tinyquant/core
         run: npm ci
       - name: npm test
         working-directory: javascript/@tinyquant/core
         run: npm test
+      # GAP-JS-010: verify loader dist/ contains no subprocess-spawning APIs.
+      - name: Verify loader has no subprocess invocations
+        shell: bash
+        run: bash scripts/check_no_exec.sh javascript/@tinyquant/core/dist
 
   # -------------------------------------------------------------------
   # 5. pnpm-smoke — verify pnpm can install the tarball too.

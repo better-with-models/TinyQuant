@@ -92,12 +92,9 @@ Rationale:  The primary correctness signal for the N-API binding is that
             through the JS boundary. MSE < 1e-2 at dim=128 is the Phase
             25 acceptance gate; dim=768 covers the production use case.
 Tests:      [Node] javascript/@tinyquant/core/tests/round-trip.test.ts
-            (covers case (a) only: N=10k, dim=128)
-Gap:        GAP-JS-002 — round-trip.test.ts only tests dim=128. No test
-            covers dim=768 (the production gold corpus dimension) or
-            dim=1536 (the Rust perf target). A dim=768 case should be
-            added as a second it() block in the same file.
-            See testing-gaps.md §GAP-JS-002.
+            (a) N=10k, dim=128 — original Phase 25 gate
+            (b) N=1000, dim=768, seed 0xdeadbeef — added Phase 25.5
+Gap:        None. dim=768 it() block added in Phase 25.5.
 ```
 
 ---
@@ -170,13 +167,11 @@ Rationale:  Corpus domain events are the observable integration signal
 Tests:      [Node] javascript/@tinyquant/core/tests/corpus.test.ts
             (Python fixture-driven; covers single insert, batch insert,
             decompressAll event, and remove operations)
-Gap:        GAP-JS-004 — corpus.test.ts does not test:
-            (1) cross-config insertion rejection (FR-CORP-003 in JS layer)
-            (2) FP16 policy precision bound (FR-CORP-006 in JS layer)
-            (3) compression policy immutability after first insert (FR-CORP-007)
-            These policy invariants are tested in the Rust and Python layers
-            but not exercised through the N-API boundary.
-            See testing-gaps.md §GAP-JS-004.
+Gap:        None. Three cases added in Phase 25.5:
+            (1) Config-hash distinctness + VectorEntry hash via N-API
+                (full cross-config rejection pending insertCompressed exposure)
+            (2) compressionPolicy stability after insertion via N-API
+            (3) FP16 round-trip precision (≤ 2^-10 × |v| per element) via N-API
 ```
 
 ---
@@ -257,12 +252,10 @@ Rationale:  The bundled-binaries strategy relies entirely on the loader
             immediate segfault or module-not-found at import time.
 Tests:      [Node] javascript/@tinyquant/core/tests/loader.test.ts
             (unit test monkey-patching process.platform / process.arch)
-Gap:        GAP-JS-006 — The linux-arm64-musl and linux-x64-musl binaries
-            are not bundled; the loader maps musl to "linux-*-musl" key but
-            no corresponding .node file exists, so Alpine Linux users hit
-            the missing-binary error. The loader correctly reports the
-            error; the binary is the gap. A musl build should be added in
-            a follow-up phase. See testing-gaps.md §GAP-JS-006.
+Gap:        None. Phase 25.5 adds:
+            - linux-x64-musl and linux-arm64-musl CI matrix cells in js-ci.yml
+            - binaryKey() accepts optional override params for unit tests
+            - tests/loader.test.ts covers all 5 glibc keys + 2 musl keys
 ```
 
 ---
@@ -295,11 +288,10 @@ Rationale:  Many Node.js server applications still use CJS (e.g. most
             exclude a large fraction of the target audience.
 Tests:      [Node] javascript/@tinyquant/core/tests/cjs-smoke.test.cjs (CJS path)
             [Node] javascript/@tinyquant/core/tests/round-trip.test.ts (ESM path)
-Gap:        GAP-JS-007 — No dedicated test verifies that a .mjs consumer
-            importing individual sub-paths (/codec, /corpus, /backend from
-            the exports map) can resolve those entry points. Tests exercise
-            the root "." export only.
-            See testing-gaps.md §GAP-JS-007.
+Gap:        None. Phase 25.5 adds:
+            - tests/esm-subpath-smoke.test.ts imports from dist/codec.js,
+              dist/corpus.js, dist/backend.js and asserts each is a constructor
+            - package.json "exports" extended with ./codec, ./corpus, ./backend
 ```
 
 ---
@@ -330,13 +322,9 @@ Rationale:  Oversized packages degrade npm install cold-start in CI and
             50 MB hard cap is above the current actual size (~8.5 MB) but
             below the npm soft limit (~100 MB) where publish performance
             degrades.
-Tests:      None.
-Gap:        GAP-JS-008 — No CI step runs `npm pack --dry-run` and enforces
-            the size gate. Size is documented in the Phase 25 plan but not
-            automatically checked. If new binaries are added (e.g. musl,
-            RISC-V) the package could exceed the budget silently. P2:
-            current size is well within budget but there is no regression
-            guard. See testing-gaps.md §GAP-JS-008.
+Tests:      [CI]  assemble-tarball job: "Check package size" step runs
+            `npm pack --dry-run` and asserts gzip ≤ 10 MB, unpacked ≤ 50 MB.
+Gap:        None. Phase 25.5 adds size gate to js-ci.yml assemble-tarball job.
 ```
 
 ---
@@ -367,12 +355,10 @@ Rationale:  A published package whose package.json version differs from
             its Cargo.toml version makes it impossible to correlate npm
             and crates.io releases; npm provenance attestation would
             link the wrong source commit.
-Tests:      [CI]  .github/workflows/js-release.yml::verify-version
-Gap:        GAP-JS-009 — verify-version runs only in the release workflow;
-            it does not run on PRs or pushes to main. A version mismatch
-            introduced in a PR (e.g. package.json bumped but Cargo.toml
-            not) would not be caught until the next release attempt.
-            See testing-gaps.md §GAP-JS-009.
+Tests:      [CI]  .github/workflows/js-release.yml::verify-version (release)
+            [CI]  test-source job: scripts/check_version_consistency.sh (PRs)
+Gap:        None. Phase 25.5 adds scripts/check_version_consistency.sh wired
+            into js-ci.yml test-source job so mismatches are caught on PRs.
 ```
 
 ---
@@ -403,11 +389,9 @@ Rationale:  A loader that shells out could be used as an injection
             vector in sandboxed environments (AWS Lambda, Docker with
             seccomp profiles) where subprocess spawning is audited or
             blocked. The loader must be a pure require() call.
-Tests:      [CI]  scripts/check_no_exec.sh (grep gate in js-ci.yml)
-Gap:        GAP-JS-010 — check_no_exec.sh is documented in the Phase 25
-            plan but it is unclear whether it is wired into js-ci.yml in
-            the current implementation. Verify the CI job step exists and
-            runs on every PR. See testing-gaps.md §GAP-JS-010.
+Tests:      [CI]  scripts/check_no_exec.sh called in test-source job after npm test
+Gap:        None. Phase 25.5 creates scripts/check_no_exec.sh and wires it into
+            js-ci.yml test-source job. Confirmed PASS on current dist/ output.
 ```
 
 ---

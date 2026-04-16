@@ -27,6 +27,36 @@
         "default": "./dist/index.cjs"
       }
     },
+    "./codec": {
+      "import": {
+        "types": "./dist/codec.d.ts",
+        "default": "./dist/codec.js"
+      },
+      "require": {
+        "types": "./dist/codec.d.cts",
+        "default": "./dist/codec.cjs"
+      }
+    },
+    "./corpus": {
+      "import": {
+        "types": "./dist/corpus.d.ts",
+        "default": "./dist/corpus.js"
+      },
+      "require": {
+        "types": "./dist/corpus.d.cts",
+        "default": "./dist/corpus.cjs"
+      }
+    },
+    "./backend": {
+      "import": {
+        "types": "./dist/backend.d.ts",
+        "default": "./dist/backend.js"
+      },
+      "require": {
+        "types": "./dist/backend.d.cts",
+        "default": "./dist/backend.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "files": [

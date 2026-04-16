@@ -39,11 +39,31 @@ function linuxVariant(): "gnu" | "musl" {
   }
 }
 
-export function binaryKey(): string {
-  const { platform, arch } = process;
+/**
+ * Return the binary-key string for the current (or given) platform.
+ *
+ * When called with no arguments the function reads `process.platform`,
+ * `process.arch`, and the libc variant detected at runtime. The optional
+ * overrides are provided for unit tests that need to exercise a specific
+ * platform/arch/musl combination without monkey-patching `process`.
+ *
+ * @param overridePlatform - Override `process.platform` (e.g. `"linux"`)
+ * @param overrideArch     - Override `process.arch`     (e.g. `"x64"`)
+ * @param overrideMusl     - Override musl detection; `true` = musl, `false` = gnu
+ */
+export function binaryKey(
+  overridePlatform?: string,
+  overrideArch?: string,
+  overrideMusl?: boolean,
+): string {
+  const platform = overridePlatform ?? process.platform;
+  const arch = overrideArch ?? process.arch;
 
   if (platform === "linux") {
-    const libc = linuxVariant();
+    const libc =
+      overrideMusl !== undefined
+        ? overrideMusl ? "musl" : "gnu"
+        : linuxVariant();
     if (arch === "x64") return `linux-x64-${libc}`;
     if (arch === "arm64") return `linux-arm64-${libc}`;
   } else if (platform === "darwin") {
