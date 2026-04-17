@@ -3,7 +3,7 @@
 //! These tests require a wgpu adapter (physical GPU or llvmpipe software renderer).
 //! They skip automatically when no adapter is found via `skip_if_no_adapter()`.
 
-use tinyquant_core::codec::{Codec, CodecConfig, Codebook, PreparedCodec};
+use tinyquant_core::codec::{Codebook, Codec, CodecConfig, PreparedCodec};
 use tinyquant_gpu_wgpu::{ComputeBackend, WgpuBackend};
 
 fn skip_if_no_adapter() -> Option<WgpuBackend> {

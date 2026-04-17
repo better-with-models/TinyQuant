@@ -100,7 +100,11 @@ fn gpu_top10_overlaps_cpu_top10() {
 
         let intersection = gpu_ids.intersection(&cpu_ids).count();
         let union = gpu_ids.union(&cpu_ids).count();
-        let jaccard = if union == 0 { 1.0_f64 } else { intersection as f64 / union as f64 };
+        let jaccard = if union == 0 {
+            1.0_f64
+        } else {
+            intersection as f64 / union as f64
+        };
 
         assert!(
             jaccard >= 0.95,

@@ -445,6 +445,10 @@ jobs:
   gpu-compile:
     name: GPU crate — compile + shader validation
     runs-on: ubuntu-22.04
+    # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml (which pins 1.81) so that
+    # cargo uses the 1.87 toolchain installed by dtolnay/rust-toolchain below.
+    env:
+      RUSTUP_TOOLCHAIN: "1.87.0"
     defaults:
       run:
         working-directory: rust

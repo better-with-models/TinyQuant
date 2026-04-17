@@ -143,14 +143,14 @@ fn oversized_metadata_len_in_codec_file_header_rejected() {
     // vector_count=1, dimension=4, bit_width=8, residual=0, config_hash_len=4
     let mut buf: Vec<u8> = Vec::new();
     buf.extend_from_slice(b"TQCV"); // magic
-    buf.push(0x01);                 // version
+    buf.push(0x01); // version
     buf.extend_from_slice(&[0u8; 3]); // reserved
     buf.extend_from_slice(&1u64.to_le_bytes()); // vector_count
     buf.extend_from_slice(&4u32.to_le_bytes()); // dimension=4
-    buf.push(8u8);                  // bit_width=8
-    buf.push(0u8);                  // residual=false
+    buf.push(8u8); // bit_width=8
+    buf.push(0u8); // residual=false
     buf.extend_from_slice(&4u16.to_le_bytes()); // config_hash_len=4
-    // 4-byte config hash
+                                                // 4-byte config hash
     buf.extend_from_slice(b"test");
     // metadata_len = MAX_METADATA_LEN + 1 = 16 MiB + 1
     let bad_len: u32 = (16 * 1024 * 1024 + 1) as u32;
@@ -173,14 +173,14 @@ fn oversized_record_len_in_codec_file_rejected() {
     // config_hash_len=0, metadata_len=0 → header_end=28, body_offset=32
     let mut buf: Vec<u8> = Vec::new();
     buf.extend_from_slice(b"TQCV"); // magic
-    buf.push(0x01);                 // version
+    buf.push(0x01); // version
     buf.extend_from_slice(&[0u8; 3]); // reserved
     buf.extend_from_slice(&1u64.to_le_bytes()); // vector_count=1 (needed so next_vector doesn't short-circuit)
     buf.extend_from_slice(&4u32.to_le_bytes()); // dimension=4
-    buf.push(8u8);                  // bit_width=8
-    buf.push(0u8);                  // residual=false
+    buf.push(8u8); // bit_width=8
+    buf.push(0u8); // residual=false
     buf.extend_from_slice(&0u16.to_le_bytes()); // config_hash_len=0
-    // metadata_len field = 0
+                                                // metadata_len field = 0
     buf.extend_from_slice(&0u32.to_le_bytes());
     // padding to reach body_offset=32 (header_end=28, needs 4 bytes of padding)
     buf.extend_from_slice(&[0u8; 4]);
@@ -208,11 +208,14 @@ fn extreme_dimension_does_not_panic_in_from_bytes() {
     // The packed_len computation must not overflow; the Truncated check must fire.
     let mut buf = vec![0u8; 70];
     buf[0] = 0x01; // FORMAT_VERSION
-    // config_hash bytes 1..65 remain zero
-    // dimension at bytes 65..69 = u32::MAX
+                   // config_hash bytes 1..65 remain zero
+                   // dimension at bytes 65..69 = u32::MAX
     buf[65..69].copy_from_slice(&u32::MAX.to_le_bytes());
     buf[69] = 8; // bit_width = 8
-    // from_bytes must return an error (not panic)
+                 // from_bytes must return an error (not panic)
     let result = from_bytes(&buf);
-    assert!(result.is_err(), "expected error for extreme dimension, got success");
+    assert!(
+        result.is_err(),
+        "expected error for extreme dimension, got success"
+    );
 }

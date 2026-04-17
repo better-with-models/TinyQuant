@@ -36,7 +36,10 @@ fn wgpu_backend_is_available_reflects_adapter_state() {
         .unwrap();
     let backend = rt.block_on(WgpuBackend::new());
     match backend {
-        Ok(b) => assert!(b.is_available(), "backend with adapter must report is_available = true"),
+        Ok(b) => assert!(
+            b.is_available(),
+            "backend with adapter must report is_available = true"
+        ),
         Err(_) => {
             let stub = WgpuBackend::unavailable();
             assert!(!stub.is_available());
@@ -50,11 +53,14 @@ fn wgpu_backend_is_available_reflects_adapter_state() {
 #[test]
 fn all_shaders_compile_without_device() {
     let shaders = [
-        ("rotate",          include_str!("../shaders/rotate.wgsl")),
-        ("quantize",        include_str!("../shaders/quantize.wgsl")),
-        ("dequantize",      include_str!("../shaders/dequantize.wgsl")),
-        ("residual_encode", include_str!("../shaders/residual_encode.wgsl")),
-        ("cosine_topk",     include_str!("../shaders/cosine_topk.wgsl")),
+        ("rotate", include_str!("../shaders/rotate.wgsl")),
+        ("quantize", include_str!("../shaders/quantize.wgsl")),
+        ("dequantize", include_str!("../shaders/dequantize.wgsl")),
+        (
+            "residual_encode",
+            include_str!("../shaders/residual_encode.wgsl"),
+        ),
+        ("cosine_topk", include_str!("../shaders/cosine_topk.wgsl")),
     ];
     for (name, src) in shaders {
         let module = naga::front::wgsl::parse_str(src)

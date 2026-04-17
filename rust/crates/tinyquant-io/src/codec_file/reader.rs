@@ -1,6 +1,8 @@
 //! Level-2 TQCV corpus file streaming reader (non-mmap).
 
-use crate::codec_file::header::{decode_header, CorpusFileHeader, MAX_CONFIG_HASH_LEN, MAX_METADATA_LEN};
+use crate::codec_file::header::{
+    decode_header, CorpusFileHeader, MAX_CONFIG_HASH_LEN, MAX_METADATA_LEN,
+};
 use crate::compressed_vector::from_bytes;
 use crate::compressed_vector::header::HEADER_SIZE;
 use crate::errors::IoError;
@@ -148,7 +150,7 @@ fn max_record_len_for_header(header: &CorpusFileHeader) -> usize {
     };
     HEADER_SIZE
         .saturating_add(packed)
-        .saturating_add(1)  // residual flag byte
+        .saturating_add(1) // residual flag byte
         .saturating_add(residual)
         .min(MAX_RECORD_LEN)
 }

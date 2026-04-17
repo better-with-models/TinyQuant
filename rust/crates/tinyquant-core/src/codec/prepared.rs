@@ -15,7 +15,7 @@
 //! calls over the same `(config, codebook)` pair.
 
 use crate::{
-    codec::{codec_config::CodecConfig, codebook::Codebook, rotation_matrix::RotationMatrix},
+    codec::{codebook::Codebook, codec_config::CodecConfig, rotation_matrix::RotationMatrix},
     errors::CodecError,
 };
 
@@ -78,10 +78,7 @@ impl PreparedCodec {
     /// Attach opaque GPU state.
     ///
     /// Called by GPU backends — do not call from application code.
-    pub fn set_gpu_state(
-        &mut self,
-        state: alloc::boxed::Box<dyn core::any::Any + Send + Sync>,
-    ) {
+    pub fn set_gpu_state(&mut self, state: alloc::boxed::Box<dyn core::any::Any + Send + Sync>) {
         self.gpu_state = Some(state);
     }
 

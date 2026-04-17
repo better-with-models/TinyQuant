@@ -19,10 +19,10 @@
 
 use tinyquant_core::codec::{CompressedVector, PreparedCodec};
 
-/// Adapter initialisation and pipeline construction.
-pub mod context;
 /// [`WgpuBackend`]: the primary GPU backend type.
 pub mod backend;
+/// Adapter initialisation and pipeline construction.
+pub mod context;
 /// Error types for the wgpu GPU backend.
 pub mod error;
 /// Compute pipeline builders for rotate, quantize, and residual shaders.
@@ -67,8 +67,6 @@ pub trait ComputeBackend {
     ) -> Result<(), TinyQuantGpuError>;
 
     /// Upload `PreparedCodec` buffers to device memory. Idempotent.
-    fn prepare_for_device(
-        &mut self,
-        prepared: &mut PreparedCodec,
-    ) -> Result<(), TinyQuantGpuError>;
+    fn prepare_for_device(&mut self, prepared: &mut PreparedCodec)
+        -> Result<(), TinyQuantGpuError>;
 }

@@ -102,8 +102,10 @@ jobs:
           - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64,     napi_cross_target: "",                      musl: false }
           - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc,   napi_cross_target: "",                      musl: false }
           # Phase 25.5: musl Linux targets (GAP-JS-006)
-          - { triple: x86_64-unknown-linux-musl,  runner: ubuntu-22.04,     key: linux-x64-musl,   napi_cross_target: "",                      musl: true  }
-          - { triple: aarch64-unknown-linux-musl, runner: ubuntu-22.04,     key: linux-arm64-musl, napi_cross_target: aarch64-unknown-linux-musl, musl: true }
+          # x86_64-musl: napi_cross_target must be set so napi passes --target and
+          # names the output linux-x64-musl.node (not linux-x64-gnu.node).
+          - { triple: x86_64-unknown-linux-musl,  runner: ubuntu-22.04,     key: linux-x64-musl,   napi_cross_target: x86_64-unknown-linux-musl,   musl: true  }
+          - { triple: aarch64-unknown-linux-musl, runner: ubuntu-22.04,     key: linux-arm64-musl, napi_cross_target: aarch64-unknown-linux-musl,  musl: true }
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v5
@@ -114,15 +116,33 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "20.x"
-      # Phase 25.5: install musl-tools and aarch64 cross-linker for musl targets.
+      # Phase 25.5: install musl-tools and cross-linkers for musl targets.
+      #
+      # x86_64-musl: musl-tools provides musl-gcc (host-arch musl wrapper).
+      #   CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER is exported via GITHUB_ENV
+      #   so the subsequent npm run build step picks it up.
+      #
+      # aarch64-musl: gcc-aarch64-linux-gnu is the glibc cross-compiler and cannot
+      #   link musl binaries. Instead, we install zig (via pip) and create a shim
+      #   `aarch64-linux-musl-gcc` that delegates to `zig cc -target aarch64-linux-musl`.
+      #   Zig supports hermetic musl cross-compilation for any target out of the box.
       - name: Install musl cross-compilation toolchain
         if: matrix.musl == true
         shell: bash
         run: |
           sudo apt-get update -q
           sudo apt-get install -y musl-tools
+          if [[ "${{ matrix.triple }}" == "x86_64-unknown-linux-musl" ]]; then
+            echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> "$GITHUB_ENV"
+          fi
           if [[ "${{ matrix.triple }}" == "aarch64-unknown-linux-musl" ]]; then
-            sudo apt-get install -y gcc-aarch64-linux-gnu
+            pip3 install ziglang --quiet
+            mkdir -p "$HOME/.local/bin"
+            printf '#!/bin/sh\nexec zig cc -target aarch64-linux-musl "$@"\n' \
+              > "$HOME/.local/bin/aarch64-linux-musl-gcc"
+            chmod +x "$HOME/.local/bin/aarch64-linux-musl-gcc"
+            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=$HOME/.local/bin/aarch64-linux-musl-gcc" >> "$GITHUB_ENV"
           fi
       - name: npm ci
         working-directory: javascript/@tinyquant/core
