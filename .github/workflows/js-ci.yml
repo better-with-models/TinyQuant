@@ -118,30 +118,39 @@ jobs:
           node-version: "20.x"
       # Phase 25.5: install musl-tools and cross-linkers for musl targets.
       #
-      # x86_64-musl: musl-tools provides musl-gcc (host-arch musl wrapper).
-      #   CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER is exported via GITHUB_ENV
-      #   so the subsequent npm run build step picks it up.
+      # Both musl targets now use zig as the linker via a thin shim.
       #
-      # aarch64-musl: gcc-aarch64-linux-gnu is the glibc cross-compiler and cannot
-      #   link musl binaries. Instead, we install zig (via pip) and create a shim
-      #   `aarch64-linux-musl-gcc` that delegates to `zig cc -target aarch64-linux-musl`.
-      #   Zig supports hermetic musl cross-compilation for any target out of the box.
+      # x86_64-musl: musl-gcc (from musl-tools) cannot link a shared library
+      #   (.node files are .so files) because musl has no libgcc_s.so.1.
+      #   Zig handles this hermetically without needing libgcc_s.
+      #
+      # aarch64-musl: same zig approach as before; gcc-aarch64-linux-gnu is a
+      #   glibc cross-compiler and cannot link musl binaries.
+      #
+      # pip3 install uses --user to guarantee the zig binary lands in
+      #   ~/.local/bin (added to GITHUB_PATH for subsequent steps).
+      #   `zig version` immediately after install surfaces failures loudly
+      #   instead of letting them hide behind --quiet.
       - name: Install musl cross-compilation toolchain
         if: matrix.musl == true
         shell: bash
         run: |
           sudo apt-get update -q
           sudo apt-get install -y musl-tools
+          pip3 install ziglang --user --quiet
+          zig version
+          mkdir -p "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           if [[ "${{ matrix.triple }}" == "x86_64-unknown-linux-musl" ]]; then
-            echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=musl-gcc" >> "$GITHUB_ENV"
+            printf '#!/bin/sh\nexec zig cc -target x86_64-linux-musl "$@"\n' \
+              > "$HOME/.local/bin/x86_64-linux-musl-gcc"
+            chmod +x "$HOME/.local/bin/x86_64-linux-musl-gcc"
+            echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=$HOME/.local/bin/x86_64-linux-musl-gcc" >> "$GITHUB_ENV"
           fi
           if [[ "${{ matrix.triple }}" == "aarch64-unknown-linux-musl" ]]; then
-            pip3 install ziglang --quiet
-            mkdir -p "$HOME/.local/bin"
             printf '#!/bin/sh\nexec zig cc -target aarch64-linux-musl "$@"\n' \
               > "$HOME/.local/bin/aarch64-linux-musl-gcc"
             chmod +x "$HOME/.local/bin/aarch64-linux-musl-gcc"
-            echo "$HOME/.local/bin" >> "$GITHUB_PATH"
             echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=$HOME/.local/bin/aarch64-linux-musl-gcc" >> "$GITHUB_ENV"
           fi
       - name: npm ci
