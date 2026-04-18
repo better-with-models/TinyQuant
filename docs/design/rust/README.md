@@ -116,7 +116,7 @@ graph TD
 | **Standalone `tinyquant` CLI binary** cross-compiled to Linux x86_64/aarch64 (glibc and musl), macOS x86_64/aarch64, Windows x86_64/i686, and FreeBSD x86_64, plus a multi-arch GHCR container image | iOS/Android binaries |
 | Cargo library crates on crates.io, Python wheel on PyPI, binary archives on GitHub Releases — all produced from one tag in one workflow | — |
 | Benchmarks: criterion + flamegraphs + regression gates | Research-grade novel algorithms |
-| **Optional GPU acceleration** via `tinyquant-gpu-wgpu` (wgpu, Phase 27) and `tinyquant-gpu-cuda` (cust, Phase 28) — additive crates, never in core | Requiring a GPU for the base install |
+| **Optional GPU acceleration** via `tinyquant-gpu-wgpu` (wgpu, Phase 27) and `tinyquant-gpu-cuda` (cust, Phase 29) — additive crates, never in core | Requiring a GPU for the base install |
 
 ## Relationship to the Python codebase
 

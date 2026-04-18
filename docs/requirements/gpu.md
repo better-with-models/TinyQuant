@@ -18,7 +18,8 @@ dependency on these crates and must always function independently.
 
 > [!note] Phase gating
 > FR-GPU-001 through FR-GPU-004 gate Phase 27 acceptance.
-> FR-GPU-005 through FR-GPU-007 gate Phase 28 acceptance.
+> FR-GPU-005 through FR-GPU-006 gate Phase 28 acceptance.
+> FR-GPU-007 gates Phase 29 acceptance.
 
 ---
 
@@ -229,9 +230,9 @@ Rationale:  If the CUDA crate fails to compile without a CUDA toolkit,
             users. The stub pattern keeps the door open.
 Ref:        [[design/rust/feature-flags]] §tinyquant-gpu-cuda,
             [[design/rust/risks-and-mitigations]] §R23
-Tests:      None — tinyquant-gpu-cuda crate not yet implemented (Phase 28).
+Tests:      None — tinyquant-gpu-cuda crate not yet implemented (Phase 29).
 Gap:        GAP-GPU-007 — CUDA stub compile-check CI job and is_available() test cannot
-            be written until Phase 28. See testing-gaps.md §GAP-GPU-007.
+            be written until Phase 29. See testing-gaps.md §GAP-GPU-007.
 ```
 
 ---

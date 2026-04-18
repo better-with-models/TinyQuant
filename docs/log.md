@@ -13,6 +13,15 @@ status: active
 > Append-only record of documentation-system changes. Use the format
 > `## [YYYY-MM-DD] operation | description`.
 
+## [2026-04-18] normalize | Phase 27.5 complete; Phase 28 activated; vault metadata normalized
+
+- Phase 27.5 (GPU-resident corpus search) merged via PR #29 — `791b195`
+- Roadmap updated: Phases 22, 25.5, 26, 27, 27.5 → **complete**; Phase 28 → **active**
+- Plan file `status` fields updated to match roadmap (phase-25.5 through phase-27.5 → complete; phase-28 → active)
+- `docs/index.md`: added Phase 25.5–29 plan entries; added Phase 27 and Phase 27.5 implementation notes entries
+- Created [[design/rust/phase-27.5-implementation-notes]] documenting Phase 27.5 execution and deviations
+- Phase 28 plan fleshed out: `residual_decode.wgsl` shader written; Step 5 `todo!()` stubs replaced with full bind-group + dispatch + readback code; subnormal fix for `f32_to_f16` documented
+
 ## [2026-04-16] fix | Phase 27.5 audit findings resolved in tinyquant-gpu-wgpu
 
 Applied all six findings from [[scratch/audit-phase-27.5-best-practice-codex]]:

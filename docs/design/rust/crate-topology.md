@@ -38,7 +38,7 @@ TinyQuant/
 │   │   ├── tinyquant-py/         # pyo3 bindings (importable as tinyquant_rs)
 │   │   ├── tinyquant-cli/        # Standalone `tinyquant` binary (multi-arch)
 │   │   ├── tinyquant-gpu-wgpu/   # wgpu (Metal/Vulkan/D3D12) GPU backend — MSRV 1.87
-│   │   ├── tinyquant-gpu-cuda/   # cust CUDA backend — MSRV 1.87, optional Phase 28
+│   │   ├── tinyquant-gpu-cuda/   # cust CUDA backend — MSRV 1.87, optional Phase 29
 │   │   ├── tinyquant-bench/      # criterion benchmarks (not published)
 │   │   └── tinyquant-fuzz/       # libfuzzer-sys targets (not published)
 │   └── xtask/                    # Release, parity-check, bench-run tooling
@@ -62,7 +62,7 @@ graph TD
     Py["tinyquant-py<br/>(cdylib, pyo3)"]
     CLI["tinyquant-cli<br/>(bin 'tinyquant')"]
     GpuWgpu["tinyquant-gpu-wgpu<br/>(wgpu — Phase 27, MSRV 1.87)"]
-    GpuCuda["tinyquant-gpu-cuda<br/>(cust — Phase 28, MSRV 1.87)"]
+    GpuCuda["tinyquant-gpu-cuda<br/>(cust — Phase 29, MSRV 1.87)"]
     Bench["tinyquant-bench"]
     Fuzz["tinyquant-fuzz"]
     XTask["xtask"]
@@ -391,7 +391,7 @@ shaders are embedded via `include_str!` and compiled at device-init
 time. If no GPU adapter is found, `ComputeBackend::is_available()`
 returns `false` and the caller falls back to CPU.
 
-### `tinyquant-gpu-cuda` (Phase 28, published, optional)
+### `tinyquant-gpu-cuda` (Phase 29, published, optional)
 
 `cust`-backed CUDA specialist backend for NVIDIA GPUs. Produces
 `rlib`. Requires `std` and CUDA toolkit at build time. MSRV: 1.87.

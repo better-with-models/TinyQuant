@@ -8,7 +8,7 @@ description     = "wgpu/WGSL GPU-accelerated batch compression backend for TinyQ
 
 [dependencies]
 tinyquant-core = { workspace = true }
-wgpu           = { version = "22", features = ["wgsl"] }
+wgpu           = { version = "22", features = ["wgsl", "vulkan"] }
 tokio          = { version = "1", features = ["rt"] }
 thiserror      = { workspace = true }
 bytemuck       = { workspace = true }

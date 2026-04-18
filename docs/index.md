@@ -175,6 +175,8 @@ status: active
 | [[design/rust/phase-23-implementation-notes\|Phase 23 Implementation Notes]] | Execution-log for Phase 23: Python reference demotion to `tests/reference/`, parity scaffold, CI guard against reference leakage into wheels | 2026-04-14 |
 | [[design/rust/phase-24-implementation-notes\|Phase 24 Implementation Notes]] | Execution-log for Phase 24: fat-wheel assembler, PEP 376 RECORD, xtask publish guards, dry-run release workflow — 6 declared deviations | 2026-04-14 |
 | [[design/rust/phase-25-implementation-notes\|Phase 25 Implementation Notes]] | Execution-log for Phase 25: `@tinyquant/core` napi-rs bindings, CJS bundle, JSDoc, and npm release workflow — 142/142 tests, slice provenance | 2026-04-14 |
+| [[design/rust/phase-27-implementation-notes\|Phase 27 Implementation Notes]] | Execution-log for Phase 27: `tinyquant-gpu-wgpu` crate skeleton, WGSL kernels, parity tests, Layer 2/3 CI — residual pass and pipeline caching deferred to Phase 28 | 2026-04-15 |
+| [[design/rust/phase-27.5-implementation-notes\|Phase 27.5 Implementation Notes]] | Execution-log for Phase 27.5: GPU-resident corpus search, `cosine_topk` WGSL kernel, `GpuCorpusState`, Phase 27.5 best-practice audit resolutions | 2026-04-18 |
 | [[plans/rust/phase-15-codec-service-residual\|Phase 15: Codec Service, Residual, and CompressedVector]] | `tinyquant-core::codec::Codec` service with compress/decompress, `compute_residual`, `CompressedVector` — Rust-canonical fixture strategy | 2026-04-10 |
 | [[plans/rust/phase-16-serialization-parity\|Phase 16: Serialization and Python Byte Parity]] | `tinyquant-io` serialization with Python byte-level parity, endian contract, version tag | 2026-04-10 |
 | [[plans/rust/phase-17-zero-copy-mmap\|Phase 17: Zero-copy Views and Mmap Corpus Files]] | `tinyquant-io` zero-copy views, Level-2 TQCV file container, mmap-based reader | 2026-04-10 |
@@ -188,6 +190,12 @@ status: active
 | [[plans/rust/phase-25-typescript-npm-package\|Phase 25: TypeScript / Bun npm Package]] | `@tinyquant/core` napi-rs crate and npm skeleton with codec, corpus, backend bindings, and npm release chain — **complete** | 2026-04-13 |
 | [[plans/rust/calibration-threshold-investigation\|Calibration Threshold Investigation]] | Diagnose and re-baseline `pr_speed` calibration failures; honest threshold derivation and TODO(phase-26) residual-encoder carryover | 2026-04-14 |
 | [[plans/rust/rotation-cache-compress-path\|Fix: RotationMatrix rebuilt per vector in compress_batch_parallel]] | Root cause, fix plan, and acceptance criteria for the O(N·d³) SVD-per-vector error in the Rust batch path | 2026-04-14 |
+| [[plans/rust/phase-25.5-js-test-gap-remediation\|Phase 25.5: JS/TS Test Gap Remediation]] | Close every P1/P2 JS/TS gap (GAP-JS-002, 004, 006–010): dim=768 round-trip, corpus policy via N-API, musl cross-compile, ESM sub-path, size gate, version-check — **complete** | 2026-04-15 |
+| [[plans/rust/phase-26-preparedcodec-calibration\|Phase 26: PreparedCodec + Calibration Gates]] | `PreparedCodec` in `tinyquant-core`, `Codec::compress_prepared` / `decompress_prepared_into`, calibration gate restoration (GAP-QUAL-*) — **complete** | 2026-04-15 |
+| [[plans/rust/phase-27-wgpu-wgsl-kernels\|Phase 27: wgpu + WGSL Kernels]] | `tinyquant-gpu-wgpu` crate skeleton, WGSL rotate/quantize/dequantize kernels, parity tests, Layer 2/3 CI — **complete** | 2026-04-15 |
+| [[plans/rust/phase-27.5-resident-corpus-search\|Phase 27.5: Resident Corpus GPU Search]] | `cosine_topk` WGSL kernel, `GpuCorpusState`, `prepare_corpus_for_device`, FR-GPU-004 criterion bench — **complete** | 2026-04-15 |
+| [[plans/rust/phase-28-wgpu-pipeline-caching\|Phase 28: wgpu Pipeline Caching, Residual Pass & Backend Preference]] | `CachedPipelines`, residual encode/decode GPU passes, `load_pipelines` lifecycle API, `BackendPreference` and `enumerate_adapters` — **active** | 2026-04-18 |
+| [[plans/rust/phase-29-cuda-backend\|Phase 29: Optional CUDA Backend]] | `tinyquant-gpu-cuda` crate, `cust`-based `CudaBackend`, PTX kernels for quantize/dequantize/cosine, FR-GPU-007 stub CI | 2026-04-15 |
 
 ## Specs
 

@@ -462,7 +462,8 @@ Each gap is assigned to a roadmap phase. See [[roadmap|Roadmap]] §Gap remediati
 | GAP-GPU-001 | Phase 26 |
 | GAP-JS-002, GAP-JS-006, GAP-JS-007, GAP-JS-008, GAP-JS-009, GAP-JS-010 | Phase 25.5 |
 | GAP-BACK-001 | Phase 21.5 |
-| GAP-GPU-002–007 | Phases 27–28 |
+| GAP-GPU-002–006 | Phases 27–28 |
+| GAP-GPU-007 | Phase 29 |
 
 ## See also
 

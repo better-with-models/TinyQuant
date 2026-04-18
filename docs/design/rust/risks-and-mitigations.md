@@ -620,6 +620,9 @@ but see `is_available() == false` at runtime.
 4. The wgpu `dx12` and `metal` backends require no extra user action
    (OS-bundled). The `vulkan` backend on Linux requires the
    `vulkan-icd-loader` package; document this in the crate README.
+   The `tinyquant-gpu-wgpu` `Cargo.toml` explicitly enables the `vulkan`
+   wgpu feature (`wgpu = { version = "22", features = ["wgsl", "vulkan"] }`)
+   since Vulkan is not always included in wgpu 22's default feature set.
 
 ### R25 — GPU tests require physical adapter
 
@@ -632,9 +635,10 @@ performance benchmarks cannot run in standard CI.
 1. **Compile-only CI** (`gpu-compile-check`) validates shader syntax
    and Rust compilation without a device. Runs on every PR touching
    `crates/tinyquant-gpu-wgpu/`.
-2. **Shader unit tests** use wgpu's software backend (`wgpu::Backends::GL`
-   via Mesa's `llvmpipe`) where available on Linux. These are slower
-   (~10× vs native GPU) but do not require a physical device.
+2. **Shader unit tests** use `BackendPreference::Software` (maps to
+   `wgpu::Backends::GL` + `force_fallback_adapter = true` via Mesa's
+   `llvmpipe`) where available on Linux. These are slower (~10× vs native
+   GPU) but do not require a physical device.
 3. **Differential tests** are marked `#[ignore]` in standard CI and
    promoted to a self-hosted runner job once one is available.
 4. **No GPU benchmark** is wired into the `bench-budget` gate until a

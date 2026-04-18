@@ -8,7 +8,7 @@ tags:
   - testing
   - calibration
 date-created: 2026-04-15
-status: draft
+status: complete
 category: planning
 ---
 

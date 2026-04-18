@@ -512,11 +512,11 @@ kernels against CPU reference output.
 // tinyquant-gpu-wgpu/tests/differential.rs
 #[test]
 fn rotate_kernel_matches_cpu_reference() {
-    let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-        backends: wgpu::Backends::GL,  // llvmpipe — no physical GPU needed
-        ..Default::default()
-    });
-    // … request adapter, run rotate kernel, compare to CPU RotationMatrix::apply_into
+    // BackendPreference::Software maps to Backends::GL + force_fallback_adapter=true
+    // (llvmpipe / ANGLE); never selects a physical GPU.
+    let backend = tokio::runtime::Runtime::new().unwrap()
+        .block_on(WgpuBackend::new_with_preference(BackendPreference::Software));
+    // … run rotate kernel, compare to CPU RotationMatrix::apply_into
     // assert element-wise error < 1e-4 f32
 }
 ```
