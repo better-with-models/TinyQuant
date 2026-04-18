@@ -99,9 +99,10 @@ tinyquant-gpu-wgpu/
   `tinyquant-core`. GPU state travels as `Box<dyn Any + Send + Sync>`.
 - Every `.rs` file must open with a `//!` module docstring. Public symbols must
   carry their own doc comments.
-- `compress_batch` must return `Err(ResidualNotSupported)` when
-  `prepared.config().residual_enabled() == true`, until Phase 28 wires the
-  residual passes.
+- `compress_batch` / `decompress_batch_into` handle `residual_enabled = true`
+  end-to-end via the `residual_encode.wgsl` / `residual_decode.wgsl` passes
+  (Phase 28 Part B).  The `ResidualNotSupported` error variant is retained for
+  backwards compatibility but is no longer emitted.
 - Do not invent APIs, invariants, or performance claims not supported by the
   actual code.
 - `publish = false` must remain in `Cargo.toml`; this crate is not released

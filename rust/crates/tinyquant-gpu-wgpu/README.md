@@ -39,18 +39,20 @@ GPU offload is only attempted for batches at or above `GPU_BATCH_THRESHOLD`
 (default 512 rows); below that threshold the host↔device transfer overhead
 exceeds the compute savings.
 
-The GPU pipeline for compress runs two passes:
+The GPU pipeline for compress runs up to three passes:
 
 1. **Rotate** (`rotate.wgsl`) — `input @ R^T` (equivalent to CPU `R @ v`).
 2. **Quantize** (`quantize.wgsl`) — nearest-codebook-entry lookup → indices.
+3. **Residual encode** (`residual_encode.wgsl`) — when `residual_enabled`,
+   stores `rotated − codebook[index]` as packed fp16 pairs.
 
-Decompress runs the reverse:
+Decompress runs the reverse (with an optional residual step):
 
 1. **Dequantize** (`dequantize.wgsl`) — `codebook[index]` lookup → values.
-2. **Inverse-rotate** (`rotate.wgsl` with `R` bound) — `values @ R` (equivalent to CPU `R^T @ v`).
-
-Residual encode/decode is deferred to Phase 28; `compress_batch` returns
-`Err(ResidualNotSupported)` for `residual_enabled = true` configs.
+2. **Residual decode** (`residual_decode.wgsl`, when the batch carries a
+   residual) — unpack fp16 pairs and add in place into `values`.
+3. **Inverse-rotate** (`rotate.wgsl` with `R` bound) — `values @ R`
+   (equivalent to CPU `R^T @ v`).
 
 ## Common edit paths
 
