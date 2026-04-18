@@ -19,6 +19,11 @@ jobs:
     name: wgpu runtime smoke
     runs-on: [self-hosted, gpu]
     continue-on-error: true
+    # Fail fast when no GPU runner is available rather than occupying a
+    # queued slot for GitHub's 24 h hard limit.  `continue-on-error: true`
+    # above ensures the workflow still reports success so PRs are not
+    # blocked when the runner fleet is offline.
+    timeout-minutes: 10
     defaults:
       run:
         working-directory: rust
