@@ -80,8 +80,11 @@ no_implicit_reexport = true
 # frozen reference package and the Phase 24.1 dev shim.
 mypy_path = "$MYPY_CONFIG_FILE_DIR/tests/reference,$MYPY_CONFIG_FILE_DIR/src"
 explicit_package_bases = true
-# Exclude generated or transient build outputs from repo-wide type checks.
-exclude = '(^|/)(rust/target|\.worktrees|node_modules|\.venv)(/|$)'
+# Exclude generated or transient build outputs and experiment scripts from
+# repo-wide type checks. Experiments are ad-hoc benchmarks that share
+# filenames (run_benchmark.py) across sibling directories, which mypy's
+# explicit_package_bases mode cannot resolve without namespace collisions.
+exclude = '(^|/)(rust/target|\.worktrees|node_modules|\.venv|experiments)(/|$)'
 
 [[tool.mypy.overrides]]
 module = "psycopg.*"

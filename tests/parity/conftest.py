@@ -14,7 +14,7 @@ and every parity test becomes a live assertion.
 from __future__ import annotations
 
 from collections.abc import Iterator
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pytest
@@ -44,7 +44,7 @@ def rs() -> Iterator[Any]:
 @pytest.fixture(params=[(4, 42, 64), (2, 0, 128), (8, 999, 256)])
 def cfg_triplet(request: pytest.FixtureRequest) -> tuple[int, int, int]:
     """(bit_width, seed, dimension) tuples covering every bit-width."""
-    return request.param
+    return cast(tuple[int, int, int], request.param)
 
 
 @pytest.fixture()
