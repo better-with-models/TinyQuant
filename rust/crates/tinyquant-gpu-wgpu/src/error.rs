@@ -46,4 +46,12 @@ pub enum TinyQuantGpuError {
     /// `cosine_topk` called with `top_k == 0`.
     #[error("top_k must be at least 1")]
     InvalidTopK,
+
+    /// No adapter matched the requested [`BackendPreference`](crate::BackendPreference).
+    ///
+    /// The requested backend (Vulkan, Metal, DX12, or Software) produced no
+    /// adapters on this machine.  Use [`BackendPreference::Auto`](crate::BackendPreference::Auto)
+    /// for transparent fallback.
+    #[error("no adapter found for the requested backend preference")]
+    NoPreferredAdapter,
 }

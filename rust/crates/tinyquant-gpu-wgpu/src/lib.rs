@@ -21,6 +21,8 @@ use tinyquant_core::codec::{CompressedVector, PreparedCodec};
 
 /// [`WgpuBackend`]: the primary GPU backend type.
 pub mod backend;
+/// Backend and adapter selection hints for [`WgpuBackend::new_with_preference`].
+pub mod backend_preference;
 /// Adapter initialisation and pipeline construction.
 pub mod context;
 /// Error types for the wgpu GPU backend.
@@ -32,6 +34,8 @@ pub mod prepared;
 
 /// The wgpu GPU backend implementation.
 pub use backend::WgpuBackend;
+/// Caller-facing backend and adapter selection hint.
+pub use backend_preference::{AdapterCandidate, BackendPreference};
 /// Errors emitted by the wgpu backend.
 pub use error::TinyQuantGpuError;
 
