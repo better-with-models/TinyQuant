@@ -21,7 +21,6 @@ status: active
 - `docs/index.md`: added Phase 25.5–29 plan entries; added Phase 27 and Phase 27.5 implementation notes entries
 - Created [[design/rust/phase-27.5-implementation-notes]] documenting Phase 27.5 execution and deviations
 - Phase 28 plan fleshed out: `residual_decode.wgsl` shader written; Step 5 `todo!()` stubs replaced with full bind-group + dispatch + readback code; subnormal fix for `f32_to_f16` documented
-
 ## [2026-04-16] fix | Phase 27.5 audit findings resolved in tinyquant-gpu-wgpu
 
 Applied all six findings from [[scratch/audit-phase-27.5-best-practice-codex]]:

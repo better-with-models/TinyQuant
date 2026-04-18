@@ -29,20 +29,11 @@ pub enum TinyQuantGpuError {
     #[error("codec error: {0}")]
     Codec(#[from] tinyquant_core::errors::CodecError),
 
-    /// GPU backend does not support `residual_enabled = true`.
-    ///
-    /// This variant is retained for any future use but is no longer returned
-    /// by `compress_batch` after Phase 28 wired the residual GPU pass.
-    #[error("GPU backend does not support residual_enabled=true; use the CPU path")]
+    /// GPU backend does not support `residual_enabled = true` (Phase 28).
+    #[error(
+        "GPU backend does not support residual_enabled=true; use the CPU path or wait for Phase 28"
+    )]
     ResidualNotSupported,
-
-    /// No adapter matched the requested [`BackendPreference`].
-    ///
-    /// The requested backend (Vulkan, Metal, DX12, or Software) produced no
-    /// adapters on this machine.  Use [`BackendPreference::Auto`] for
-    /// transparent fallback.
-    #[error("no adapter found for the requested backend preference")]
-    NoPreferredAdapter,
 
     /// A vector in the batch is incompatible with the `PreparedCodec`.
     #[error("batch vector mismatch: {detail}")]
