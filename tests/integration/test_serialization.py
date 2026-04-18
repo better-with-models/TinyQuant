@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from numpy.typing import NDArray
-
 from tinyquant_py_reference.codec.codebook import Codebook
 from tinyquant_py_reference.codec.codec import Codec
 from tinyquant_py_reference.codec.codec_config import CodecConfig

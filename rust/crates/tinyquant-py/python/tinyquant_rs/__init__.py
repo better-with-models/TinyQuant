@@ -12,32 +12,32 @@ This module re-exports every symbol advertised by the pyo3 extension module
 
 from __future__ import annotations
 
-from tinyquant_rs._core import (  # noqa: F401
+from tinyquant_rs._core import (
+    # Backend surface
+    BruteForceBackend,
     # Codec surface
     Codebook,
     CodebookIncompatibleError,
     Codec,
     CodecConfig,
     CompressedVector,
-    ConfigMismatchError,
-    DimensionMismatchError,
-    DuplicateVectorError,
-    RotationMatrix,
-    compress,
-    decompress,
     # Corpus surface
     CompressionPolicy,
     CompressionPolicyViolationDetected,
+    ConfigMismatchError,
     Corpus,
     CorpusCreated,
     CorpusDecompressed,
-    VectorEntry,
-    VectorsInserted,
-    # Backend surface
-    BruteForceBackend,
+    DimensionMismatchError,
+    DuplicateVectorError,
+    RotationMatrix,
     SearchBackend,
     SearchResult,
+    VectorEntry,
+    VectorsInserted,
     __version__,
+    compress,
+    decompress,
 )
 from tinyquant_rs._core import backend as _backend_mod
 from tinyquant_rs._core import codec as _codec_mod
@@ -48,35 +48,31 @@ corpus = _corpus_mod
 backend = _backend_mod
 
 __all__ = [
-    "__version__",
-    # Codec
+    "BruteForceBackend",
     "Codebook",
     "CodebookIncompatibleError",
     "Codec",
     "CodecConfig",
     "CompressedVector",
-    "ConfigMismatchError",
-    "DimensionMismatchError",
-    "DuplicateVectorError",
-    "RotationMatrix",
-    "compress",
-    "decompress",
-    # Corpus
     "CompressionPolicy",
     "CompressionPolicyViolationDetected",
+    "ConfigMismatchError",
     "Corpus",
     "CorpusCreated",
     "CorpusDecompressed",
-    "VectorEntry",
-    "VectorsInserted",
-    # Backend
-    "BruteForceBackend",
+    "DimensionMismatchError",
+    "DuplicateVectorError",
+    "RotationMatrix",
     "SearchBackend",
     "SearchResult",
-    # Sub-modules
-    "codec",
-    "corpus",
+    "VectorEntry",
+    "VectorsInserted",
+    "__version__",
     "backend",
+    "codec",
+    "compress",
+    "corpus",
+    "decompress",
 ]
 
 # -------------------------------------------------------------------------

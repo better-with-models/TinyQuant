@@ -5,7 +5,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-
 from tinyquant_py_reference.codec._errors import (
     CodebookIncompatibleError,
     ConfigMismatchError,
@@ -20,7 +19,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from numpy.typing import NDArray
-
     from tinyquant_py_reference.codec.codec_config import CodecConfig
 
 

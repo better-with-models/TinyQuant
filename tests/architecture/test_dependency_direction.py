@@ -13,7 +13,7 @@ import pytest
 
 @contextlib.contextmanager
 def _clean_tinyquant_imports() -> Generator[None, None, None]:
-    """Remove all tinyquant_py_reference modules from sys.modules, then restore on exit."""
+    """Remove tinyquant_py_reference modules from sys.modules, then restore on exit."""
     saved: dict[str, Any] = {
         k: v for k, v in sys.modules.items() if k.startswith("tinyquant_py_reference")
     }
@@ -68,11 +68,15 @@ class TestDependencyDirection:
             )
 
 
-_PACKAGES = ("tinyquant_py_reference.codec", "tinyquant_py_reference.corpus", "tinyquant_py_reference.backend")
+_PACKAGES = (
+    "tinyquant_py_reference.codec",
+    "tinyquant_py_reference.corpus",
+    "tinyquant_py_reference.backend",
+)
 
 
 def _collect_cross_package_deps() -> dict[str, set[str]]:
-    """Build a dependency map between tinyquant_py_reference subpackages from sys.modules."""
+    """Build a cross-package dependency map from sys.modules."""
     deps: dict[str, set[str]] = {p: set() for p in _PACKAGES}
     for mod_name, mod in sys.modules.items():
         owner = next((p for p in _PACKAGES if mod_name.startswith(p)), None)
@@ -100,15 +104,18 @@ class TestImportGraph:
             deps = _collect_cross_package_deps()
 
             # Forbidden reverse edges:
-            assert "tinyquant_py_reference.corpus" not in deps["tinyquant_py_reference.codec"], (
-                "cycle: codec depends on corpus"
-            )
-            assert "tinyquant_py_reference.backend" not in deps["tinyquant_py_reference.codec"], (
-                "cycle: codec depends on backend"
-            )
-            assert "tinyquant_py_reference.backend" not in deps["tinyquant_py_reference.corpus"], (
-                "cycle: corpus depends on backend"
-            )
+            assert (
+                "tinyquant_py_reference.corpus"
+                not in deps["tinyquant_py_reference.codec"]
+            ), "cycle: codec depends on corpus"
+            assert (
+                "tinyquant_py_reference.backend"
+                not in deps["tinyquant_py_reference.codec"]
+            ), "cycle: codec depends on backend"
+            assert (
+                "tinyquant_py_reference.backend"
+                not in deps["tinyquant_py_reference.corpus"]
+            ), "cycle: corpus depends on backend"
 
 
 class TestExports:

@@ -103,9 +103,7 @@ def _make_dummy_arch_wheel(
     path = tmp_path / name
     dist_info = f"tinyquant_rs-{version}.dist-info"
     metadata = (
-        f"Metadata-Version: 2.1\n"
-        f"Name: tinyquant-rs\n"
-        f"Version: {version}\n"
+        f"Metadata-Version: 2.1\nName: tinyquant-rs\nVersion: {version}\n"
     ).encode("ascii")
     wheel_meta = (
         b"Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: false\n"
@@ -154,12 +152,9 @@ def test_sha256_known_payload_matches_urlsafe_b64_nopad(
 ) -> None:
     """Non-empty payload -> url-safe base64, no `=` padding, sha256= prefix."""
     payload = b"tinyquant"
-    expected = (
-        "sha256="
-        + base64.urlsafe_b64encode(hashlib.sha256(payload).digest())
-        .rstrip(b"=")
-        .decode("ascii")
-    )
+    expected = "sha256=" + base64.urlsafe_b64encode(
+        hashlib.sha256(payload).digest()
+    ).rstrip(b"=").decode("ascii")
     assert assembler._sha256(payload) == expected
     assert "=" not in assembler._sha256(payload).split("=", 1)[1]
     assert assembler._sha256(payload).startswith("sha256=")
@@ -250,9 +245,7 @@ def test_extract_core_extension_windows_pyd(
 ) -> None:
     """On win_amd64 the extractor finds `_core.pyd`, not `.abi3.so`."""
     blob = b"MZ-STUB-" + b"\x02" * 64
-    whl = _make_dummy_arch_wheel(
-        tmp_path, "0.2.0", "win_amd64", "_core.pyd", blob
-    )
+    whl = _make_dummy_arch_wheel(tmp_path, "0.2.0", "win_amd64", "_core.pyd", blob)
     out = assembler.extract_core_extension(whl, "win_amd64")
     assert out == blob
 
@@ -281,9 +274,7 @@ _EXPECTED_ARCNAMES: set[str] = {
 }
 
 
-def _build_fat_wheel_via_main(
-    assembler: types.ModuleType, tmp_path: Path
-) -> Path:
+def _build_fat_wheel_via_main(assembler: types.ModuleType, tmp_path: Path) -> Path:
     """Helper: run `main()` against fabricated inputs, returning wheel path."""
     input_dir = tmp_path / "input"
     input_dir.mkdir()
@@ -291,9 +282,12 @@ def _build_fat_wheel_via_main(
     output = tmp_path / "tinyquant_cpu-0.2.0-py3-none-any.whl"
     argv = [
         "assemble_fat_wheel.py",
-        "--input-dir", str(input_dir),
-        "--version", "0.2.0",
-        "--output", str(output),
+        "--input-dir",
+        str(input_dir),
+        "--version",
+        "0.2.0",
+        "--output",
+        str(output),
         "--skip-verify",
     ]
     orig = sys.argv
@@ -326,7 +320,8 @@ def test_build_fat_wheel_end_to_end_smoke(
         record_blob = zf.read("tinyquant_cpu-0.2.0.dist-info/RECORD")
         record_lines = record_blob.decode("ascii").splitlines()
         record_own = [
-            line for line in record_lines
+            line
+            for line in record_lines
             if line.startswith("tinyquant_cpu-0.2.0.dist-info/RECORD")
         ]
         assert len(record_own) == 1
@@ -344,12 +339,9 @@ def test_build_fat_wheel_end_to_end_smoke(
             path, sha_field, size_field = parts
             assert sha_field.startswith("sha256=")
             data = zf.read(path)
-            expected_sha = (
-                "sha256="
-                + base64.urlsafe_b64encode(hashlib.sha256(data).digest())
-                .rstrip(b"=")
-                .decode("ascii")
-            )
+            expected_sha = "sha256=" + base64.urlsafe_b64encode(
+                hashlib.sha256(data).digest()
+            ).rstrip(b"=").decode("ascii")
             assert sha_field == expected_sha, f"sha mismatch for {path}"
             assert int(size_field) == len(data)
 
@@ -385,9 +377,18 @@ def test_wheel_roundtrip_self_validation(
     unpack_dir.mkdir()
     # `wheel unpack` writes to cwd by default; use --dest.
     rc = subprocess.run(  # noqa: S603  -- trusted stdlib + wheel invocation
-        [sys.executable, "-m", "wheel", "unpack",
-         str(output), "--dest", str(unpack_dir)],
-        capture_output=True, text=True, check=False,
+        [
+            sys.executable,
+            "-m",
+            "wheel",
+            "unpack",
+            str(output),
+            "--dest",
+            str(unpack_dir),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if rc.returncode != 0:
         pytest.skip(f"wheel unpack failed: {rc.stderr}")
@@ -400,9 +401,18 @@ def test_wheel_roundtrip_self_validation(
     repack_dir = tmp_path / "repacked"
     repack_dir.mkdir()
     rc = subprocess.run(  # noqa: S603  -- trusted stdlib + wheel invocation
-        [sys.executable, "-m", "wheel", "pack",
-         str(unpacked), "--dest-dir", str(repack_dir)],
-        capture_output=True, text=True, check=False,
+        [
+            sys.executable,
+            "-m",
+            "wheel",
+            "pack",
+            str(unpacked),
+            "--dest-dir",
+            str(repack_dir),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
     )
     if rc.returncode != 0:
         pytest.skip(f"wheel pack failed: {rc.stderr}")
@@ -432,9 +442,7 @@ def test_wheel_roundtrip_self_validation(
 # ---------------------------------------------------------------------------
 
 
-def test_twine_check_passes(
-    assembler: types.ModuleType, tmp_path: Path
-) -> None:
+def test_twine_check_passes(assembler: types.ModuleType, tmp_path: Path) -> None:
     """`twine check` on the fabricated wheel passes (acceptance criterion §8).
 
     Skipped when `twine` is not installed locally.
@@ -446,7 +454,9 @@ def test_twine_check_passes(
 
     rc = subprocess.run(  # noqa: S603  -- trusted stdlib + twine invocation
         [sys.executable, "-m", "twine", "check", str(output)],
-        capture_output=True, text=True, check=False,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert rc.returncode == 0, (
         f"twine check failed:\nstdout:\n{rc.stdout}\nstderr:\n{rc.stderr}"

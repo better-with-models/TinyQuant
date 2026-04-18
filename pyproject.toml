@@ -63,8 +63,12 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "TCH", "ANN401", "S608"]
+"rust/crates/tinyquant-py/tests/**" = ["S101", "TCH", "ANN401", "S608"]
 # The sentence corpus is inherently long-form; line-wrap would mangle it.
 "experiments/quantization-benchmark/generate_embeddings.py" = ["E501"]
+# Benchmark scripts invoke trusted internal binaries (rustc, cargo) via
+# shutil.which-resolved paths; S603 (untrusted subprocess input) does not apply.
+"experiments/rust-python-performance-comparison/run_benchmark.py" = ["S603"]
 
 [tool.mypy]
 python_version = "3.12"

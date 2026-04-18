@@ -6,7 +6,6 @@ import dataclasses
 
 import numpy as np
 import pytest
-
 from tinyquant_py_reference.codec.compressed_vector import CompressedVector
 
 # ---------------------------------------------------------------------------

@@ -7,7 +7,6 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
-
 from tinyquant_py_reference.codec.codec_config import CodecConfig
 from tinyquant_py_reference.codec.rotation_matrix import RotationMatrix
 

@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from numpy.typing import NDArray
-
 from tinyquant_py_reference.backend.brute_force import BruteForceBackend
 from tinyquant_py_reference.backend.protocol import SearchResult
 

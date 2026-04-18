@@ -10,6 +10,7 @@ Phase 24 will replace the skip with::
 
 and every parity test becomes a live assertion.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterator
@@ -17,7 +18,6 @@ from typing import Any
 
 import numpy as np
 import pytest
-
 import tinyquant_py_reference as ref_pkg
 
 
@@ -31,7 +31,7 @@ def ref() -> Any:
 def rs() -> Iterator[Any]:
     """The Rust-backed implementation. Phase 24 wires this up."""
     try:
-        import tinyquant_cpu as rs_pkg  # noqa: PLC0415
+        import tinyquant_cpu as rs_pkg
     except ImportError:
         pytest.skip(
             "Rust-backed tinyquant_cpu not installed; "
@@ -55,14 +55,14 @@ def rng(cfg_triplet: tuple[int, int, int]) -> np.random.Generator:
 
 
 @pytest.fixture()
-def vector(rng: np.random.Generator, cfg_triplet: tuple[int, int, int]):
+def vector(rng: np.random.Generator, cfg_triplet: tuple[int, int, int]) -> np.ndarray:
     """Single FP32 vector of the dimension specified by ``cfg_triplet``."""
     _, _, dim = cfg_triplet
     return rng.standard_normal(dim).astype(np.float32)
 
 
 @pytest.fixture()
-def batch(rng: np.random.Generator, cfg_triplet: tuple[int, int, int]):
+def batch(rng: np.random.Generator, cfg_triplet: tuple[int, int, int]) -> np.ndarray:
     """FP32 matrix of 128 vectors with the dimension specified by ``cfg_triplet``."""
     _, _, dim = cfg_triplet
     return rng.standard_normal((128, dim)).astype(np.float32)

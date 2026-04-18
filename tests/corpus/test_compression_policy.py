@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import numpy as np
-
 from tinyquant_py_reference.corpus.compression_policy import CompressionPolicy
 
 

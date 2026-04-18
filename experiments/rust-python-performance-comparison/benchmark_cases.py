@@ -195,7 +195,9 @@ def phase_names(suite: str) -> list[str]:
         raise ValueError(f"unknown suite: {suite}") from exc
 
 
-def summarize_samples(samples: list[float]) -> tuple[float | None, float | None, float | None]:
+def summarize_samples(
+    samples: list[float],
+) -> tuple[float | None, float | None, float | None]:
     """Return median/min/max for a non-empty sample list."""
     if not samples:
         return None, None, None

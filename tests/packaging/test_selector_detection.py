@@ -29,9 +29,7 @@ import pytest
 # Absolute path to the selector *template* — NOT installed, so we load
 # it as a free-standing module to avoid depending on the fat wheel.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-_SELECTOR_PATH = (
-    _REPO_ROOT / "scripts" / "packaging" / "templates" / "_selector.py"
-)
+_SELECTOR_PATH = _REPO_ROOT / "scripts" / "packaging" / "templates" / "_selector.py"
 
 
 def _load_selector() -> types.ModuleType:
@@ -82,12 +80,8 @@ def test_detect_platform_key_supported_tuples(
     its own dedicated tests; here we just want to pin the branch.
     """
     monkeypatch.setattr(selector.sys, "platform", plat, raising=False)
-    monkeypatch.setattr(
-        selector.platform, "machine", lambda: machine, raising=False
-    )
-    monkeypatch.setattr(
-        selector, "_detect_libc", lambda: libc, raising=True
-    )
+    monkeypatch.setattr(selector.platform, "machine", lambda: machine, raising=False)
+    monkeypatch.setattr(selector, "_detect_libc", lambda: libc, raising=True)
 
     assert selector.detect_platform_key() == expected_key
 
@@ -98,9 +92,7 @@ def test_detect_platform_key_unsupported_machine(
 ) -> None:
     """An unknown `machine()` raises with a diagnostic message."""
     monkeypatch.setattr(selector.sys, "platform", "linux", raising=False)
-    monkeypatch.setattr(
-        selector.platform, "machine", lambda: "ppc64le", raising=False
-    )
+    monkeypatch.setattr(selector.platform, "machine", lambda: "ppc64le", raising=False)
     monkeypatch.setattr(
         selector.platform, "libc_ver", lambda: ("glibc", ""), raising=False
     )
@@ -121,17 +113,16 @@ def test_detect_platform_key_musl_aarch64_rejected(
 ) -> None:
     """Musllinux aarch64 is not bundled; must fail with sdist guidance."""
     monkeypatch.setattr(selector.sys, "platform", "linux", raising=False)
-    monkeypatch.setattr(
-        selector.platform, "machine", lambda: "aarch64", raising=False
-    )
+    monkeypatch.setattr(selector.platform, "machine", lambda: "aarch64", raising=False)
     monkeypatch.setattr(selector, "_detect_libc", lambda: "musl", raising=True)
 
     with pytest.raises(selector.UnsupportedPlatformError) as excinfo:
         selector.detect_platform_key()
 
-    assert "musllinux" in str(excinfo.value).lower() or "musl" in str(
-        excinfo.value
-    ).lower()
+    assert (
+        "musllinux" in str(excinfo.value).lower()
+        or "musl" in str(excinfo.value).lower()
+    )
     assert "--no-binary" in str(excinfo.value)
 
 

@@ -11,7 +11,6 @@ import numpy as np
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
-
     from tinyquant_py_reference._types import ConfigHash
 
 _FORMAT_VERSION: int = 0x01

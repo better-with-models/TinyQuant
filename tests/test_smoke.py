@@ -4,7 +4,7 @@ import re
 
 
 def test_import_tinyquant() -> None:
-    """Verify that tinyquant_py_reference can be imported and exposes a version string."""
+    """Verify tinyquant_py_reference can be imported and exposes a version string."""
     import tinyquant_py_reference
 
     assert isinstance(tinyquant_py_reference.__version__, str)

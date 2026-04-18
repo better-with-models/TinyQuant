@@ -50,7 +50,7 @@ class PgvectorAdapter:
         with conn.cursor() as cur:
             for vector_id, vector in vectors.items():
                 cur.execute(
-                    f"INSERT INTO {self._table_name} (id, embedding) "  # noqa: S608  -- table_name is developer-controlled, not user input
+                    f"INSERT INTO {self._table_name} (id, embedding) "
                     "VALUES (%s, %s) "
                     "ON CONFLICT (id) DO UPDATE SET embedding = EXCLUDED.embedding",
                     (vector_id, vector.tolist()),
@@ -74,7 +74,7 @@ class PgvectorAdapter:
         conn = self._connection_factory()
         with conn.cursor() as cur:
             cur.execute(
-                f"SELECT id, 1 - (embedding <=> %s::vector) AS score "  # noqa: S608  -- table_name is developer-controlled, not user input
+                f"SELECT id, 1 - (embedding <=> %s::vector) AS score "
                 f"FROM {self._table_name} "
                 "ORDER BY embedding <=> %s::vector LIMIT %s",
                 (query.tolist(), query.tolist(), top_k),
@@ -94,7 +94,7 @@ class PgvectorAdapter:
         conn = self._connection_factory()
         with conn.cursor() as cur:
             cur.execute(
-                f"DELETE FROM {self._table_name} WHERE id = ANY(%s)",  # noqa: S608  -- table_name is developer-controlled, not user input
+                f"DELETE FROM {self._table_name} WHERE id = ANY(%s)",
                 (list(vector_ids),),
             )
         conn.commit()
