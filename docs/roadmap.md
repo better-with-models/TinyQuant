@@ -48,9 +48,9 @@ gantt
         Phase 11 - Rust Workspace Scaffold  :done, p11, after p10, 1
         Phase 12 - Shared Types & Errors    :done, p12, after p11, 1
     section Rust Codec
-        Phase 13 - Rotation & Numerics      :p13, after p12, 1
-        Phase 14 - Codebook & Quantize      :p14, after p13, 1
-        Phase 15 - Codec Service & Residual :p15, after p14, 1
+        Phase 13 - Rotation & Numerics      :done, p13, after p12, 1
+        Phase 14 - Codebook & Quantize      :done, p14, after p13, 1
+        Phase 15 - Codec Service & Residual :done, p15, after p14, 1
     section Rust IO
         Phase 16 - Serialization & Parity   :p16, after p15, 1
         Phase 17 - Zero-copy & Mmap         :p17, after p16, 1

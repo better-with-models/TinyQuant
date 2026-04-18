@@ -13,6 +13,14 @@ status: active
 > Append-only record of documentation-system changes. Use the format
 > `## [YYYY-MM-DD] operation | description`.
 
+## [2026-04-18] normalize | Docs-normalize turn: Gantt, reading order, and log
+
+- `feature/phase-27.5-resident-corpus-search` merged to `develop` via PR #30 (`de0230e`)
+- `feature/docs-normalize-phase-28` rebased onto updated `develop`
+- wgpu local test run: 9/9 tests pass (`batch_threshold`, `context_probe` ×3, `parity_compress` ×2, `parity_search` ×2, doc-test ×1)
+- [[roadmap]]: added `:done,` Mermaid tags for phases 13, 14, 15 (were missing despite "complete" in the phase table)
+- [[design/rust/README|Rust Port Design Overview]]: extended reading order from 22 items to 28 — added implementation notes for phases 22, 23, 24, 25, 27, 27.5 (all existed in vault, none were linked from the reading order)
+
 ## [2026-04-18] normalize | Phase 27.5 complete; Phase 28 activated; vault metadata normalized
 
 - Phase 27.5 (GPU-resident corpus search) merged via PR #29 — `791b195`
