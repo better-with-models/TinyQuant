@@ -127,9 +127,12 @@ fn compress_batch_repeated_calls_do_not_recompile() {
     // The second call must be at least 3× faster than the first.
     // If pipelines were cached the first call (with compilation) dominates;
     // the second (GPU submit + readback only) should be a small fraction.
-    // A factor of 3 is conservative: in practice the ratio is 10–100×.
+    // A factor of 3 is conservative: in practice the ratio is 10–100× on
+    // real hardware.  The 15 ms floor covers software renderers (llvmpipe)
+    // where shader compilation costs only a few ms — if both calls are that
+    // fast the ratio test is vacuous.
     assert!(
-        second_ms * 3.0 < first_ms || second_ms < 5.0,
+        second_ms * 3.0 < first_ms || second_ms < 15.0,
         "second compress_batch call ({second_ms:.1} ms) was not significantly \
          faster than first ({first_ms:.1} ms) — pipelines may be recompiling"
     );
