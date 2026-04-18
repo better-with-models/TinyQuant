@@ -10,6 +10,7 @@ from __future__ import annotations
 from types import ModuleType
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 
 pytestmark = pytest.mark.parity
@@ -47,7 +48,7 @@ class TestRotationParity:
         self,
         ref: ModuleType,
         cfg_triplet: tuple[int, int, int],
-        vector: np.ndarray,
+        vector: npt.NDArray[np.float32],
     ) -> None:
         """Two RotationMatrices from the same config apply identically to a vector."""
         bw, seed, dim = cfg_triplet
@@ -61,7 +62,7 @@ class TestRotationParity:
         ref: ModuleType,
         rs: ModuleType,
         cfg_triplet: tuple[int, int, int],
-        vector: np.ndarray,
+        vector: npt.NDArray[np.float32],
     ) -> None:
         """Python-reference and Rust rotation agree within 1e-6 on the same vector."""
         bw, seed, dim = cfg_triplet
@@ -81,7 +82,7 @@ class TestCompressRoundTrip:
         self,
         ref: ModuleType,
         cfg_triplet: tuple[int, int, int],
-        batch: np.ndarray,
+        batch: npt.NDArray[np.float32],
     ) -> None:
         """Reference compress → reference decompress MSE is below 1.0 (sanity bound)."""
         bw, seed, dim = cfg_triplet
@@ -98,7 +99,7 @@ class TestCompressRoundTrip:
         ref: ModuleType,
         rs: ModuleType,
         cfg_triplet: tuple[int, int, int],
-        batch: np.ndarray,
+        batch: npt.NDArray[np.float32],
     ) -> None:
         """Compress with reference, decompress with Rust and vice versa."""
         bw, seed, dim = cfg_triplet
@@ -127,7 +128,7 @@ class TestSerializationParity:
         self,
         ref: ModuleType,
         cfg_triplet: tuple[int, int, int],
-        batch: np.ndarray,
+        batch: npt.NDArray[np.float32],
     ) -> None:
         """Reference Codebook train determinism is the stable structural property.
 
@@ -146,7 +147,7 @@ class TestSerializationParity:
         ref: ModuleType,
         rs: ModuleType,
         cfg_triplet: tuple[int, int, int],
-        batch: np.ndarray,
+        batch: npt.NDArray[np.float32],
     ) -> None:
         """Rust Codebook from reference entries has identical ``entries`` array."""
         bw, seed, dim = cfg_triplet

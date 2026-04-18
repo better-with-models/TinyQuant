@@ -146,11 +146,15 @@ def test_ext_filename_unknown_platform_raises(
 
 def _expected_ext_suffix() -> str:
     """The suffix the currently-running interpreter expects."""
-    if sys.platform == "linux" or sys.platform == "darwin":
-        return ".abi3.so"
-    if sys.platform == "win32":
-        return ".pyd"
-    pytest.skip(f"host platform {sys.platform!r} is not Tier-1")
+    _suffixes: dict[str, str] = {
+        "linux": ".abi3.so",
+        "darwin": ".abi3.so",
+        "win32": ".pyd",
+    }
+    suffix = _suffixes.get(sys.platform)
+    if suffix is None:
+        pytest.skip(f"host platform {sys.platform!r} is not Tier-1")
+    return suffix
 
 
 def test_ext_filename_for_host(selector: types.ModuleType) -> None:

@@ -12,6 +12,7 @@ from __future__ import annotations
 import threading
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 import tinyquant_rs as rs
 
@@ -231,7 +232,7 @@ def test_corpus_lifecycle_parity() -> None:
         compression_policy=rs.corpus.CompressionPolicy.COMPRESS,
     )
 
-    originals: dict[str, np.ndarray] = {}
+    originals: dict[str, npt.NDArray[np.float32]] = {}
     for i in range(n):
         vec = rng.standard_normal(dim).astype(np.float32)
         vid = f"v{i:04d}"

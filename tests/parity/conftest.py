@@ -17,6 +17,7 @@ from collections.abc import Iterator
 from typing import Any, cast
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 import tinyquant_py_reference as ref_pkg
 
@@ -55,14 +56,18 @@ def rng(cfg_triplet: tuple[int, int, int]) -> np.random.Generator:
 
 
 @pytest.fixture()
-def vector(rng: np.random.Generator, cfg_triplet: tuple[int, int, int]) -> np.ndarray:
+def vector(
+    rng: np.random.Generator, cfg_triplet: tuple[int, int, int]
+) -> npt.NDArray[np.float32]:
     """Single FP32 vector of the dimension specified by ``cfg_triplet``."""
     _, _, dim = cfg_triplet
     return rng.standard_normal(dim).astype(np.float32)
 
 
 @pytest.fixture()
-def batch(rng: np.random.Generator, cfg_triplet: tuple[int, int, int]) -> np.ndarray:
+def batch(
+    rng: np.random.Generator, cfg_triplet: tuple[int, int, int]
+) -> npt.NDArray[np.float32]:
     """FP32 matrix of 128 vectors with the dimension specified by ``cfg_triplet``."""
     _, _, dim = cfg_triplet
     return rng.standard_normal((128, dim)).astype(np.float32)
