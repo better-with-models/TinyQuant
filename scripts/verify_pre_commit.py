@@ -67,13 +67,29 @@ def ok(message: str) -> None:
 #                 and are governed by their own branch's pre-commit hook.
 _EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv", ".worktrees"}
 
+# Path-component predicates that exclude a file from obsidian-boundary and
+# markdownlint scope regardless of which top-level directory it lives in.
+#
+# - node_modules : vendored third-party packages anywhere in the tree
+#                  (e.g. javascript/@tinyquant/core/node_modules/).
+# - results      : auto-generated benchmark output under experiments/**/results/;
+#                  machine-written SUMMARY.md files are not subject to lint rules.
+_EXCLUDED_PATH_PARTS = {"node_modules", "results"}
+
+
+def _is_excluded(relative: Path) -> bool:
+    """Return True if *relative* should be skipped by Obsidian/lint checks."""
+    if relative.parts[0] in _EXCLUDED_TOP_DIRS:
+        return True
+    return bool(_EXCLUDED_PATH_PARTS & set(relative.parts))
+
 
 def markdown_files_outside_docs() -> list[Path]:
     """Return all ``*.md`` files that are outside the excluded top-level directories."""
     files: list[Path] = []
     for path in REPO_ROOT.rglob("*.md"):
         relative = path.relative_to(REPO_ROOT)
-        if relative.parts[0] in _EXCLUDED_TOP_DIRS:
+        if _is_excluded(relative):
             continue
         files.append(path)
     return sorted(files)
