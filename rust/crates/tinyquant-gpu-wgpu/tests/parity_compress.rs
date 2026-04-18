@@ -85,11 +85,17 @@ fn prepare_for_device_is_idempotent() {
     assert!(prepared.has_gpu_state());
 }
 
-/// Calling compress_batch twice on the same WgpuBackend must not recompile
-/// pipelines — the second call must complete well below any plausible
-/// compile latency (50 ms threshold).
+/// Calling compress_batch twice on the same WgpuBackend must not
+/// recompile pipelines on the second call.
+///
+/// Strategy: time both the first call (where pipeline compilation occurs) and
+/// the second call (where pipelines must already be cached).  The second call
+/// must be at least 3× faster than the first, or both must be very fast
+/// (< 5 ms), which covers GPUs that compile shaders in under 1 ms.
 ///
 /// On a no-GPU (llvmpipe) runner this test is gated with `skip_if_no_adapter`.
+/// On a real GPU runner it enforces FR-GPU-004's spirit: repeated calls must
+/// not regress due to per-call shader compilation.
 #[test]
 fn compress_batch_repeated_calls_do_not_recompile() {
     let Some(mut backend) = skip_if_no_adapter() else {
@@ -107,19 +113,25 @@ fn compress_batch_repeated_calls_do_not_recompile() {
     let dim = 64usize;
     let input: Vec<f32> = (0..n * dim).map(|i| (i as f32 * 0.001).sin()).collect();
 
-    // Warm-up call (pipeline build happens here).
-    let _ = backend.compress_batch(&input, n, dim, &prepared).unwrap();
-
-    // Second call — must not rebuild pipelines.
+    // Warm-up call — this is where pipeline compilation happens.
+    // We time it so we can assert the second call is significantly faster.
     let t0 = std::time::Instant::now();
     let _ = backend.compress_batch(&input, n, dim, &prepared).unwrap();
-    let elapsed_ms = t0.elapsed().as_secs_f64() * 1e3;
+    let first_ms = t0.elapsed().as_secs_f64() * 1e3;
 
-    // 50 ms is a very conservative upper bound: pipeline compilation alone
-    // typically costs 5–50 ms; if we're below 50 ms we did NOT recompile.
+    // Second call — pipelines must already be cached.
+    let t1 = std::time::Instant::now();
+    let _ = backend.compress_batch(&input, n, dim, &prepared).unwrap();
+    let second_ms = t1.elapsed().as_secs_f64() * 1e3;
+
+    // The second call must be at least 3× faster than the first.
+    // If pipelines were cached the first call (with compilation) dominates;
+    // the second (GPU submit + readback only) should be a small fraction.
+    // A factor of 3 is conservative: in practice the ratio is 10–100×.
     assert!(
-        elapsed_ms < 50.0,
-        "second compress_batch call took {elapsed_ms:.1} ms — likely recompiling pipelines"
+        second_ms * 3.0 < first_ms || second_ms < 5.0,
+        "second compress_batch call ({second_ms:.1} ms) was not significantly \
+         faster than first ({first_ms:.1} ms) — pipelines may be recompiling"
     );
 }
 
