@@ -1,0 +1,16 @@
+[package]
+name = "tinyquant-cross-surface-rust-runner"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.87"
+publish = false
+
+[dependencies]
+tinyquant-core = { path = "../../../rust/crates/tinyquant-core", features = ["std", "simd"] }
+tinyquant-bruteforce = { path = "../../../rust/crates/tinyquant-bruteforce", features = ["simd"] }
+tinyquant-gpu-wgpu = { path = "../../../rust/crates/tinyquant-gpu-wgpu" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ndarray = "0.16"
+ndarray-npy = "0.9"
+tokio = { version = "1", features = ["rt"] }

@@ -81,3 +81,6 @@ docs/.obsidian/workspace.json
 docs/.obsidian
 .pre-commit-cache
 .obsidian
+experiments/results/
+experiments/rust-python-performance-comparison/results/
+experiments/rust-python-performance-comparison/rust_runner/target/
