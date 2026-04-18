@@ -141,6 +141,8 @@ class TestHypothesis:
                 max_value=100,
                 allow_nan=False,
                 allow_infinity=False,
+                allow_subnormal=False,
+                width=32,
             ),
         ),
     )
