@@ -551,9 +551,7 @@ fn print_help() {
         "  bench         Benchmark budget (--capture-baseline | --check-against | --diff | --validate)"
     );
     println!("  bench-budget        Alias for `bench --check-against main` (Phase 22.D)");
-    println!(
-        "  calibration   Calibration results (--validate | --capture-results)"
-    );
+    println!("  calibration   Calibration results (--validate | --capture-results)");
     println!(
         "  check-matrix-sync   Diff CLI smoke matrix in plan vs rust-release.yml + assert \
          publish-* guards byte-identical (Phase 22.D) + python-fatwheel publish contract \

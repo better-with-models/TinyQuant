@@ -96,18 +96,21 @@ fn validate() {
         .and_then(Value::as_i64)
         .unwrap_or(1);
     if sv != expected_sv {
-        eprintln!(
-            "xtask calibration --validate: schema_version={sv} != expected {expected_sv}"
-        );
+        eprintln!("xtask calibration --validate: schema_version={sv} != expected {expected_sv}");
         process::exit(1);
     }
 
     // Required top-level fields.
-    for field in ["captured_at", "git_commit", "host", "corpus", "seed", "results"] {
+    for field in [
+        "captured_at",
+        "git_commit",
+        "host",
+        "corpus",
+        "seed",
+        "results",
+    ] {
         if results.get(field).is_none() {
-            eprintln!(
-                "xtask calibration --validate: missing required field '{field}'"
-            );
+            eprintln!("xtask calibration --validate: missing required field '{field}'");
             process::exit(1);
         }
     }
@@ -134,9 +137,7 @@ fn validate() {
         });
         for metric in ["rho", "recall_at_10", "ratio"] {
             if entry.get(metric).and_then(Value::as_f64).is_none() {
-                eprintln!(
-                    "xtask calibration --validate: '{key}.{metric}' missing or not a number"
-                );
+                eprintln!("xtask calibration --validate: '{key}.{metric}' missing or not a number");
                 process::exit(1);
             }
         }
@@ -260,18 +261,28 @@ fn parse_calibration_results(stdout: &str) -> Vec<(String, f64, f64, f64)> {
         if !line.starts_with("CALIBRATION_RESULT ") {
             continue;
         }
-        let Some(bw) = extract_value(line, "bw=") else { continue };
-        let Some(residual) = extract_value(line, "residual=") else { continue };
-        let Some(rho) = extract_f64(line, "rho=") else { continue };
-        let Some(recall) = extract_f64(line, "recall_at_10=") else { continue };
-        let Some(ratio) = extract_f64(line, "ratio=") else { continue };
+        let Some(bw) = extract_value(line, "bw=") else {
+            continue;
+        };
+        let Some(residual) = extract_value(line, "residual=") else {
+            continue;
+        };
+        let Some(rho) = extract_f64(line, "rho=") else {
+            continue;
+        };
+        let Some(recall) = extract_f64(line, "recall_at_10=") else {
+            continue;
+        };
+        let Some(ratio) = extract_f64(line, "ratio=") else {
+            continue;
+        };
 
         let key = match (bw.as_str(), residual.as_str()) {
-            ("4", "true")  => "bw4_residual",
+            ("4", "true") => "bw4_residual",
             ("4", "false") => "bw4_no_residual",
-            ("2", "true")  => "bw2_residual",
+            ("2", "true") => "bw2_residual",
             ("2", "false") => "bw2_no_residual",
-            ("8", "true")  => "bw8_residual",
+            ("8", "true") => "bw8_residual",
             ("8", "false") => "bw8_no_residual",
             _ => {
                 eprintln!("warning: unknown bw={bw} residual={residual} in CALIBRATION_RESULT line — skipping");
