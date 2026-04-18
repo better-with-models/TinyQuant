@@ -244,8 +244,17 @@ export class Corpus {
   readonly #native: NativeCorpus;
   readonly codecConfig: CodecConfig;
   readonly codebook: Codebook;
-  readonly compressionPolicy: CompressionPolicy;
+  // Private field + getter so the property descriptor is an accessor (no setter).
+  // TypeScript `readonly` only prevents compile-time writes; a data property is
+  // still writable at runtime via untyped assignment. An accessor property with
+  // no setter is non-writable in strict mode (throws TypeError) and silently a
+  // no-op in sloppy mode — either way the value cannot change after construction.
+  readonly #compressionPolicy: CompressionPolicy;
   readonly metadata: Record<string, unknown> | null;
+
+  get compressionPolicy(): CompressionPolicy {
+    return this.#compressionPolicy;
+  }
 
   constructor(opts: CorpusOpts) {
     const metadataJson =
@@ -259,7 +268,7 @@ export class Corpus {
     );
     this.codecConfig = opts.codecConfig;
     this.codebook = opts.codebook;
-    this.compressionPolicy = opts.compressionPolicy;
+    this.#compressionPolicy = opts.compressionPolicy;
     this.metadata = opts.metadata ?? null;
   }
 

@@ -111,6 +111,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `docs/design/rust/phase-24-implementation-notes.md` recording the
   parity-audit wiring, AC trace, and 6 declared deviations from
   `phase-24-python-fat-wheel-official.md`.
+- Phase 27.5 GPU-resident corpus search: `WgpuBackend::prepare_corpus_for_device`
+  uploads a FP32 corpus to device memory; `WgpuBackend::cosine_topk` scores a
+  query against all corpus rows in a single WGSL dispatch and returns sorted
+  top-k `SearchResult`s. New `TinyQuantGpuError` variants `CorpusNotPrepared`
+  and `InvalidTopK`. Throughput target: ≤ 5 ms for 10 000 rows × dim=1536 on
+  RTX 3060-class hardware (FR-GPU-004). CPU–GPU Jaccard parity ≥ 0.95 (tested
+  in `tests/parity_search.rs`). Criterion bench at
+  `benches/throughput_search.rs`.
+- Phase 27.5 `tinyquant-io` allocation bounds: decode-time caps on
+  `config_hash_len`, `metadata_len`, and per-record length; `checked_mul` on
+  `packed_len` computation in `from_bytes`; adversarial rejection tests in
+  `tests/rejection.rs`.
+- GitHub Actions workflow SHA-pinning across all CI and release workflows.
 
 ### Changed
 

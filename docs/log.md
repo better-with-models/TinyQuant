@@ -13,6 +13,68 @@ status: active
 > Append-only record of documentation-system changes. Use the format
 > `## [YYYY-MM-DD] operation | description`.
 
+## [2026-04-16] fix | Phase 27.5 audit findings resolved in tinyquant-gpu-wgpu
+
+Applied all six findings from [[scratch/audit-phase-27.5-best-practice-codex]]:
+
+- Added `InvalidTopK` variant to `TinyQuantGpuError`; `cosine_topk` now
+  returns it when `top_k == 0`
+- Added `search_pipeline: Option<wgpu::ComputePipeline>` field; pipeline
+  lazily built and cached on first `cosine_topk` call
+- `cosine_topk` changed to `&mut self`; removed corpus-upload idempotency
+  guard (always re-uploads)
+- Sort order aligned with `SearchResult: Ord` contract (descending score,
+  ascending `vector_id` tiebreaker)
+- Extracted `create_readback_buf` and `poll_map_read` private helpers,
+  removing duplicated readback pattern across three methods
+- Added corpus normalisation in `throughput_search.rs` bench; added
+  descending-score assertions in `parity_search.rs`
+- Fixed three Clippy lints in `tinyquant-core`: `manual_div_ceil`
+  (`compressed_vector.rs`), `doc_overindented_list_items` (`scalar.rs`),
+  `struct_field_names` (`aggregate.rs`)
+
+All tests green; clippy clean on both crates.
+
+## [2026-04-16] audit | Repo-wide security audit note added
+
+Added [[scratch/security-audit-repo-codex-2026-04-16]] as a static
+security review of the current TinyQuant repo. The note records four
+findings:
+
+- one high-severity denial-of-service issue in `tinyquant-io`
+  deserialization and corpus-file parsing
+- one medium-severity oversized-record allocation issue in the
+  non-mmap Level-2 reader
+- two low-severity release-workflow hardening gaps (`cargo vet`
+  running advisory-only and mutable Action-tag pinning)
+
+The note also records non-findings for the `tinyquant-sys` C ABI,
+`tinyquant-pgvector` SQL adapter, and JS build tooling, plus the
+successful verification run `cargo test -p tinyquant-io --quiet`.
+
+## [2026-04-16] review | Phase 27.5 Claude code review note added
+
+Added [[scratch/review-phase-27.5]] as a structured code review of commit `e78ec8e`
+on `feature/phase-27.5-resident-corpus-search`. Covers plan compliance, acceptance
+criteria status, and nine findings (four risks, four nits, one design question)
+against [[plans/rust/phase-27.5-resident-corpus-search]]. Normalized to Obsidian
+vault conventions: full frontmatter, callouts for all finding entries, and
+wikilink for the plan cross-reference.
+
+## [2026-04-16] review | Phase 27.5 best-practice and code-smell audit added
+
+Added [[scratch/audit-phase-27.5-best-practice-codex]] as a worktree-based audit
+of `feature/phase-27.5-resident-corpus-search`, focused on best-practice drift,
+shared search-contract mismatches, and maintainability/code-smell findings in
+`tinyquant-gpu-wgpu`.
+
+## [2026-04-16] review | Phase 27.5 branch review note added
+
+Added [[scratch/review-phase-27.5-codex]] as an ad hoc review note for the branch
+`feature/phase-27.5-resident-corpus-search`, covering code-review findings
+against `develop` and against
+[[plans/rust/phase-27.5-resident-corpus-search]].
+
 ## [2026-04-08] init | Documentation system scaffolding created
 
 Initialized the TinyQuant documentation system using the same structural model
@@ -804,3 +866,4 @@ Created branch `fix/rotation-cache-compress-path` with:
 
 No Python reference changes are proposed. The fix is Rust-only and confined to
 `batch.rs` + an internal helper in `service.rs`.
+

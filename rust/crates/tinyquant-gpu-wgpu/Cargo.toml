@@ -14,5 +14,11 @@ thiserror      = { workspace = true }
 bytemuck       = { workspace = true }
 
 [dev-dependencies]
-tokio          = { version = "1", features = ["rt", "macros"] }
-naga           = { version = "22.1.0", features = ["wgsl-in"] }
+tokio              = { version = "1", features = ["rt", "macros"] }
+naga               = { version = "22.1.0", features = ["wgsl-in"] }
+tinyquant-bruteforce = { workspace = true }
+criterion          = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name    = "throughput_search"
+harness = false

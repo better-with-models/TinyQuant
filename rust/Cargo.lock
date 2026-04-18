@@ -2879,8 +2879,10 @@ name = "tinyquant-gpu-wgpu"
 version = "1.0.0"
 dependencies = [
  "bytemuck",
+ "criterion",
  "naga",
  "thiserror 2.0.18",
+ "tinyquant-bruteforce",
  "tinyquant-core",
  "tokio",
  "wgpu",

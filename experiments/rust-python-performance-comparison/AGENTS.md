@@ -1,63 +1,88 @@
 # AGENTS.md — Guide for AI Agents Working in `experiments/rust-python-performance-comparison`
 
-This directory contains the throughput comparison experiment that measured the
-Python reference implementation (`tinyquant_py_reference`) against the Rust
-library (`tinyquant-core`) on a 335×1536 embedding corpus. The experiment
-identified that Rust kernel operations (quantize, dequantize, cosine) are
-5–195× faster than Python, while the Rust end-to-end batch path is
-~2,800× slower due to a per-vector SVD recomputation error in
-`compress_batch_parallel`. These scripts are run manually for research; they
-are not part of CI.
+This directory is the canonical manual benchmark for cross-surface TinyQuant
+runtime comparison. It measures five runnable surfaces across two suites:
+
+- `py_reference`
+- `py_shim`
+- `py_direct`
+- `rust_cpu`
+- `rust_wgpu`
+
+Suites:
+
+- `codec`
+- `search`
+
+The benchmark is manual only. It is not part of CI.
 
 ## What this area contains
 
-- primary responsibility: standalone throughput comparison between the Python
-  reference codec and the Rust codec, including root-cause analysis of the
-  end-to-end performance gap
-- main entrypoints: `bench_python_reference.py` (Python throughput benchmark;
-  use `tests/reference` on `PYTHONPATH`), `REPORT.md` (full findings)
-- common changes: re-running `bench_python_reference.py` with updated corpus or
-  more repetitions; adding a complementary `bench_rust_kernels.py` once the
-  rotation-cache fix lands
+- primary responsibility: cross-surface runtime comparison with one Python
+  orchestrator and one standalone Rust helper
+- main entrypoints:
+  - `run_benchmark.py`
+  - `bench_python_reference.py` compatibility wrapper
+  - `rust_runner/` standalone release-mode helper
+  - `REPORT.md` historical context only
+- common changes:
+  - adding benchmark cases or corpora
+  - refining summary/output formatting
+  - extending the Rust helper without moving it into the main workspace
 
 ## Layout
 
 ```text
 rust-python-performance-comparison/
-├── bench_python_reference.py
-├── REPORT.md
 ├── AGENTS.md
-└── CLAUDE.md
+├── README.md
+├── CLAUDE.md
+├── REPORT.md
+├── bench_python_reference.py
+├── benchmark_cases.py
+├── python_surfaces.py
+├── run_benchmark.py
+├── rust_runner/
+│   ├── Cargo.toml
+│   ├── README.md
+│   └── src/main.rs
+└── (results land in experiments/results/<timestamp>/ — created at runtime only; do not commit)
 ```
 
 ## Common workflows
 
-### Re-run the Python benchmark
+### Run the canonical benchmark
 
 ```bash
-cd /path/to/TinyQuant
+python experiments/rust-python-performance-comparison/run_benchmark.py
+```
+
+Run from the repo root so relative paths for the real corpus, reference
+package, and Rust helper all resolve correctly.
+
+### Run the historical wrapper
+
+```bash
 python experiments/rust-python-performance-comparison/bench_python_reference.py
 ```
 
-The script uses `sys.path.insert(0, "tests/reference")` — run from the repo
-root so the relative path resolves.
-
-### Add a Rust-side benchmark
-
-Once the `fix/rotation-cache-compress-path` fix lands, add
-`bench_rust_kernels.py` that exercises `tinyquant-core` via the PyO3 bindings
-and update REPORT.md with the post-fix numbers.
+This now forwards into `run_benchmark.py` with the reference-only codec case.
 
 ## Invariants — Do Not Violate
 
-- keep this directory focused on its stated responsibility
-- do not modify `tinyquant_py_reference` from this directory — the reference
-  implementation is read-only from the experiment's perspective
-- do not invent APIs, workflows, or invariants that the code does not support
-- update this file when structure or safe-editing rules change
+- keep this directory focused on manual benchmark work only
+- do not rewrite `REPORT.md` into the new canonical report; preserve it as
+  historical context
+- do not modify `tests/reference/tinyquant_py_reference` from here
+- keep `rust_runner/` standalone and outside the main Rust workspace
+- treat `experiments/results/` as runtime-only output and do not commit it
+- do not silently substitute a fake real corpus if
+  `experiments/quantization-benchmark/data/embeddings.npy` is missing
+- update this file and the local `README.md` when structure, commands, or safe
+  editing rules change
 
 ## See Also
 
 - [Parent AGENTS.md](../AGENTS.md)
 - [Root AGENTS.md](../../AGENTS.md)
-- [Fix Plan](../../docs/plans/rust/rotation-cache-compress-path.md)
+- [Local README.md](README.md)

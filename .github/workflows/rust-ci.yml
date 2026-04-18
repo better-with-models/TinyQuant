@@ -429,6 +429,8 @@ jobs:
           workspaces: rust -> target
       - name: Validate baseline schema
         run: cargo run -p xtask -- bench --validate
+      - name: Validate calibration results schema
+        run: cargo run -p xtask -- calibration --validate
       - name: CI parity check (docs vs rust-ci.yml)
         run: cargo run -p xtask -- docs check-ci-parity
       - name: Check benchmark budget against baseline
@@ -445,6 +447,10 @@ jobs:
   gpu-compile:
     name: GPU crate — compile + shader validation
     runs-on: ubuntu-22.04
+    # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml (which pins 1.81) so that
+    # cargo uses the 1.87 toolchain installed by dtolnay/rust-toolchain below.
+    env:
+      RUSTUP_TOOLCHAIN: "1.87.0"
     defaults:
       run:
         working-directory: rust
@@ -455,6 +461,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.87.0"
+          components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust -> target

@@ -30,10 +30,20 @@ pub enum TinyQuantGpuError {
     Codec(#[from] tinyquant_core::errors::CodecError),
 
     /// GPU backend does not support `residual_enabled = true` (Phase 28).
-    #[error("GPU backend does not support residual_enabled=true; use the CPU path or wait for Phase 28")]
+    #[error(
+        "GPU backend does not support residual_enabled=true; use the CPU path or wait for Phase 28"
+    )]
     ResidualNotSupported,
 
     /// A vector in the batch is incompatible with the `PreparedCodec`.
     #[error("batch vector mismatch: {detail}")]
     BatchMismatch { detail: String },
+
+    /// `prepare_corpus_for_device` was not called before `cosine_topk`.
+    #[error("corpus not uploaded; call prepare_corpus_for_device before cosine_topk")]
+    CorpusNotPrepared,
+
+    /// `cosine_topk` called with `top_k == 0`.
+    #[error("top_k must be at least 1")]
+    InvalidTopK,
 }

@@ -31,7 +31,11 @@ impl WgpuContext {
             .await
             .map_err(TinyQuantGpuError::DeviceRequest)?;
 
-        Ok(Self { device, queue, adapter_info })
+        Ok(Self {
+            device,
+            queue,
+            adapter_info,
+        })
     }
 
     /// Build a compute pipeline from WGSL source.
@@ -44,17 +48,20 @@ impl WgpuContext {
         wgsl: &str,
         entry_point: &str,
     ) -> wgpu::ComputePipeline {
-        let shader = self.device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some(label),
-            source: wgpu::ShaderSource::Wgsl(wgsl.into()),
-        });
-        self.device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-            label: Some(label),
-            layout: None,
-            module: &shader,
-            entry_point,
-            compilation_options: Default::default(),
-            cache: None,
-        })
+        let shader = self
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some(label),
+                source: wgpu::ShaderSource::Wgsl(wgsl.into()),
+            });
+        self.device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some(label),
+                layout: None,
+                module: &shader,
+                entry_point,
+                compilation_options: Default::default(),
+                cache: None,
+            })
     }
 }

@@ -67,13 +67,29 @@ def ok(message: str) -> None:
 #                 and are governed by their own branch's pre-commit hook.
 _EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv", ".worktrees"}
 
+# Path-component predicates that exclude a file from obsidian-boundary and
+# markdownlint scope regardless of which top-level directory it lives in.
+#
+# - node_modules : vendored third-party packages anywhere in the tree
+#                  (e.g. javascript/@tinyquant/core/node_modules/).
+# - results      : auto-generated benchmark output under experiments/**/results/;
+#                  machine-written SUMMARY.md files are not subject to lint rules.
+_EXCLUDED_PATH_PARTS = {"node_modules", "results"}
+
+
+def _is_excluded(relative: Path) -> bool:
+    """Return True if *relative* should be skipped by Obsidian/lint checks."""
+    if relative.parts[0] in _EXCLUDED_TOP_DIRS:
+        return True
+    return bool(_EXCLUDED_PATH_PARTS & set(relative.parts))
+
 
 def markdown_files_outside_docs() -> list[Path]:
     """Return all ``*.md`` files that are outside the excluded top-level directories."""
     files: list[Path] = []
     for path in REPO_ROOT.rglob("*.md"):
         relative = path.relative_to(REPO_ROOT)
-        if relative.parts[0] in _EXCLUDED_TOP_DIRS:
+        if _is_excluded(relative):
             continue
         files.append(path)
     return sorted(files)
@@ -201,6 +217,63 @@ def run_markdownlint() -> bool:
     return False
 
 
+def staged_rust_files() -> list[str]:
+    """Return staged ``*.rs`` paths (added, copied, modified, renamed).
+
+    Returns an empty list when no Rust files are staged, allowing the fmt
+    check to be skipped entirely for documentation-only or non-Rust commits.
+    """
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return [p for p in result.stdout.splitlines() if p.endswith(".rs")]
+
+
+def check_rust_fmt() -> bool:
+    """Run ``cargo fmt --all -- --check`` when Rust files are staged.
+
+    Mirrors the ``fmt`` job in ``.github/workflows/rust-ci.yml`` so
+    formatting failures are caught locally before they reach CI.
+
+    Skipped when no ``*.rs`` files are staged.  Returns ``True`` on success
+    or skip, ``False`` on failure.
+    """
+    rust_files = staged_rust_files()
+    if not rust_files:
+        ok("no staged Rust files — skipping cargo fmt check")
+        return True
+
+    cargo = shutil.which("cargo")
+    if not cargo:
+        fail("cargo not found — cannot run fmt check (install Rust toolchain)")
+        return False
+
+    rust_dir = REPO_ROOT / "rust"
+    if not rust_dir.is_dir():
+        fail(f"rust/ directory not found at {rust_dir} — skipping fmt check")
+        return True
+
+    result = subprocess.run(
+        [cargo, "fmt", "--all", "--", "--check"],
+        cwd=rust_dir,
+        check=False,
+    )
+    if result.returncode == 0:
+        ok(f"cargo fmt clean ({len(rust_files)} staged Rust file(s))")
+        return True
+
+    suffix = " …" if len(rust_files) > 5 else ""
+    fail(
+        f"cargo fmt check failed — run `cargo fmt --all` from rust/ to fix\n"
+        f"  Staged Rust files: {', '.join(rust_files[:5])}{suffix}"
+    )
+    return False
+
+
 def main() -> int:
     """Run all pre-commit verification checks and return an exit code (0 = pass, 1 = fail)."""
     checks = [
@@ -209,6 +282,7 @@ def main() -> int:
         check_obsidian_boundary(),
         check_wiki_frontmatter(),
         run_markdownlint(),
+        check_rust_fmt(),
     ]
     if all(checks):
         print("TinyQuant pre-commit verification passed.")

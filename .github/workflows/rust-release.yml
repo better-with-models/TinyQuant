@@ -49,9 +49,11 @@
 #   - A CycloneDX SBOM produced by `syft`.
 #   - A keyless cosign signature (`cosign sign` / `cosign sign-blob`).
 #   - A SLSA build provenance attestation via
-#     `actions/attest-build-provenance@v1`.
-#   - `cargo-vet --locked` + `cargo-audit --deny warnings` in the
-#     gate stage; any advisory blocks the release.
+#     `actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018  # v1.4.4`.
+#   - `cargo-audit --deny warnings` in the gate stage blocks the release
+#     on any advisory. `cargo-vet --locked` runs advisory-only
+#     (`continue-on-error: true`) until `supply-chain/audits.toml` is
+#     bootstrapped; it does not yet block publication.
 #
 # See `docs/plans/rust/phase-22-pyo3-cabi-release.md`
 # §Supply-chain attestations for the consumer verification recipe.
@@ -74,7 +76,7 @@ on:
         default: ''
 
 permissions:
-  # `attestations: write` is required by actions/attest-build-provenance@v1
+  # `attestations: write` is required by actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018  # v1.4.4
   # but action-validator's schema doesn't yet recognise it (added mid-2024);
   # GitHub Actions accepts it at runtime. Keep it inline — the attestation
   # jobs will fail loudly at runtime if the scope is ever removed.
@@ -102,14 +104,14 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           lfs: true
           ref: ${{ inputs.ref || github.ref }}
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
         with:
           toolchain: 1.81.0
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32  # v2.9.1
         with:
           workspaces: rust -> target
       - name: Install cargo-vet + cargo-audit
@@ -128,7 +130,7 @@ jobs:
             cargo audit --json 2>/dev/null || echo "{}"
           } > ../supply-chain-report.json
       - name: Upload supply-chain report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: supply-chain-report
           path: supply-chain-report.json
@@ -141,14 +143,14 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           lfs: true
           ref: ${{ inputs.ref || github.ref }}
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
         with:
           toolchain: 1.81.0
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32  # v2.9.1
         with:
           workspaces: rust -> target
       - name: cargo xtask check-matrix-sync
@@ -205,15 +207,15 @@ jobs:
           - { target: x86_64-unknown-freebsd,      os: ubuntu-22.04,     cross: true  }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           lfs: true
           ref: ${{ inputs.ref || github.ref }}
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
         with:
           toolchain: 1.81.0
           targets: ${{ matrix.target }}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32  # v2.9.1
         with:
           workspaces: rust -> target
       - name: Install cross (linux/bsd cross-compile)
@@ -242,7 +244,7 @@ jobs:
 
       - name: Build tinyquant-py wheel
         if: matrix.target != 'x86_64-unknown-freebsd'
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b  # v1.51.0
         with:
           target: ${{ matrix.target }}
           working-directory: rust/crates/tinyquant-py
@@ -327,7 +329,7 @@ jobs:
 
       - name: Install syft (SBOM)
         if: ${{ !startsWith(matrix.os, 'windows') }}
-        uses: anchore/sbom-action/download-syft@v0
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610  # v0.24.0
       - name: Generate CycloneDX SBOM
         if: ${{ !startsWith(matrix.os, 'windows') }}
         shell: bash
@@ -336,7 +338,7 @@ jobs:
                -o cyclonedx-json > "tinyquant-cli-${{ matrix.target }}.cdx.json" || echo "syft unavailable — skipping"
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac  # v3.10.1
         with: { cosign-release: 'v2.2.4' }
       - name: Sign CLI archive (keyless OIDC)
         shell: bash
@@ -350,12 +352,12 @@ jobs:
           done
 
       - name: Attest build provenance (CLI)
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018  # v1.4.4
         with:
           subject-path: ${{ github.workspace }}/tinyquant-${{ github.ref_name }}-${{ matrix.target }}.*
 
       - name: Upload CLI artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: tinyquant-cli-${{ matrix.target }}
           path: |
@@ -364,19 +366,19 @@ jobs:
 
       - name: Upload wheel artifact
         if: matrix.target != 'x86_64-unknown-freebsd'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: wheels-${{ matrix.target }}
           path: rust/crates/tinyquant-py/dist/*.whl
 
       - name: Attest build provenance (wheels)
         if: matrix.target != 'x86_64-unknown-freebsd'
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018  # v1.4.4
         with:
           subject-path: rust/crates/tinyquant-py/dist/*.whl
 
       - name: Upload staticlib + header
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
         with:
           name: sys-${{ matrix.target }}
           path: |
@@ -390,12 +392,12 @@ jobs:
     needs: build
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           lfs: true
           ref: ${{ inputs.ref || github.ref }}
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130  # v3.7.0
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3.12.0
       - name: Resolve SOURCE_DATE_EPOCH from tag commit
         id: sde
         run: |
@@ -414,7 +416,7 @@ jobs:
       # rewrite visible to reviewers and cbindgen-style drift
       # auditors (spec §Container reproducibility bullet 3).
       - name: Build (pass 1)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
         env:
           SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
         with:
@@ -426,7 +428,7 @@ jobs:
           outputs: type=docker,rewrite-timestamp=true
           push: false
       - name: Build (pass 2)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
         env:
           SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
         with:
@@ -461,14 +463,14 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           ref: ${{ inputs.ref || github.ref }}
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
         with:
           toolchain: 1.81.0
       - name: Obtain crates.io token (trusted publishing)
-        uses: rust-lang/crates-io-auth-action@v1
+        uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe  # v1.0.4
         id: auth
       - name: Publish crates (ordered)
         working-directory: rust
@@ -494,12 +496,12 @@ jobs:
       name: release
       url: https://pypi.org/project/tinyquant-rs/
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           pattern: wheels-*
           merge-multiple: true
           path: dist/
-      - uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
         with:
           packages-dir: dist/
 
@@ -512,13 +514,13 @@ jobs:
       needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
         with:
           lfs: true
           ref: ${{ inputs.ref || github.ref }}
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130  # v3.7.0
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f  # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9  # v3.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -535,7 +537,7 @@ jobs:
       # §Container reproducibility bullet 3.
       - name: Build and push
         id: build
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8  # v6.19.2
         env:
           SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
         with:
@@ -549,14 +551,14 @@ jobs:
             ghcr.io/better-with-models/tinyquant:latest
           outputs: type=image,rewrite-timestamp=true,push=true
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac  # v3.10.1
         with: { cosign-release: 'v2.2.4' }
       - name: Sign container image (keyless OIDC)
         run: |
           cosign sign --yes \
             ghcr.io/better-with-models/tinyquant@${{ steps.build.outputs.digest }}
       - name: Install syft
-        uses: anchore/sbom-action/download-syft@v0
+        uses: anchore/sbom-action/download-syft@e22c389904149dbc22b58101806040fa8d37a610  # v0.24.0
       - name: Generate + attach container SBOM
         run: |
           syft "ghcr.io/better-with-models/tinyquant@${{ steps.build.outputs.digest }}" \
@@ -564,7 +566,7 @@ jobs:
           cosign attach sbom --sbom tinyquant-container.cdx.json \
             ghcr.io/better-with-models/tinyquant@${{ steps.build.outputs.digest }}
       - name: Attest container build provenance
-        uses: actions/attest-build-provenance@v1
+        uses: actions/attest-build-provenance@ef244123eb79f2f7a7e75d99086184180e6d0018  # v1.4.4
         with:
           subject-name: ghcr.io/better-with-models/tinyquant
           subject-digest: ${{ steps.build.outputs.digest }}
@@ -579,18 +581,18 @@ jobs:
       needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           pattern: tinyquant-cli-*
           merge-multiple: true
           path: cli/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           pattern: sys-*
           merge-multiple: true
           path: sys/
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: supply-chain-report
           path: ./
@@ -602,7 +604,7 @@ jobs:
             echo "See CHANGELOG.md for details. Supply-chain report, SBOMs,"
             echo "and cosign signatures are attached."
           } > RELEASE_NOTES.md
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65  # v2.6.2
         with:
           files: |
             cli/*.tar.gz

@@ -11,17 +11,22 @@ Minimum Rust version: **1.87** (required for `u32::div_ceil` in stable).
 - `src/lib.rs` — crate root; exports `WgpuBackend`, `TinyQuantGpuError`,
   `ComputeBackend` trait, and `GPU_BATCH_THRESHOLD`.
 - `src/backend.rs` — `WgpuBackend`: implements `compress_batch`,
-  `decompress_batch_into`, and `prepare_for_device` via three WGSL compute passes.
+  `decompress_batch_into`, `prepare_for_device`, `prepare_corpus_for_device`,
+  and `cosine_topk`. Private helpers `create_readback_buf` and `poll_map_read`
+  encapsulate the GPU readback pattern shared across all three compute methods.
 - `src/context.rs` — `WgpuContext`: instance → adapter → device + queue setup.
-- `src/error.rs` — `TinyQuantGpuError` enum.
+- `src/error.rs` — `TinyQuantGpuError` enum; includes `InvalidTopK` (returned
+  when `top_k == 0` is passed to `cosine_topk`).
 - `src/prepared.rs` — `GpuPreparedState`: device buffers for the rotation matrix
-  and codebook, attached to `PreparedCodec` as opaque state.
-- `src/pipelines/` — `rotate`, `quantize`, and `residual` pipeline builders.
+  and codebook, attached to `PreparedCodec` as opaque state. `GpuCorpusState`:
+  device buffer for the FP32 corpus used by `cosine_topk`.
+- `src/pipelines/` — `rotate`, `quantize`, `residual`, and `search` pipeline builders.
 - `shaders/` — WGSL compute shaders: `rotate.wgsl`, `quantize.wgsl`,
-  `dequantize.wgsl`, `residual_encode.wgsl`.
+  `dequantize.wgsl`, `residual_encode.wgsl`, `cosine_topk.wgsl`.
 - `tests/` — integration tests: `context_probe.rs` (FR-GPU-002 adapter
   detection + shader validation), `batch_threshold.rs` (FR-GPU-005),
-  `parity_compress.rs` (FR-GPU-003/006 GPU–CPU parity).
+  `parity_compress.rs` (FR-GPU-003/006 GPU–CPU parity),
+  `parity_search.rs` (FR-GPU-007/008 GPU–CPU top-k parity + descending-score order).
 
 ## How this area fits the system
 
@@ -52,9 +57,10 @@ Residual encode/decode is deferred to Phase 28; `compress_batch` returns
 - **New WGSL shader** — add to `shaders/`, add a corresponding pipeline builder
   in `src/pipelines/`, wire into `backend.rs`.
 - **New error variant** — `src/error.rs`; update `backend.rs` call sites.
-- **Pipeline caching (Phase 28)** — add a `CachedPipelines` field to
-  `WgpuBackend` in `src/backend.rs`; remove the per-call
-  `build_*_pipeline` calls.
+- **Corpus search pipeline** — the `cosine_topk` pipeline is lazily built and
+  cached in `WgpuBackend::search_pipeline` on first call. Compress and
+  decompress pipelines are still rebuilt per-call; caching those is deferred
+  to Phase 28 (TODO comments in `backend.rs`).
 
 ## See also
 

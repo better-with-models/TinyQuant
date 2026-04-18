@@ -43,9 +43,7 @@ fn residual_on_has_lower_mse_than_residual_off() {
     let config_on = CodecConfig::new(4, seed, dim as u32, true).unwrap();
     let config_off = CodecConfig::new(4, seed, dim as u32, false).unwrap();
 
-    let training: Vec<f32> = (0..256 * dim)
-        .map(|i| (i as f32 * 0.001).sin())
-        .collect();
+    let training: Vec<f32> = (0..256 * dim).map(|i| (i as f32 * 0.001).sin()).collect();
 
     let codebook_on = Codebook::train(&training, &config_on).unwrap();
     let codebook_off = Codebook::train(&training, &config_off).unwrap();
@@ -54,9 +52,7 @@ fn residual_on_has_lower_mse_than_residual_off() {
     for i in 0..n_vectors {
         let v = fixture_vector(dim, i as u32);
 
-        let cv_on = Codec::new()
-            .compress(&v, &config_on, &codebook_on)
-            .unwrap();
+        let cv_on = Codec::new().compress(&v, &config_on, &codebook_on).unwrap();
         let cv_off = Codec::new()
             .compress(&v, &config_off, &codebook_off)
             .unwrap();
