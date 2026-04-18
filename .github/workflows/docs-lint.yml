@@ -40,7 +40,7 @@ jobs:
           node-version: "20"
 
       - name: Install markdownlint-obsidian-cli
-        run: npm install -g markdownlint-obsidian-cli@1.0.6
+        run: npm install -g markdownlint-obsidian-cli@1.0.4
 
       - name: Lint docs/ (excluding docs/research/)
         # Globs and ignores come from .obsidian-linter.jsonc at the repo root.
