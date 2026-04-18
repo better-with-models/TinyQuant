@@ -89,18 +89,24 @@ _MIN_MATCHING_CPU = (0, 1, 1)
 try:  # pragma: no cover - import guard, not exercised on the hot path.
     import tinyquant_cpu as _py
 
-    _cpu_version = tuple(int(x) for x in _py.__version__.split("."))
-    if _cpu_version < _MIN_MATCHING_CPU:
-        import warnings
+    # Use getattr so a partially-initialised tinyquant_cpu (circular-import
+    # scenario: tinyquant_cpu.__init__ imports tinyquant_rs, which in turn
+    # arrives here before tinyquant_cpu has set __version__) is handled
+    # gracefully rather than raising AttributeError.
+    _cpu_version_str = getattr(_py, "__version__", None)
+    if _cpu_version_str is not None:
+        _cpu_version = tuple(int(x) for x in _cpu_version_str.split("."))
+        if _cpu_version < _MIN_MATCHING_CPU:
+            import warnings
 
-        warnings.warn(
-            (
-                f"tinyquant_cpu {_py.__version__} is older than the parity target "
-                f"{'.'.join(map(str, _MIN_MATCHING_CPU))}; behavioral parity is "
-                "not guaranteed."
-            ),
-            stacklevel=1,
-        )
+            warnings.warn(
+                (
+                    f"tinyquant_cpu {_cpu_version_str} is older than the parity target "
+                    f"{'.'.join(map(str, _MIN_MATCHING_CPU))}; behavioral parity is "
+                    "not guaranteed."
+                ),
+                stacklevel=1,
+            )
 except ImportError:
     # tinyquant_cpu is an optional companion; its absence is not an error.
     pass
