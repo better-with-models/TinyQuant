@@ -57,6 +57,11 @@ jobs:
     # Skip the entire job matrix when the user asked for arm64-only.
     if: ${{ github.event.inputs.arch != 'arm64' }}
     runs-on: ["self-hosted", "docker-runner"]
+    # Allow the workflow dispatch to complete even when the self-hosted
+    # docker-runner fleet is offline.  Timeout counts from queue entry so
+    # a missing runner fails quickly rather than hanging for 24 h.
+    continue-on-error: true
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:

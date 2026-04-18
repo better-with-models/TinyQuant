@@ -64,6 +64,11 @@
 //! * `bench --validate`                — Assert `baselines/main.json` matches schema.
 //! * `bench --diff <from> <to>`        — Compare two named baselines and print deltas.
 //!
+//! Calibration subcommands:
+//!
+//! * `calibration --validate`         — Assert `baselines/calibration-results.json` matches schema.
+//! * `calibration --capture-results`  — Run `pr_speed` tests locally (--release), write JSON.
+//!
 //! Docs subcommands:
 //!
 //! * `docs check-ci-parity` — Assert job names in the design doc appear in
@@ -72,6 +77,7 @@
 
 mod cmd {
     pub mod bench;
+    pub mod calibration;
     pub mod guard_sync;
     pub mod guard_sync_python;
     pub mod matrix_sync;
@@ -112,6 +118,7 @@ fn main() {
         Some("fixtures") => fixtures(args.get(2).map(String::as_str)),
         Some("simd") => cmd::simd::run(args.get(2).map(String::as_str)),
         Some("bench") => cmd::bench::run(&args[2..]),
+        Some("calibration") => cmd::calibration::run(&args[2..]),
         // Phase 22.D: `bench-budget` is a convenience alias that runs the
         // budget check against the canonical `main` baseline. It exists so
         // the release workflow can call a single verb without having to
@@ -541,9 +548,10 @@ fn print_help() {
          refresh-serialization | refresh-corpus-file | refresh-calibration | refresh-all)"
     );
     println!(
-        "  bench     Benchmark budget (--capture-baseline | --check-against | --diff | --validate)"
+        "  bench         Benchmark budget (--capture-baseline | --check-against | --diff | --validate)"
     );
     println!("  bench-budget        Alias for `bench --check-against main` (Phase 22.D)");
+    println!("  calibration   Calibration results (--validate | --capture-results)");
     println!(
         "  check-matrix-sync   Diff CLI smoke matrix in plan vs rust-release.yml + assert \
          publish-* guards byte-identical (Phase 22.D) + python-fatwheel publish contract \

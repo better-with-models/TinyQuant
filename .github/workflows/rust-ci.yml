@@ -429,6 +429,8 @@ jobs:
           workspaces: rust -> target
       - name: Validate baseline schema
         run: cargo run -p xtask -- bench --validate
+      - name: Validate calibration results schema
+        run: cargo run -p xtask -- calibration --validate
       - name: CI parity check (docs vs rust-ci.yml)
         run: cargo run -p xtask -- docs check-ci-parity
       - name: Check benchmark budget against baseline

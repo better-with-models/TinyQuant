@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TinyQuant Calibration Results",
+  "description": "Schema for tinyquant-bench/baselines/calibration-results.json committed calibration quality measurements.",
+  "type": "object",
+  "required": ["schema_version", "captured_at", "git_commit", "host", "corpus", "seed", "results"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Version of this schema. Increment when fields are added."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when the results were captured."
+    },
+    "git_commit": {
+      "type": "string",
+      "minLength": 7,
+      "description": "Short git SHA of the commit the results were captured on."
+    },
+    "host": {
+      "type": "object",
+      "required": ["os", "arch", "rustc"],
+      "additionalProperties": true,
+      "properties": {
+        "os":    { "type": "string" },
+        "arch":  { "type": "string" },
+        "rustc": { "type": "string" }
+      }
+    },
+    "corpus": {
+      "type": "string",
+      "description": "Name of the calibration fixture used (e.g. openai_1k_d768)."
+    },
+    "seed": {
+      "type": "integer",
+      "description": "RNG seed passed to CodecConfig."
+    },
+    "results": {
+      "type": "object",
+      "description": "Map of codec configuration name to quality measurements.",
+      "required": [
+        "bw4_residual",
+        "bw4_no_residual",
+        "bw2_residual",
+        "bw8_residual",
+        "bw2_no_residual"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": ["rho", "recall_at_10", "ratio"],
+        "additionalProperties": false,
+        "properties": {
+          "rho": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Pearson ρ between original and reconstructed cosine-similarity distributions."
+          },
+          "recall_at_10": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Mean recall@10 over the first 100 query rows."
+          },
+          "ratio": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Compression ratio: raw_bytes / compressed_bytes."
+          }
+        }
+      }
+    }
+  }
+}
