@@ -70,8 +70,9 @@ gantt
         Phase 26 - PreparedCodec + Calibration Gates :done, p26, after p255, 1
         Phase 27 - wgpu + WGSL Kernels      :done, p27, after p26, 1
         Phase 27.5 - Resident Corpus Search :done, p275, after p27, 1
-        Phase 28 - wgpu Pipeline Caching    :active, p28, after p275, 1
-        Phase 29 - CUDA via cust (optional) :p29, after p28, 1
+        Phase 28 - wgpu Pipeline Caching    :done, p28, after p275, 1
+        Phase 28.5 - gpu-wgpu Core Feature  :p285, after p28, 1
+        Phase 29 - CUDA via cust (optional) :p29, after p285, 1
 ```
 
 ## Phase summary
@@ -120,8 +121,9 @@ gantt
 | 26 | PreparedCodec + Calibration Gates | **complete** | tinyquant-core (prepared_codec), tinyquant-bench (calibration) | Phase 25.5 | [[plans/rust/phase-26-preparedcodec-calibration\|Plan]] |
 | 27 | wgpu + WGSL Kernels | **complete** | tinyquant-gpu-wgpu | Phase 26 | [[plans/rust/phase-27-wgpu-wgsl-kernels\|Plan]] |
 | 27.5 | Resident Corpus GPU Search | **complete** | tinyquant-gpu-wgpu (cosine_topk kernel) | Phase 27 | [[plans/rust/phase-27.5-resident-corpus-search\|Plan]] |
-| 28 | wgpu Pipeline Caching & Residual | **active** | tinyquant-gpu-wgpu | Phase 27.5 | [[plans/rust/phase-28-wgpu-pipeline-caching\|Plan]] |
-| 29 | Optional CUDA Backend | **planned** | tinyquant-gpu-cuda | Phase 28 | [[plans/rust/phase-29-cuda-backend\|Plan]] |
+| 28 | wgpu Pipeline Caching & Residual | **complete** | tinyquant-gpu-wgpu | Phase 27.5 | [[plans/rust/phase-28-wgpu-pipeline-caching\|Plan]] |
+| 28.5 | tinyquant-core gpu-wgpu Feature Integration | **planned** | tinyquant-core, tinyquant-gpu-wgpu | Phase 28 | [[plans/rust/phase-28.5-gpu-wgpu-core-feature\|Plan]] |
+| 29 | Optional CUDA Backend | **planned** | tinyquant-gpu-cuda | Phase 28.5 | [[plans/rust/phase-29-cuda-backend\|Plan]] |
 
 ## Gap remediation plan
 
@@ -236,6 +238,19 @@ Extends the existing PreparedCodec work with calibration gate restoration.
   `backend.rs`).
 - Wire residual encode/decode GPU passes behind `residual_enabled()` gate;
   remove `ResidualNotSupported` error for residual-enabled configs.
+
+### Phase 28.5 — tinyquant-core gpu-wgpu Feature Integration
+
+- Remove `publish = false` from `tinyquant-gpu-wgpu`; add `license`,
+  `repository`, `keywords`, `categories`; publish `1.0.0` to crates.io.
+- Add `gpu-wgpu = ["dep:tinyquant-gpu-wgpu", "std"]` feature to
+  `tinyquant-core`; add optional dep with `dep:` prefix.
+- Add `CodecError::GpuUnavailable` and `CodecError::GpuError` variants
+  (feature-gated, `Arc<str>`) and `From<TinyQuantGpuError>` impl.
+- Add `Codec::compress_batch_gpu_with<B: ComputeBackend>` in `service.rs`.
+- Re-export GPU surface from `tinyquant-core/src/lib.rs` under feature gate.
+- Add `gpu-feature-gate` CI job (toolchain 1.87, software renderer).
+- Add `gpu-wgpu` feature stub to `tinyquant-py`.
 
 ### Phase 29 — Optional CUDA Backend
 

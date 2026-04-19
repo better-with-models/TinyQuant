@@ -200,6 +200,7 @@ status: active
 | [[plans/rust/phase-27-wgpu-wgsl-kernels\|Phase 27: wgpu + WGSL Kernels]] | `tinyquant-gpu-wgpu` crate skeleton, WGSL rotate/quantize/dequantize kernels, parity tests, Layer 2/3 CI — **complete** | 2026-04-15 |
 | [[plans/rust/phase-27.5-resident-corpus-search\|Phase 27.5: Resident Corpus GPU Search]] | `cosine_topk` WGSL kernel, `GpuCorpusState`, `prepare_corpus_for_device`, FR-GPU-004 criterion bench — **complete** | 2026-04-15 |
 | [[plans/rust/phase-28-wgpu-pipeline-caching\|Phase 28: wgpu Pipeline Caching, Residual Pass & Backend Preference]] | `CachedPipelines`, residual encode/decode GPU passes, `load_pipelines` lifecycle API, `BackendPreference` and `enumerate_adapters` — **complete** | 2026-04-18 |
+| [[plans/rust/phase-28.5-gpu-wgpu-core-feature\|Phase 28.5: tinyquant-core gpu-wgpu Feature Integration]] | Publish `tinyquant-gpu-wgpu`, add `gpu-wgpu` optional feature to `tinyquant-core`, re-export GPU surface, `Codec::compress_batch_gpu_with`, `gpu-feature-gate` CI job | 2026-04-19 |
 | [[plans/rust/phase-29-cuda-backend\|Phase 29: Optional CUDA Backend]] | `tinyquant-gpu-cuda` crate, `cust`-based `CudaBackend`, PTX kernels for quantize/dequantize/cosine, FR-GPU-007 stub CI | 2026-04-15 |
 
 ## Specs
