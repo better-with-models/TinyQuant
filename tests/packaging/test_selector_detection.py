@@ -154,7 +154,7 @@ def _expected_ext_suffix() -> str:
     suffix = _suffixes.get(sys.platform)
     if suffix is not None:
         return suffix
-    pytest.skip(f"host platform {sys.platform!r} is not Tier-1")
+    raise pytest.skip.Exception(f"host platform {sys.platform!r} is not Tier-1")
 
 
 def test_ext_filename_for_host(selector: types.ModuleType) -> None:

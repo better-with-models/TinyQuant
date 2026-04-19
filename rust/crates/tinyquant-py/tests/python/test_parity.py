@@ -413,7 +413,7 @@ def test_threading_safety() -> None:
     batch = rng.standard_normal((64, dim)).astype(np.float32)
 
     results: list[list[bytes]] = [[] for _ in range(n_threads)]
-    errors: list[BaseException] = []
+    errors: list[Exception] = []
 
     def worker(idx: int) -> None:
         """Compress the batch in a thread and store byte results at ``results[idx]``."""
@@ -421,7 +421,7 @@ def test_threading_safety() -> None:
             rs_codec = rs.codec.Codec()
             out = rs_codec.compress_batch(batch, rs_cfg, rs_cb)
             results[idx] = [cv.to_bytes() for cv in out]
-        except BaseException as exc:
+        except Exception as exc:
             errors.append(exc)
 
     threads = [threading.Thread(target=worker, args=(i,)) for i in range(n_threads)]
