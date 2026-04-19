@@ -7,10 +7,12 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Protocol
+
+if TYPE_CHECKING:
+    import types
 
 import numpy as np
-
 from benchmark_cases import (
     DEFAULT_CODEC_CONFIG,
     QUERY_COUNT,
@@ -21,13 +23,33 @@ from benchmark_cases import (
 )
 
 
+class _Callable(Protocol):
+    """A zero-argument callable used in warmup and measurement helpers."""
+
+    def __call__(self) -> object:
+        """Invoke the callable."""
+        pass
+
+
+class _Backend(Protocol):
+    """Minimal interface expected from a search backend object."""
+
+    def ingest(self, vectors: dict[str, np.ndarray]) -> None:
+        """Ingest a mapping of vector IDs to embedding arrays."""
+        pass
+
+    def search(self, query: np.ndarray, top_k: int) -> object:
+        """Search for the top-k nearest vectors to query."""
+        pass
+
+
 @dataclass(frozen=True)
 class SurfaceModules:
     """Loaded module handles for one Python benchmark surface."""
 
     surface_id: str
-    codec_module: Any
-    backend_module: Any
+    codec_module: types.ModuleType
+    backend_module: types.ModuleType
 
 
 def _repo_root() -> Path:
@@ -111,18 +133,24 @@ def run_codec_case(
     modules = load_surface(surface_id)
     codec = modules.codec_module.Codec()
     config = modules.codec_module.CodecConfig(**DEFAULT_CODEC_CONFIG)
-    train_codebook = lambda: modules.codec_module.Codebook.train(corpus, config)
+
+    def train_codebook() -> object:
+        return modules.codec_module.Codebook.train(corpus, config)
 
     _run_warmups(train_codebook, warmups)
     setup_samples = _measure_simple(train_codebook, reps)
     codebook = train_codebook()
 
-    compress_batch = lambda: codec.compress_batch(corpus, config, codebook)
+    def compress_batch() -> object:
+        return codec.compress_batch(corpus, config, codebook)
+
     _run_warmups(compress_batch, warmups)
     compress_samples = _measure_simple(compress_batch, reps)
     compressed = compress_batch()
 
-    decompress_batch = lambda: codec.decompress_batch(compressed, config, codebook)
+    def decompress_batch() -> object:
+        return codec.decompress_batch(compressed, config, codebook)
+
     _run_warmups(decompress_batch, warmups)
     decompress_samples = _measure_simple(decompress_batch, reps)
 
@@ -172,9 +200,12 @@ def run_search_case(
 ) -> list[ResultRow]:
     """Run the search benchmark suite for one Python surface."""
     modules = load_surface(surface_id)
-    vector_map = {str(index): search_corpus[index] for index in range(search_corpus.shape[0])}
+    vector_map = {
+        str(index): search_corpus[index] for index in range(search_corpus.shape[0])
+    }
 
-    build_backend = lambda: _build_python_backend(modules.backend_module, vector_map)
+    def build_backend() -> object:
+        return _build_python_backend(modules.backend_module, vector_map)
 
     _run_warmups(build_backend, warmups)
     setup_samples = _measure_simple(build_backend, reps)
@@ -243,13 +274,13 @@ def _surface_label(surface_id: str) -> str:
     return labels[surface_id]
 
 
-def _run_warmups(fn: Any, warmups: int) -> None:
+def _run_warmups(fn: _Callable, warmups: int) -> None:
     """Execute unmeasured warmup iterations."""
     for _ in range(warmups):
         fn()
 
 
-def _measure_simple(fn: Any, reps: int) -> list[float]:
+def _measure_simple(fn: _Callable, reps: int) -> list[float]:
     """Measure a no-argument callable in milliseconds."""
     samples: list[float] = []
     for _ in range(reps):
@@ -259,14 +290,16 @@ def _measure_simple(fn: Any, reps: int) -> list[float]:
     return samples
 
 
-def _build_python_backend(backend_module: Any, vectors: dict[str, np.ndarray]) -> Any:
+def _build_python_backend(
+    backend_module: types.ModuleType, vectors: dict[str, np.ndarray]
+) -> _Backend:
     """Create and ingest a Python search backend."""
     backend = backend_module.BruteForceBackend()
     backend.ingest(vectors)
     return backend
 
 
-def _search_batch(backend: Any, queries: np.ndarray, top_k: int) -> list[float]:
+def _search_batch(backend: _Backend, queries: np.ndarray, top_k: int) -> list[float]:
     """Run the full query batch and return per-query timings in milliseconds."""
     per_query_ms: list[float] = []
     for query in queries:
@@ -277,7 +310,7 @@ def _search_batch(backend: Any, queries: np.ndarray, top_k: int) -> list[float]:
 
 
 def _measure_search_batch(
-    backend: Any,
+    backend: _Backend,
     queries: np.ndarray,
     top_k: int,
     *,

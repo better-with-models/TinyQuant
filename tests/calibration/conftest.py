@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
-
 from tinyquant_py_reference.codec.codebook import Codebook
 from tinyquant_py_reference.codec.codec import Codec
 from tinyquant_py_reference.codec.codec_config import CodecConfig

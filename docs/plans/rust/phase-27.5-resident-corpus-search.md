@@ -9,7 +9,7 @@ tags:
   - search
   - cosine-similarity
 date-created: 2026-04-15
-status: draft
+status: complete
 category: planning
 ---
 
@@ -315,7 +315,7 @@ tokio     = { version = "1", features = ["rt"] }
 
 No new GAP-* tags are introduced or closed by this phase beyond those
 already assigned to Phase 27. This phase completes the GPU search path
-needed before Phase 28 (CUDA) can be benchmarked against a common baseline.
+needed before Phase 29 (CUDA) can be benchmarked against a common baseline.
 
 ---
 
@@ -348,5 +348,6 @@ needed before Phase 28 (CUDA) can be benchmarked against a common baseline.
 - [[design/rust/gpu-acceleration|GPU Acceleration Design]] §Kernel 3, §Memory strategy
 - [[requirements/gpu|GPU Requirements]] — FR-GPU-004
 - [[plans/rust/phase-27-wgpu-wgsl-kernels|Phase 27]] — compress/decompress prerequisite
-- [[plans/rust/phase-28-cuda-backend|Phase 28]] — CUDA specialist path
+- [[plans/rust/phase-28-wgpu-pipeline-caching|Phase 28]] — pipeline caching and residual pass
+- [[plans/rust/phase-29-cuda-backend|Phase 29]] — CUDA specialist path
 - [[design/rust/benchmark-harness|Benchmark Harness]] §GPU throughput

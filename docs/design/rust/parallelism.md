@@ -337,9 +337,21 @@ impl WgpuBackend {
     /// Below this threshold, callers should fall back to the CPU path.
     pub const BATCH_THRESHOLD: usize = 512;
 
-    pub fn should_use_gpu(&self, rows: usize) -> bool {
-        rows >= Self::BATCH_THRESHOLD && self.is_available()
+    /// Associated function — no adapter check; use `is_available()` separately
+    /// before dispatching to the GPU path.
+    pub fn should_use_gpu(rows: usize) -> bool {
+        rows >= Self::BATCH_THRESHOLD
     }
+}
+```
+
+A typical dispatch pattern:
+
+```rust
+if backend.is_available() && WgpuBackend::should_use_gpu(rows) {
+    backend.compress_batch(input, rows, cols, prepared)?
+} else {
+    codec.compress_batch_cpu(input, rows, cols, parallelism)?
 }
 ```
 

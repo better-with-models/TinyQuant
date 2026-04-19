@@ -9,7 +9,7 @@ tags:
   - wgsl
   - phase-27
 date-created: 2026-04-15
-status: draft
+status: complete
 category: planning
 ---
 
@@ -527,4 +527,5 @@ declared complete.
 - [[requirements/gpu|GPU Requirements]] — FR-GPU-001 through FR-GPU-006
 - [[plans/rust/phase-26-preparedcodec-calibration|Phase 26]] — PreparedCodec prerequisite
 - [[plans/rust/phase-27.5-resident-corpus-search|Phase 27.5]] — cosine_topk GPU scoring
-- [[plans/rust/phase-28-cuda-backend|Phase 28]] — optional CUDA specialist path
+- [[plans/rust/phase-28-wgpu-pipeline-caching|Phase 28]] — pipeline caching and residual pass
+- [[plans/rust/phase-29-cuda-backend|Phase 29]] — optional CUDA specialist path

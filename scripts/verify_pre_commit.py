@@ -65,7 +65,10 @@ def ok(message: str) -> None:
 # - .worktrees/ : git worktrees share the repo's .git but live under a
 #                 separate directory; their docs/ contain Obsidian markdown
 #                 and are governed by their own branch's pre-commit hook.
-_EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv", ".worktrees"}
+# - .claude/    : Claude Code session state including ephemeral worktrees
+#                 spun up for background tasks; those worktrees contain
+#                 Obsidian docs governed by their own branch's hook.
+_EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv", ".worktrees", ".claude"}
 
 # Path-component predicates that exclude a file from obsidian-boundary and
 # markdownlint scope regardless of which top-level directory it lives in.
@@ -274,6 +277,83 @@ def check_rust_fmt() -> bool:
     return False
 
 
+def staged_python_files() -> list[str]:
+    """Return staged ``*.py`` paths (added, copied, modified, renamed).
+
+    Returns an empty list when no Python files are staged, allowing the
+    ruff check to be skipped entirely for non-Python commits.
+    """
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return [p for p in result.stdout.splitlines() if p.endswith(".py")]
+
+
+def check_python_lint() -> bool:
+    """Run ``ruff check`` and ``ruff format --check`` when Python files are staged.
+
+    Mirrors the ``lint`` job in ``.github/workflows/ci.yml`` so linting and
+    formatting failures are caught locally before they reach CI.
+
+    Skipped when no ``*.py`` files are staged.  Returns ``True`` on success
+    or skip, ``False`` on failure.
+    """
+    py_files = staged_python_files()
+    if not py_files:
+        ok("no staged Python files — skipping ruff check")
+        return True
+
+    python = shutil.which("python") or shutil.which("python3")
+    if not python:
+        fail("python not found — cannot run ruff (install Python)")
+        return False
+
+    # Check ruff is available via python -m ruff
+    probe = subprocess.run(
+        [python, "-m", "ruff", "--version"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+    )
+    if probe.returncode != 0:
+        fail("ruff not found — run `pip install ruff` to fix")
+        return False
+
+    suffix = " …" if len(py_files) > 5 else ""
+    staged_label = f"{len(py_files)} staged Python file(s)"
+
+    lint_result = subprocess.run(
+        [python, "-m", "ruff", "check", "."],
+        cwd=REPO_ROOT,
+        check=False,
+    )
+    fmt_result = subprocess.run(
+        [python, "-m", "ruff", "format", "--check", "."],
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    if lint_result.returncode != 0:
+        fail(
+            f"ruff check failed — run `python -m ruff check --fix .` to fix\n"
+            f"  Staged Python files: {', '.join(py_files[:5])}{suffix}"
+        )
+        return False
+    if fmt_result.returncode != 0:
+        fail(
+            f"ruff format check failed — run `python -m ruff format .` to fix\n"
+            f"  Staged Python files: {', '.join(py_files[:5])}{suffix}"
+        )
+        return False
+
+    ok(f"ruff clean ({staged_label})")
+    return True
+
+
 def main() -> int:
     """Run all pre-commit verification checks and return an exit code (0 = pass, 1 = fail)."""
     checks = [
@@ -283,6 +363,7 @@ def main() -> int:
         check_wiki_frontmatter(),
         run_markdownlint(),
         check_rust_fmt(),
+        check_python_lint(),
     ]
     if all(checks):
         print("TinyQuant pre-commit verification passed.")

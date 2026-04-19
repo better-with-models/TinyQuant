@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
-
 from tinyquant_py_reference.codec.codec_config import CodecConfig
 from tinyquant_py_reference.codec.rotation_matrix import RotationMatrix
 
@@ -87,7 +87,7 @@ class TestApplyAndInverse:
     """Tests for apply and apply_inverse methods."""
 
     def test_apply_changes_vector(
-        self, config_4bit: CodecConfig, sample_vector: np.ndarray
+        self, config_4bit: CodecConfig, sample_vector: npt.NDArray[np.float32]
     ) -> None:
         """apply(v) != v for non-trivial v."""
         rotation = RotationMatrix.from_config(config_4bit)
@@ -95,7 +95,7 @@ class TestApplyAndInverse:
         assert not np.allclose(rotated, sample_vector)
 
     def test_apply_inverse_recovers_original(
-        self, config_4bit: CodecConfig, sample_vector: np.ndarray
+        self, config_4bit: CodecConfig, sample_vector: npt.NDArray[np.float32]
     ) -> None:
         """apply_inverse(apply(v)) approximately equals v."""
         rotation = RotationMatrix.from_config(config_4bit)
@@ -104,7 +104,7 @@ class TestApplyAndInverse:
         np.testing.assert_allclose(recovered, sample_vector, atol=1e-5)
 
     def test_apply_preserves_norm(
-        self, config_4bit: CodecConfig, sample_vector: np.ndarray
+        self, config_4bit: CodecConfig, sample_vector: npt.NDArray[np.float32]
     ) -> None:
         """Orthogonal transform preserves vector norm."""
         rotation = RotationMatrix.from_config(config_4bit)
@@ -141,10 +141,12 @@ class TestHypothesis:
                 max_value=100,
                 allow_nan=False,
                 allow_infinity=False,
+                allow_subnormal=False,
+                width=32,
             ),
         ),
     )
-    def test_round_trip_preserves_vector(self, vector: np.ndarray) -> None:
+    def test_round_trip_preserves_vector(self, vector: npt.NDArray[np.float32]) -> None:
         """For any valid vector, apply_inverse(apply(v)) approximately equals v."""
         config = CodecConfig(bit_width=4, seed=42, dimension=64)
         rotation = RotationMatrix.from_config(config)

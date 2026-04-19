@@ -1,9 +1,9 @@
 ---
-title: "Phase 28: Optional CUDA Backend"
+title: "Phase 29: Optional CUDA Backend"
 tags:
   - plans
   - rust
-  - phase-28
+  - phase-29
   - gpu
   - cuda
   - cust
@@ -12,7 +12,7 @@ status: draft
 category: planning
 ---
 
-# Phase 28: Optional CUDA Backend
+# Phase 29: Optional CUDA Backend
 
 > [!info] Goal
 > Introduce `tinyquant-gpu-cuda` as a strictly optional, NVIDIA-specialist
@@ -35,11 +35,13 @@ category: planning
 > - [[requirements/gpu|GPU Requirements]] — FR-GPU-007
 > - [[requirements/testing-gaps|Testing Gaps]] — GAP-GPU-007
 > - [[plans/rust/phase-27.5-resident-corpus-search|Phase 27.5]] — prerequisite; throughput baseline
+> - [[plans/rust/phase-28-wgpu-pipeline-caching|Phase 28]] — prerequisite; pipeline caching and residual pass
 
 ## Prerequisites
 
 - Phase 27.5 complete: `WgpuBackend::cosine_topk` functional; FR-GPU-004
   throughput measured.
+- Phase 28 complete: pipeline caching in place; residual GPU pass wired.
 - Decision made (by perf lead) that a CUDA-specialist path is worth the
   distribution complexity based on Phase 27.5 measurements.
 - NVIDIA driver + CUDA toolkit (≥ 12.x) on the self-hosted CI runner.
@@ -393,7 +395,7 @@ fn cuda_decompress_matches_cpu_within_tolerance() {
 | `cust` MSRV higher than 1.87; conflicts with workspace | Low | Medium | Exact-version pin; document MSRV in crate README; isolate in CI leg |
 | Pre-compiled PTX not portable across SM architectures | Medium | Medium | Compile for sm_75 (Turing baseline); document that sm_70 (Volta) is unsupported; provide sm_80 (Ampere) PTX as an optional build artefact |
 | CUDA toolkit availability on self-hosted runner varies | High | Low | Stub compile-check passes on standard runner; parity test advisory-only until runner is stable |
-| Phase 27.5 meets the stretch goal; CUDA path has negligible benefit | Medium | Low | This risk is anticipated — document the measurement and defer Phase 28 if wgpu is sufficient |
+| Phase 27.5 meets the stretch goal; CUDA path has negligible benefit | Medium | Low | This risk is anticipated — document the measurement and defer Phase 29 if wgpu is sufficient |
 
 ## See also
 
@@ -401,5 +403,6 @@ fn cuda_decompress_matches_cpu_within_tolerance() {
 - [[requirements/gpu|GPU Requirements]] — FR-GPU-007
 - [[requirements/testing-gaps|Testing Gaps]] — GAP-GPU-007
 - [[plans/rust/phase-27.5-resident-corpus-search|Phase 27.5]] — throughput baseline decision gate
+- [[plans/rust/phase-28-wgpu-pipeline-caching|Phase 28]] — pipeline caching prerequisite
 - [[design/rust/feature-flags|Feature Flags and Optional Dependencies]] §tinyquant-gpu-cuda
 - [[design/rust/risks-and-mitigations|Risks and Mitigations]] §R23

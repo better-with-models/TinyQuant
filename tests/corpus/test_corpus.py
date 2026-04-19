@@ -5,7 +5,6 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from numpy.typing import NDArray
-
 from tinyquant_py_reference.codec._errors import (
     DimensionMismatchError,
     DuplicateVectorError,

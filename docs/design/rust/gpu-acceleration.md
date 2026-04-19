@@ -126,29 +126,37 @@ the workspace MSRV of 1.81. See §MSRV isolation.
 
 ```text
 tinyquant-gpu-wgpu/
-├── Cargo.toml          # MSRV = "1.87", publish = false initially
+├── Cargo.toml                 # MSRV = "1.87", publish = false
+├── shaders/
+│   ├── rotate.wgsl
+│   ├── quantize.wgsl
+│   ├── dequantize.wgsl
+│   ├── residual_encode.wgsl   # Phase 28: encode residual indices
+│   ├── residual_decode.wgsl   # Phase 28: decode residual indices
+│   └── cosine_topk.wgsl       # Phase 27.5: corpus search scoring
 ├── src/
-│   ├── lib.rs          # Re-exports WgpuBackend, WgpuContext
-│   ├── context.rs      # WgpuContext: Instance → Adapter → Device + Queue
-│   ├── backend.rs      # impl ComputeBackend for WgpuBackend
-│   ├── prepared.rs     # GPU promotion of PreparedCodec state
-│   ├── pipelines/
-│   │   ├── mod.rs
-│   │   ├── rotate.rs   # Build + cache the rotate/inverse-rotate pipeline
-│   │   ├── quantize.rs # Build + cache the quantize/dequantize pipeline
-│   │   └── search.rs   # Build + cache the cosine_topk pipeline
-│   └── shaders/
-│       ├── rotate.wgsl
-│       ├── quantize.wgsl
-│       ├── dequantize.wgsl
-│       └── cosine_topk.wgsl
+│   ├── lib.rs                 # Re-exports WgpuBackend, BackendPreference, AdapterCandidate
+│   ├── backend.rs             # WgpuBackend: compress/decompress/search/lifecycle
+│   ├── backend_preference.rs  # Phase 28: BackendPreference enum, AdapterCandidate struct
+│   ├── context.rs             # WgpuContext: new_with_preference, enumerate_adapters
+│   ├── error.rs               # TinyQuantGpuError (includes NoPreferredAdapter)
+│   ├── prepared.rs            # GpuPreparedState + GpuCorpusState
+│   └── pipelines/
+│       ├── mod.rs
+│       ├── rotate.rs          # build_rotate_pipeline
+│       ├── quantize.rs        # build_quantize_pipeline / build_dequantize_pipeline
+│       ├── residual.rs        # Phase 28: build_residual_encode/decode_pipeline
+│       └── search.rs          # Phase 27.5: build_cosine_topk_pipeline
+├── benches/
+│   └── throughput_search.rs   # FR-GPU-004 criterion bench
 └── tests/
-    ├── parity_compress.rs   # CPU vs wgpu output parity
-    ├── parity_search.rs
-    └── context_probe.rs     # Adapter detection, graceful absent-GPU path
+    ├── batch_threshold.rs
+    ├── context_probe.rs       # Adapter detection; load/unload pipeline smoke tests
+    ├── parity_compress.rs     # CPU vs GPU parity (including residual_enabled=true)
+    └── parity_search.rs       # Phase 27.5: CPU vs GPU top-k parity
 ```
 
-### `tinyquant-gpu-cuda` (Phase 28, optional)
+### `tinyquant-gpu-cuda` (Phase 29, optional)
 
 NVIDIA-specialist fast path via `cust`. Strictly optional — operationally
 separate from the cross-platform wgpu path. Linux/Windows only.
@@ -171,7 +179,7 @@ Defined in `tinyquant-gpu-wgpu/src/lib.rs` (or a shared
 `tinyquant-gpu-common` if/when both GPU crates exist):
 
 ```rust
-use tinyquant_core::{codec::{CompressedVector, CodecError}, backend::SearchResult};
+use tinyquant_core::codec::CompressedVector;
 
 pub trait ComputeBackend {
     /// Human-readable backend name for logging and diagnostics.
@@ -195,17 +203,6 @@ pub trait ComputeBackend {
         out: &mut [f32],
     ) -> Result<(), TinyQuantGpuError>;
 
-    /// Score `query` against `rows` corpus vectors of dimension `cols`
-    /// and return the top-k by cosine similarity.
-    fn cosine_topk(
-        &mut self,
-        query: &[f32],
-        corpus: &[f32],
-        rows: usize,
-        cols: usize,
-        top_k: usize,
-    ) -> Result<Vec<SearchResult>, TinyQuantGpuError>;
-
     /// Upload `PreparedCodec` buffers to device memory. Idempotent.
     fn prepare_for_device(&mut self, prepared: &mut PreparedCodec) -> Result<(), TinyQuantGpuError>;
 
@@ -213,6 +210,11 @@ pub trait ComputeBackend {
     fn is_available(&self) -> bool;
 }
 ```
+
+> [!note] `cosine_topk` is **not** in `ComputeBackend`. It is a
+> `WgpuBackend`-specific method (requires corpus resident state, separate
+> `GpuCorpusState` lifecycle). Callers that need corpus search must use
+> `WgpuBackend` directly, not via the trait.
 
 The CPU path (`Codec` + `BruteForceBackend`) remains the canonical
 implementation and is used as the test oracle for every GPU parity gate.
@@ -287,9 +289,13 @@ sort.
 
 ## `WgpuContext` setup
 
+`WgpuContext` is constructed via `new_with_preference`, which accepts a
+`BackendPreference` to control adapter selection. `WgpuBackend::new()`
+defaults to `BackendPreference::Auto`; callers needing a specific API
+(Vulkan, Metal, DX12) or power class use `WgpuBackend::new_with_preference`.
+
 ```rust
 // tinyquant-gpu-wgpu/src/context.rs
-use wgpu::util::DeviceExt;
 
 pub struct WgpuContext {
     pub device: wgpu::Device,
@@ -298,20 +304,35 @@ pub struct WgpuContext {
 }
 
 impl WgpuContext {
-    pub async fn new() -> Result<Self, TinyQuantGpuError> {
+    pub async fn new_with_preference(
+        pref: BackendPreference,
+    ) -> Result<Self, TinyQuantGpuError> {
         let instance = wgpu::Instance::new(&wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::all(),
+            backends: pref.to_backends(),
             ..Default::default()
         });
 
         let adapter = instance
-            .request_adapter(&wgpu::RequestAdapterOptions::default())
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: pref.to_power_preference(),
+                force_fallback_adapter: matches!(pref, BackendPreference::Software),
+                compatible_surface: None,
+            })
             .await
-            .ok_or(TinyQuantGpuError::NoAdapter)?;
+            .ok_or_else(|| {
+                if matches!(pref, BackendPreference::Auto
+                    | BackendPreference::HighPerformance
+                    | BackendPreference::LowPower)
+                {
+                    TinyQuantGpuError::NoAdapter
+                } else {
+                    TinyQuantGpuError::NoPreferredAdapter
+                }
+            })?;
 
         let adapter_info = adapter.get_info();
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor::default())
+            .request_device(&wgpu::DeviceDescriptor::default(), None)
             .await
             .map_err(TinyQuantGpuError::DeviceRequest)?;
 
@@ -338,6 +359,10 @@ impl WgpuContext {
         })
     }
 }
+
+/// Enumerate adapters visible under a given preference without creating a device.
+/// Results are sorted: discrete GPU first, then integrated, virtual, CPU/software.
+pub fn enumerate_adapters(pref: BackendPreference) -> Vec<AdapterCandidate> { /* … */ }
 ```
 
 ## Runtime backend selection
@@ -351,19 +376,70 @@ Selection order at session construction time:
    below threshold, execute on CPU without error.
 
 ```rust
+// src/backend_preference.rs  (Phase 28)
+
+/// Controls which wgpu adapter `WgpuBackend::new_with_preference` selects.
+///
+/// Passed at construction time; the backend holds the resulting device
+/// for its lifetime. Use `BackendPreference::Auto` for transparent
+/// cross-platform behaviour; use a specific variant when you need a
+/// guaranteed API (e.g. `Vulkan` on Linux CI, `Software` for headless tests).
 pub enum BackendPreference {
-    /// Let the session choose the best available backend.
+    /// Highest-performance adapter on the primary backend set
+    /// (Metal / Vulkan / DX12). Default.
     Auto,
-    /// Force CPU regardless of GPU availability.
-    ForceCpu,
-    /// Use wgpu if available, error if not.
-    RequireWgpu,
-    /// Use CUDA if available, error if not (Phase 28).
-    RequireCuda,
+    /// Discrete or integrated Vulkan adapter.
+    Vulkan,
+    /// Metal adapter (macOS / iOS).
+    Metal,
+    /// Direct3D 12 adapter (Windows).
+    Dx12,
+    /// Prefer high-performance (discrete) over low-power (integrated).
+    HighPerformance,
+    /// Prefer low-power (integrated) over high-performance (discrete).
+    LowPower,
+    /// CPU-emulated adapter via wgpu's GL/ANGLE path
+    /// (`force_fallback_adapter = true`). Never selects a physical GPU.
+    /// Use for headless CI without a GPU runner.
+    Software,
 }
 
+/// A discovered adapter — returned by `WgpuBackend::enumerate_adapters`.
+pub struct AdapterCandidate {
+    pub name: String,
+    pub backend: wgpu::Backend,
+    pub device_type: wgpu::DeviceType,
+    pub vendor: u32,
+    pub device: u32,
+}
+```
+
+`BackendPreference::to_backends()` and `to_power_preference()` are
+`pub(crate)` helpers used by `WgpuContext`; they are **not** public API.
+
+Pipeline lifecycle control (Phase 28):
+
+```rust
+impl WgpuBackend {
+    /// Precompile and cache all six compute pipelines
+    /// (rotate, quantize, dequantize, residual_enc, residual_dec, search).
+    /// Eliminates first-call shader-compilation latency.
+    /// No-op if all pipelines are already loaded.
+    pub fn load_pipelines(&mut self) -> Result<(), TinyQuantGpuError>;
+
+    /// Drop all cached pipeline objects. Device and queue remain live;
+    /// pipelines rebuild lazily on next use.
+    pub fn unload_pipelines(&mut self);
+
+    /// Returns `true` only when all six pipelines are cached and the
+    /// backend holds a live adapter.
+    pub fn pipelines_loaded(&self) -> bool;
+}
+```
+
+```rust
 /// Minimum batch size below which GPU offload is not attempted.
-/// Tuned in Phase 27 via benchmarks; provisional default is 512 rows.
+/// Tuned in Phase 27 via benchmarks; default is 512 rows.
 pub const GPU_BATCH_THRESHOLD: usize = 512;
 ```
 
@@ -504,8 +580,9 @@ flowchart TD
     A[Phase 26: PreparedCodec + CPU hot-path cleanup]
     B[Phase 27: wgpu + WGSL compile, parity tests, batch compress/decompress]
     C[Phase 27.5: Resident corpus search scoring + top-k]
-    D[Phase 28: Optional CUDA specialist backend via cust]
-    A --> B --> C --> D
+    D[Phase 28: wgpu pipeline caching and residual pass]
+    E[Phase 29: Optional CUDA specialist backend via cust]
+    A --> B --> C --> D --> E
 ```
 
 ### Phase 26 deliverables
@@ -526,7 +603,26 @@ flowchart TD
 - Layer 2 CI job: compile + shader validation on GitHub-hosted runners.
 - Layer 3 CI leg: runtime smoke on self-hosted GPU runner (advisory on PR).
 
-### Phase 28 deliverables (contingent on measurement)
+### Phase 28 deliverables
+
+- **Part A — Pipeline caching**: `CachedPipelines` struct on `WgpuBackend`
+  with lazy `Option<wgpu::ComputePipeline>` fields for rotate, quantize,
+  dequantize, residual_enc, residual_dec. Eliminates per-call WGSL
+  recompilation; `search_pipeline` (already cached since Phase 27.5) aligned
+  to the same pattern.
+- **Part B — Residual pass wiring**: `residual_encode.wgsl` and new
+  `residual_decode.wgsl` wired into `compress_batch` / `decompress_batch_into`
+  behind `residual_enabled()` gate. `ResidualNotSupported` error no longer
+  returned; variant retained for future use.
+- **Part C — Lifecycle API**: `load_pipelines`, `unload_pipelines`, and
+  `pipelines_loaded` on `WgpuBackend`. Enables callers to warm the GPU
+  ahead of latency-sensitive calls and shed shader memory when idle.
+- **Part D — Backend preference**: `BackendPreference` enum,
+  `AdapterCandidate` struct, `WgpuBackend::new_with_preference`, and
+  `WgpuBackend::enumerate_adapters`. Auto-selects the best adapter or errors
+  cleanly with `NoPreferredAdapter` when a specific API is unavailable.
+
+### Phase 29 deliverables (contingent on measurement)
 
 - `tinyquant-gpu-cuda` crate.
 - `cust`-based `CudaBackend` implementing `ComputeBackend`.

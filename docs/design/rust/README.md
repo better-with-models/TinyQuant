@@ -57,6 +57,12 @@ source-count: 0
 20. [[design/rust/phase-17-implementation-notes|Phase 17 Implementation Notes]] — execution-log view of the Phase 17 landing (`tinyquant-io` zero-copy views, Level-2 TQCV corpus file container, mmap-based reader): TQCV magic-byte layout, `mmap-lock` feature flag design, and `MmapView` lifetime safety model
 21. [[design/rust/phase-18-implementation-notes|Phase 18 Implementation Notes]] — execution-log view of the Phase 18 landing (`Corpus` aggregate root, vector insertion, batch atomicity, three-policy decompression, domain events, insertion-ordered vector map)
 22. [[design/rust/gpu-acceleration|GPU Acceleration Design]] — optional wgpu and CUDA backends: `PreparedCodec`, `ComputeBackend` trait, WGSL kernels, MSRV isolation, CI strategy, and Phase 27-28 rollout plan
+23. [[design/rust/phase-22-implementation-notes|Phase 22 Implementation Notes]] — execution-log view of the Phase 22 landing (pyo3 wheel, C ABI via cbindgen, standalone CLI, multi-arch release workflow): declared deviations and release-gate pattern
+24. [[design/rust/phase-23-implementation-notes|Phase 23 Implementation Notes]] — execution-log view of Phase 23: Python reference demotion to `tests/reference/`, parity scaffold, CI guard against reference leakage into wheels
+25. [[design/rust/phase-24-implementation-notes|Phase 24 Implementation Notes]] — execution-log view of Phase 24: fat-wheel assembler, PEP 376 RECORD, xtask publish guards, dry-run release workflow — 6 declared deviations
+26. [[design/rust/phase-25-implementation-notes|Phase 25 Implementation Notes]] — execution-log view of Phase 25: `@tinyquant/core` napi-rs bindings, CJS bundle, JSDoc, and npm release workflow — 142/142 tests, slice provenance
+27. [[design/rust/phase-27-implementation-notes|Phase 27 Implementation Notes]] — execution-log view of Phase 27: `tinyquant-gpu-wgpu` crate skeleton, WGSL kernels, parity tests, Layer 2/3 CI — residual pass and pipeline caching deferred to Phase 28
+28. [[design/rust/phase-27.5-implementation-notes|Phase 27.5 Implementation Notes]] — execution-log view of Phase 27.5: GPU-resident corpus search, `cosine_topk` WGSL kernel, `GpuCorpusState`, six best-practice audit findings resolved
 
 ## How the design layers relate
 
@@ -116,7 +122,7 @@ graph TD
 | **Standalone `tinyquant` CLI binary** cross-compiled to Linux x86_64/aarch64 (glibc and musl), macOS x86_64/aarch64, Windows x86_64/i686, and FreeBSD x86_64, plus a multi-arch GHCR container image | iOS/Android binaries |
 | Cargo library crates on crates.io, Python wheel on PyPI, binary archives on GitHub Releases — all produced from one tag in one workflow | — |
 | Benchmarks: criterion + flamegraphs + regression gates | Research-grade novel algorithms |
-| **Optional GPU acceleration** via `tinyquant-gpu-wgpu` (wgpu, Phase 27) and `tinyquant-gpu-cuda` (cust, Phase 28) — additive crates, never in core | Requiring a GPU for the base install |
+| **Optional GPU acceleration** via `tinyquant-gpu-wgpu` (wgpu, Phase 27) and `tinyquant-gpu-cuda` (cust, Phase 29) — additive crates, never in core | Requiring a GPU for the base install |
 
 ## Relationship to the Python codebase
 

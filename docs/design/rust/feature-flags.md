@@ -174,7 +174,7 @@ tinyquant-core = { path = "../tinyquant-core" }
 `default-features = false` keeps the dep from pulling in `naga`'s
 GLSL and HLSL parsers, which are not needed.
 
-### `tinyquant-gpu-cuda` (Phase 28)
+### `tinyquant-gpu-cuda` (Phase 29)
 
 ```toml
 [package]

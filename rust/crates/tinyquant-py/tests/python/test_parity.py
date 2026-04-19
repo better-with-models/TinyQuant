@@ -12,12 +12,12 @@ from __future__ import annotations
 import threading
 
 import numpy as np
+import numpy.typing as npt
 import pytest
+import tinyquant_rs as rs
 
-import tinyquant_cpu as py  # noqa: F401  (ensures package is importable)
 from tinyquant_cpu import codec as py_codec
 from tinyquant_cpu import corpus as py_corpus
-import tinyquant_rs as rs
 
 
 class _PyNamespace:
@@ -183,7 +183,9 @@ def test_compressed_vector_to_bytes_parity() -> None:
 
 
 def test_corpus_lifecycle_parity() -> None:
-    """Corpus `insert / vector_count / decompress_all / remove / contains`
+    """Test corpus lifecycle parity between Rust and Python implementations.
+
+    Verifies that ``insert / vector_count / decompress_all / remove / contains``
     behave the same shape-wise across both implementations.
 
     Two fidelity gates run side by side:
@@ -200,8 +202,8 @@ def test_corpus_lifecycle_parity() -> None:
        empirical sweep across 6 outer seeds (3, 7, 11, 17, 42, 99) at
        bw=4, dim=128, n=100 standard-normal vectors measured a worst-case
        ``max |py - rs| ≈ 3.15e-4`` per vector. The chosen ``atol`` is
-       ~3.2× the worst observed divergence, satisfying the "set the
-       budget to 2× observed" guidance from the Step 6 footer while
+       ~3.2x the worst observed divergence, satisfying the "set the
+       budget to 2x observed" guidance from the Step 6 footer while
        leaving headroom for unobserved seeds. ``rtol=1e-3`` is dominated
        by ``atol`` because standard-normal magnitudes hover around 1.0.
 
@@ -230,7 +232,7 @@ def test_corpus_lifecycle_parity() -> None:
         compression_policy=rs.corpus.CompressionPolicy.COMPRESS,
     )
 
-    originals: dict[str, np.ndarray] = {}
+    originals: dict[str, npt.NDArray[np.float32]] = {}
     for i in range(n):
         vec = rng.standard_normal(dim).astype(np.float32)
         vid = f"v{i:04d}"
@@ -411,7 +413,7 @@ def test_threading_safety() -> None:
     batch = rng.standard_normal((64, dim)).astype(np.float32)
 
     results: list[list[bytes]] = [[] for _ in range(n_threads)]
-    errors: list[BaseException] = []
+    errors: list[Exception] = []
 
     def worker(idx: int) -> None:
         """Compress the batch in a thread and store byte results at ``results[idx]``."""
@@ -419,7 +421,7 @@ def test_threading_safety() -> None:
             rs_codec = rs.codec.Codec()
             out = rs_codec.compress_batch(batch, rs_cfg, rs_cb)
             results[idx] = [cv.to_bytes() for cv in out]
-        except BaseException as exc:  # noqa: BLE001 — propagate to assertions
+        except Exception as exc:
             errors.append(exc)
 
     threads = [threading.Thread(target=worker, args=(i,)) for i in range(n_threads)]

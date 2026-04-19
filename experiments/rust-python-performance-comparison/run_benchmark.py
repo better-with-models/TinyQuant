@@ -6,14 +6,17 @@ import argparse
 import csv
 import json
 import platform
+import shutil
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 import numpy as np
-
 from benchmark_cases import (
     DEFAULT_CODEC_CONFIG,
     DEFAULT_CORPORA,
@@ -24,11 +27,11 @@ from benchmark_cases import (
     DEFAULT_WARMUPS,
     QUERY_COUNT,
     REAL_CORPUS_ID,
+    SUITE_PHASES,
+    SURFACES,
     SYNTHETIC_CORPORA,
     CorpusArtifact,
     ResultRow,
-    SUITE_PHASES,
-    SURFACES,
     SurfaceStatus,
     phase_names,
     repo_root,
@@ -139,7 +142,8 @@ def main(argv: list[str] | None = None) -> int:
         rust_payload = _run_rust_helper(rust_spec_path, rust_out_path)
         environment["rust_runner"] = rust_payload.get("environment", {})
         surface_statuses.extend(
-            SurfaceStatus(**status) for status in rust_payload.get("surface_statuses", [])
+            SurfaceStatus(**status)
+            for status in rust_payload.get("surface_statuses", [])
         )
         result_rows.extend(ResultRow(**row) for row in rust_payload.get("rows", []))
 
@@ -184,7 +188,7 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def _parse_requested(raw: str, allowed: Any, noun: str) -> list[str]:
+def _parse_requested(raw: str, allowed: Iterable[str], noun: str) -> list[str]:
     """Parse and validate a comma-separated CLI list."""
     allowed_set = set(allowed)
     values = [part.strip() for part in raw.split(",") if part.strip()]
@@ -202,14 +206,14 @@ def _resolve_output_dir(raw_output_dir: Path | None) -> Path:
         output_dir = raw_output_dir
     else:
         timestamp = datetime.now().astimezone().strftime("%Y%m%d-%H%M%S")
-        output_dir = (
-            Path(__file__).resolve().parents[1] / "results" / timestamp
-        )
+        output_dir = Path(__file__).resolve().parents[1] / "results" / timestamp
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 
 
-def _prepare_corpora(output_dir: Path, requested_corpora: list[str]) -> list[CorpusArtifact]:
+def _prepare_corpora(
+    output_dir: Path, requested_corpora: list[str]
+) -> list[CorpusArtifact]:
     """Load the real corpus, generate synthetic corpora, and persist artifacts."""
     artifacts_dir = output_dir / "corpora"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -220,12 +224,12 @@ def _prepare_corpora(output_dir: Path, requested_corpora: list[str]) -> list[Cor
         if corpus_id == REAL_CORPUS_ID:
             array = real_embeddings
             source = "real fixture"
-            label = "OpenAI 335×1536"
+            label = "OpenAI 335x1536"
         else:
             spec = SYNTHETIC_CORPORA[corpus_id]
             array = _generate_synthetic_corpus(spec.rows, spec.dim, spec.seed)
             source = f"synthetic seed={spec.seed}"
-            label = f"Synthetic {spec.rows}×{spec.dim}"
+            label = f"Synthetic {spec.rows}x{spec.dim}"
 
         if array.ndim != 2:
             raise ValueError(f"{corpus_id} must be 2-D, got shape {array.shape!r}")
@@ -257,7 +261,11 @@ def _prepare_corpora(output_dir: Path, requested_corpora: list[str]) -> list[Cor
 def _load_real_corpus() -> np.ndarray:
     """Load the required real benchmark corpus."""
     embeddings_path = (
-        repo_root() / "experiments" / "quantization-benchmark" / "data" / "embeddings.npy"
+        repo_root()
+        / "experiments"
+        / "quantization-benchmark"
+        / "data"
+        / "embeddings.npy"
     )
     if not embeddings_path.exists():
         raise FileNotFoundError(
@@ -295,15 +303,18 @@ def _build_environment_metadata() -> dict[str, Any]:
         "host_os": platform.platform(),
         "python_version": sys.version.replace("\n", " "),
         "python_executable": sys.executable,
-        "rust_toolchain": _capture_command(["rustc", "+1.87.0", "--version"]),
+        "rust_toolchain": _capture_rustc_version(),
     }
 
 
-def _capture_command(command: list[str]) -> str:
-    """Capture a command's stdout, returning a compact placeholder on failure."""
+def _capture_rustc_version() -> str:
+    """Capture the rustc version string, returning a placeholder on failure."""
+    rustc = shutil.which("rustc")
+    if rustc is None:
+        return "unavailable (rustc not found on PATH)"
     try:
         completed = subprocess.run(
-            command,
+            [rustc, "+1.87.0", "--version"],
             check=True,
             capture_output=True,
             text=True,
@@ -355,84 +366,137 @@ def _run_python_surfaces(
             continue
         status = status_map[surface_id]
         if status.status != "ok":
-            for corpus in corpora:
-                for suite in requested_suites:
-                    rows.extend(
-                        status_rows(
-                            suite=suite,
-                            surface_id=surface_id,
-                            corpus=corpus,
-                            warmups=warmups,
-                            reps=reps,
-                            status=status.status,
-                            reason=status.reason or "unavailable",
-                        )
-                    )
+            rows.extend(
+                _unavailable_surface_rows(
+                    surface_id=surface_id,
+                    corpora=corpora,
+                    requested_suites=requested_suites,
+                    warmups=warmups,
+                    reps=reps,
+                    status=status.status,
+                    reason=status.reason or "unavailable",
+                )
+            )
             continue
+        rows.extend(
+            _run_surface_corpora(
+                surface_id=surface_id,
+                requested_suites=requested_suites,
+                corpora=corpora,
+                warmups=warmups,
+                reps=reps,
+                top_k=top_k,
+            )
+        )
+    return rows
 
-        for corpus in corpora:
-            codec_corpus = np.load(corpus.codec_path).astype(np.float32, copy=False)
-            search_corpus = np.load(corpus.search_path).astype(np.float32, copy=False)
-            queries = search_corpus[np.asarray(corpus.query_indices)]
-            for suite in requested_suites:
-                try:
-                    if suite == "codec":
-                        rows.extend(
-                            run_codec_case(
-                                surface_id,
-                                codec_corpus,
-                                corpus,
-                                warmups=warmups,
-                                reps=reps,
-                            )
-                        )
-                    else:
-                        rows.extend(
-                            run_search_case(
-                                surface_id,
-                                search_corpus,
-                                queries,
-                                corpus,
-                                warmups=warmups,
-                                reps=reps,
-                                top_k=top_k,
-                            )
-                        )
-                except Exception as exc:
+
+def _unavailable_surface_rows(
+    *,
+    surface_id: str,
+    corpora: list[CorpusArtifact],
+    requested_suites: list[str],
+    warmups: int,
+    reps: int,
+    status: str,
+    reason: str,
+) -> list[ResultRow]:
+    """Emit placeholder rows for every corpus/suite when a surface is unavailable."""
+    rows: list[ResultRow] = []
+    for corpus in corpora:
+        for suite in requested_suites:
+            rows.extend(
+                status_rows(
+                    suite=suite,
+                    surface_id=surface_id,
+                    corpus=corpus,
+                    warmups=warmups,
+                    reps=reps,
+                    status=status,
+                    reason=reason,
+                )
+            )
+    return rows
+
+
+def _run_surface_corpora(
+    *,
+    surface_id: str,
+    requested_suites: list[str],
+    corpora: list[CorpusArtifact],
+    warmups: int,
+    reps: int,
+    top_k: int,
+) -> list[ResultRow]:
+    """Run all suite/corpus combinations for a single available Python surface."""
+    rows: list[ResultRow] = []
+    for corpus in corpora:
+        codec_corpus = np.load(corpus.codec_path).astype(np.float32, copy=False)
+        search_corpus = np.load(corpus.search_path).astype(np.float32, copy=False)
+        queries = search_corpus[np.asarray(corpus.query_indices)]
+        for suite in requested_suites:
+            try:
+                if suite == "codec":
                     rows.extend(
-                        status_rows(
-                            suite=suite,
-                            surface_id=surface_id,
-                            corpus=corpus,
+                        run_codec_case(
+                            surface_id,
+                            codec_corpus,
+                            corpus,
                             warmups=warmups,
                             reps=reps,
-                            status="failed",
-                            reason=str(exc),
                         )
                     )
+                else:
+                    rows.extend(
+                        run_search_case(
+                            surface_id,
+                            search_corpus,
+                            queries,
+                            corpus,
+                            warmups=warmups,
+                            reps=reps,
+                            top_k=top_k,
+                        )
+                    )
+            except Exception as exc:
+                rows.extend(
+                    status_rows(
+                        suite=suite,
+                        surface_id=surface_id,
+                        corpus=corpus,
+                        warmups=warmups,
+                        reps=reps,
+                        status="failed",
+                        reason=str(exc),
+                    )
+                )
     return rows
 
 
 def _run_rust_helper(spec_path: Path, out_path: Path) -> dict[str, Any]:
     """Run the standalone Rust helper and return its parsed JSON payload."""
-    command = [
-        "cargo",
-        "+1.87.0",
-        "run",
-        "--release",
-        "--manifest-path",
-        str(Path(__file__).resolve().parent / "rust_runner" / "Cargo.toml"),
-        "--",
-        "--spec",
-        str(spec_path),
-        "--out",
-        str(out_path),
-    ]
+    cargo = shutil.which("cargo")
+    if cargo is None:
+        raise RuntimeError("cargo not found on PATH; cannot run Rust helper")
+    manifest = str(Path(__file__).resolve().parent / "rust_runner" / "Cargo.toml")
     completed = subprocess.run(
-        command,
+        [
+            cargo,
+            "+1.87.0",
+            "run",
+            "--release",
+            "--manifest-path",
+            manifest,
+            "--",
+            "--spec",
+            str(spec_path),
+            "--out",
+            str(out_path),
+        ],
         cwd=repo_root(),
         capture_output=True,
         text=True,
+        check=False,  # returncode checked explicitly below
     )
     if completed.returncode != 0:
         raise RuntimeError(
@@ -461,8 +525,12 @@ def _order_rows(
 ) -> list[ResultRow]:
     """Sort result rows into a stable, readable order."""
     suite_order = {"codec": 0, "search": 1}
-    corpus_order = {corpus_id: index for index, corpus_id in enumerate(requested_corpora)}
-    surface_order = {surface_id: index for index, surface_id in enumerate(requested_surfaces)}
+    corpus_order = {
+        corpus_id: index for index, corpus_id in enumerate(requested_corpora)
+    }
+    surface_order = {
+        surface_id: index for index, surface_id in enumerate(requested_surfaces)
+    }
     phase_order = {
         suite: {phase: index for index, phase in enumerate(phase_names(suite))}
         for suite in SUITE_PHASES
@@ -480,19 +548,27 @@ def _order_rows(
 
 def _write_csv(path: Path, rows: list[ResultRow]) -> None:
     """Write flat result rows to CSV."""
-    fieldnames = list(rows[0].to_dict().keys()) if rows else list(ResultRow(
-        suite="codec",
-        surface_id="py_reference",
-        surface_label="Python reference",
-        corpus_id=REAL_CORPUS_ID,
-        rows=0,
-        dim=0,
-        phase="codec_setup",
-        metric_unit="ms",
-        median=None,
-        min=None,
-        max=None,
-    ).to_dict().keys())
+    fieldnames = (
+        list(rows[0].to_dict().keys())
+        if rows
+        else list(
+            ResultRow(
+                suite="codec",
+                surface_id="py_reference",
+                surface_label="Python reference",
+                corpus_id=REAL_CORPUS_ID,
+                rows=0,
+                dim=0,
+                phase="codec_setup",
+                metric_unit="ms",
+                median=None,
+                min=None,
+                max=None,
+            )
+            .to_dict()
+            .keys()
+        )
+    )
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
@@ -514,6 +590,26 @@ def _build_summary(
     row_index = {
         (row.suite, row.corpus_id, row.surface_id, row.phase): row for row in rows
     }
+    lines: list[str] = []
+    lines.extend(_summary_header(environment, corpora, surface_statuses))
+    lines.extend(_summary_codec_table(corpora, requested_surfaces, row_index))
+    lines.extend(_summary_search_table(corpora, requested_surfaces, row_index))
+    notes = _collect_notes(surface_statuses, rows)
+    lines.extend(["", "## Notes"])
+    if notes:
+        for note in notes:
+            lines.append(f"- {note}")
+    else:
+        lines.append("- No skip or failure notes recorded.")
+    return "\n".join(lines) + "\n"
+
+
+def _summary_header(
+    environment: dict[str, Any],
+    corpora: list[CorpusArtifact],
+    surface_statuses: list[SurfaceStatus],
+) -> list[str]:
+    """Render the environment, corpus matrix, and surface availability sections."""
     lines: list[str] = [
         "# Cross-Surface Performance Benchmark",
         "",
@@ -527,7 +623,9 @@ def _build_summary(
     rust_runner_env = environment.get("rust_runner", {})
     adapter_name = rust_runner_env.get("wgpu_adapter_name")
     lines.append(
-        f"- GPU adapter: `{adapter_name}`" if adapter_name else "- GPU adapter: unavailable"
+        f"- GPU adapter: `{adapter_name}`"
+        if adapter_name
+        else "- GPU adapter: unavailable"
     )
     lines.extend(
         [
@@ -538,10 +636,11 @@ def _build_summary(
         ]
     )
     for corpus in corpora:
+        n_queries = len(corpus.query_indices)
         lines.append(
-            f"| `{corpus.corpus_id}` | {corpus.rows} | {corpus.dim} | {corpus.source} | {len(corpus.query_indices)} |"
+            f"| `{corpus.corpus_id}` | {corpus.rows} | {corpus.dim}"
+            f" | {corpus.source} | {n_queries} |"
         )
-
     lines.extend(
         [
             "",
@@ -552,20 +651,30 @@ def _build_summary(
     )
     for status in surface_statuses:
         lines.append(
-            f"| `{status.surface_id}` | {status.surface_label} | {status.status} | {status.reason or ''} |"
+            f"| `{status.surface_id}` | {status.surface_label}"
+            f" | {status.status} | {status.reason or ''} |"
         )
+    return lines
 
-    lines.extend(
-        [
-            "",
-            "## Codec Results",
-            "| Corpus | Surface | Status | Setup ms | Compress ms | Compress vec/s | Decompress ms | Decompress vec/s |",
-            "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
-        ]
-    )
+
+def _summary_codec_table(
+    corpora: list[CorpusArtifact],
+    requested_surfaces: list[str],
+    row_index: dict[tuple[str, str, str, str], ResultRow],
+) -> list[str]:
+    """Render the codec results table section."""
+    lines: list[str] = [
+        "",
+        "## Codec Results",
+        "| Corpus | Surface | Status | Setup ms | Compress ms"
+        + " | Compress vec/s | Decompress ms | Decompress vec/s |",
+        "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
     for corpus in corpora:
         for surface_id in requested_surfaces:
-            codec_setup = row_index.get(("codec", corpus.corpus_id, surface_id, "codec_setup"))
+            codec_setup = row_index.get(
+                ("codec", corpus.corpus_id, surface_id, "codec_setup")
+            )
             codec_compress = row_index.get(
                 ("codec", corpus.corpus_id, surface_id, "codec_compress_batch")
             )
@@ -574,26 +683,34 @@ def _build_summary(
             )
             status = _combined_status(codec_setup, codec_compress, codec_decompress)
             lines.append(
-                "| "
-                f"`{corpus.corpus_id}` | {SURFACES[surface_id].label} | {status} | "
-                f"{_fmt_metric(codec_setup)} | "
-                f"{_fmt_metric(codec_compress)} | "
-                f"{_fmt_rate(corpus.rows, codec_compress)} | "
-                f"{_fmt_metric(codec_decompress)} | "
-                f"{_fmt_rate(corpus.rows, codec_decompress)} |"
+                f"| `{corpus.corpus_id}` | {SURFACES[surface_id].label} | {status}"
+                f" | {_fmt_metric(codec_setup)}"
+                f" | {_fmt_metric(codec_compress)}"
+                f" | {_fmt_rate(corpus.rows, codec_compress)}"
+                f" | {_fmt_metric(codec_decompress)}"
+                f" | {_fmt_rate(corpus.rows, codec_decompress)} |"
             )
+    return lines
 
-    lines.extend(
-        [
-            "",
-            "## Search Results",
-            "| Corpus | Surface | Status | Setup ms | Query batch ms | Queries/s | Query p50 ms | Query p95 ms |",
-            "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
-        ]
-    )
+
+def _summary_search_table(
+    corpora: list[CorpusArtifact],
+    requested_surfaces: list[str],
+    row_index: dict[tuple[str, str, str, str], ResultRow],
+) -> list[str]:
+    """Render the search results table section."""
+    lines: list[str] = [
+        "",
+        "## Search Results",
+        "| Corpus | Surface | Status | Setup ms | Query batch ms"
+        + " | Queries/s | Query p50 ms | Query p95 ms |",
+        "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
+    ]
     for corpus in corpora:
         for surface_id in requested_surfaces:
-            search_setup = row_index.get(("search", corpus.corpus_id, surface_id, "search_setup"))
+            search_setup = row_index.get(
+                ("search", corpus.corpus_id, surface_id, "search_setup")
+            )
             query_batch = row_index.get(
                 ("search", corpus.corpus_id, surface_id, "search_query_batch")
             )
@@ -604,24 +721,16 @@ def _build_summary(
                 ("search", corpus.corpus_id, surface_id, "search_query_p95")
             )
             status = _combined_status(search_setup, query_batch, query_p50, query_p95)
+            n_queries = len(corpus.query_indices)
             lines.append(
-                "| "
-                f"`{corpus.corpus_id}` | {SURFACES[surface_id].label} | {status} | "
-                f"{_fmt_metric(search_setup)} | "
-                f"{_fmt_metric(query_batch)} | "
-                f"{_fmt_rate(len(corpus.query_indices), query_batch)} | "
-                f"{_fmt_metric(query_p50)} | "
-                f"{_fmt_metric(query_p95)} |"
+                f"| `{corpus.corpus_id}` | {SURFACES[surface_id].label} | {status}"
+                f" | {_fmt_metric(search_setup)}"
+                f" | {_fmt_metric(query_batch)}"
+                f" | {_fmt_rate(n_queries, query_batch)}"
+                f" | {_fmt_metric(query_p50)}"
+                f" | {_fmt_metric(query_p95)} |"
             )
-
-    notes = _collect_notes(surface_statuses, rows)
-    lines.extend(["", "## Notes"])
-    if notes:
-        for note in notes:
-            lines.append(f"- {note}")
-    else:
-        lines.append("- No skip or failure notes recorded.")
-    return "\n".join(lines) + "\n"
+    return lines
 
 
 def _combined_status(*rows: ResultRow | None) -> str:
@@ -650,7 +759,9 @@ def _fmt_rate(dividend: int, row: ResultRow | None) -> str:
     return f"{dividend / (row.median / 1000.0):.1f}"
 
 
-def _collect_notes(surface_statuses: list[SurfaceStatus], rows: list[ResultRow]) -> list[str]:
+def _collect_notes(
+    surface_statuses: list[SurfaceStatus], rows: list[ResultRow]
+) -> list[str]:
     """Collect unique skip and failure notes for the summary footer."""
     notes: list[str] = []
     for status in surface_statuses:

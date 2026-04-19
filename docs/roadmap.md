@@ -48,9 +48,9 @@ gantt
         Phase 11 - Rust Workspace Scaffold  :done, p11, after p10, 1
         Phase 12 - Shared Types & Errors    :done, p12, after p11, 1
     section Rust Codec
-        Phase 13 - Rotation & Numerics      :p13, after p12, 1
-        Phase 14 - Codebook & Quantize      :p14, after p13, 1
-        Phase 15 - Codec Service & Residual :p15, after p14, 1
+        Phase 13 - Rotation & Numerics      :done, p13, after p12, 1
+        Phase 14 - Codebook & Quantize      :done, p14, after p13, 1
+        Phase 15 - Codec Service & Residual :done, p15, after p14, 1
     section Rust IO
         Phase 16 - Serialization & Parity   :p16, after p15, 1
         Phase 17 - Zero-copy & Mmap         :p17, after p16, 1
@@ -65,12 +65,13 @@ gantt
     section Rust Bindings & Delivery
         Phase 22 - Pyo3, C ABI, Release     :p22, after p215, 1
     section JS Test Hardening
-        Phase 25.5 - JS Test Gap Remediation :p255, after p22, 1
+        Phase 25.5 - JS Test Gap Remediation :done, p255, after p22, 1
     section Rust GPU
-        Phase 26 - PreparedCodec + Calibration Gates :p26, after p255, 1
-        Phase 27 - wgpu + WGSL Kernels      :p27, after p26, 1
-        Phase 27.5 - Resident Corpus Search :p275, after p27, 1
-        Phase 28 - CUDA via cust (optional) :p28, after p275, 1
+        Phase 26 - PreparedCodec + Calibration Gates :done, p26, after p255, 1
+        Phase 27 - wgpu + WGSL Kernels      :done, p27, after p26, 1
+        Phase 27.5 - Resident Corpus Search :done, p275, after p27, 1
+        Phase 28 - wgpu Pipeline Caching    :active, p28, after p275, 1
+        Phase 29 - CUDA via cust (optional) :p29, after p28, 1
 ```
 
 ## Phase summary
@@ -111,15 +112,16 @@ gantt
 | 20 | SIMD Kernels & Dispatch | **planned** | tinyquant-core (codec/kernels), tinyquant-bruteforce | Phase 19 | [[plans/rust/phase-20-simd-kernels\|Plan]] |
 | 21 | Rayon Batch Paths & Benches | **planned** | tinyquant-core, tinyquant-bench | Phase 20 | [[plans/rust/phase-21-rayon-batch-benches\|Plan]] |
 | 21.5 | Rust Test Gap Remediation | **planned** | tinyquant-core, tinyquant-io, tinyquant-bruteforce | Phase 21 | [[plans/rust/phase-21.5-rust-test-gap-remediation\|Plan]] |
-| 22 | Pyo3, C ABI, and Release | **planned** | tinyquant-py, tinyquant-sys | Phase 21.5 | [[plans/rust/phase-22-pyo3-cabi-release\|Plan]] |
+| 22 | Pyo3, C ABI, and Release | **complete** | tinyquant-py, tinyquant-sys | Phase 21.5 | [[plans/rust/phase-22-pyo3-cabi-release\|Plan]] |
 | 23 | Python Reference Demotion | **complete** | tests/reference/tinyquant_py_reference, tests/parity | Phase 22 | [[plans/rust/phase-23-python-reference-demotion\|Plan]] |
 | 24 | Python Fat Wheel (official) | **complete** | tinyquant-py (fat wheel, PyPI) | Phase 22 | [[plans/rust/phase-24-python-fat-wheel-official\|Plan]] |
 | 25 | TypeScript / npm Package | **complete** | tinyquant-js, javascript/@tinyquant/core | Phase 24 | [[plans/rust/phase-25-typescript-npm-package\|Plan]] |
-| 25.5 | JS Test Gap Remediation | **planned** | javascript/@tinyquant/core/tests | Phase 25 | [[plans/rust/phase-25.5-js-test-gap-remediation\|Plan]] |
-| 26 | PreparedCodec + Calibration Gates | **planned** | tinyquant-core (prepared_codec), tinyquant-bench (calibration) | Phase 25.5 | [[plans/rust/phase-26-preparedcodec-calibration\|Plan]] |
-| 27 | wgpu + WGSL Kernels | **planned** | tinyquant-gpu-wgpu | Phase 26 | [[plans/rust/phase-27-wgpu-wgsl-kernels\|Plan]] |
-| 27.5 | Resident Corpus GPU Search | **planned** | tinyquant-gpu-wgpu (cosine_topk kernel) | Phase 27 | [[plans/rust/phase-27.5-resident-corpus-search\|Plan]] |
-| 28 | Optional CUDA Backend | **planned** | tinyquant-gpu-cuda | Phase 27.5 | [[plans/rust/phase-28-cuda-backend\|Plan]] |
+| 25.5 | JS Test Gap Remediation | **complete** | javascript/@tinyquant/core/tests | Phase 25 | [[plans/rust/phase-25.5-js-test-gap-remediation\|Plan]] |
+| 26 | PreparedCodec + Calibration Gates | **complete** | tinyquant-core (prepared_codec), tinyquant-bench (calibration) | Phase 25.5 | [[plans/rust/phase-26-preparedcodec-calibration\|Plan]] |
+| 27 | wgpu + WGSL Kernels | **complete** | tinyquant-gpu-wgpu | Phase 26 | [[plans/rust/phase-27-wgpu-wgsl-kernels\|Plan]] |
+| 27.5 | Resident Corpus GPU Search | **complete** | tinyquant-gpu-wgpu (cosine_topk kernel) | Phase 27 | [[plans/rust/phase-27.5-resident-corpus-search\|Plan]] |
+| 28 | wgpu Pipeline Caching & Residual | **active** | tinyquant-gpu-wgpu | Phase 27.5 | [[plans/rust/phase-28-wgpu-pipeline-caching\|Plan]] |
+| 29 | Optional CUDA Backend | **planned** | tinyquant-gpu-cuda | Phase 28 | [[plans/rust/phase-29-cuda-backend\|Plan]] |
 
 ## Gap remediation plan
 
@@ -154,7 +156,7 @@ requirement block.
 | GAP-JS-010 | No-subprocess loader check wiring | P2 | **Phase 25.5** |
 | GAP-BACK-001 | FP32 boundary architectural test | P3 | **Phase 21.5** |
 | GAP-GPU-001 | cargo tree grep for GPU deps | P3 | **Phase 27** |
-| GAP-GPU-002–007 | GPU crates not yet implemented | P3 | **Phases 27–28** |
+| GAP-GPU-002–007 | GPU crates not yet implemented | P3 | **Phases 27–29** |
 
 ### Phase 21.5 — Rust Test Gap Remediation
 
@@ -227,7 +229,15 @@ Extends the existing PreparedCodec work with calibration gate restoration.
 - Implement FR-GPU-002–006 with tests under the 3-layer GPU testing strategy
   (GAP-GPU-002–006)
 
-### Phase 28 — Optional CUDA Backend
+### Phase 28 — wgpu Pipeline Caching & Residual
+
+- Cache `rotate_pipeline`, `quantize_pipeline`, and `dequantize_pipeline` in
+  `WgpuBackend`; remove per-call WGSL shader recompilation (TODO(phase-28) in
+  `backend.rs`).
+- Wire residual encode/decode GPU passes behind `residual_enabled()` gate;
+  remove `ResidualNotSupported` error for residual-enabled configs.
+
+### Phase 29 — Optional CUDA Backend
 
 - Implement FR-GPU-007 CUDA stub compile-check CI job; add
   `CudaBackend::is_available()` always-false stub test (GAP-GPU-007)

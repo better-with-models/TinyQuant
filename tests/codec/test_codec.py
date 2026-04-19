@@ -7,7 +7,6 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from numpy.typing import NDArray
-
 from tinyquant_py_reference.codec._errors import (
     CodebookIncompatibleError,
     ConfigMismatchError,

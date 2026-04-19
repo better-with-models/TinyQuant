@@ -63,8 +63,12 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "TCH", "ANN401", "S608"]
+"rust/crates/tinyquant-py/tests/**" = ["S101", "TCH", "ANN401", "S608"]
 # The sentence corpus is inherently long-form; line-wrap would mangle it.
 "experiments/quantization-benchmark/generate_embeddings.py" = ["E501"]
+# Benchmark scripts invoke trusted internal binaries (rustc, cargo) via
+# shutil.which-resolved paths; S603 (untrusted subprocess input) does not apply.
+"experiments/rust-python-performance-comparison/run_benchmark.py" = ["S603"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -76,8 +80,11 @@ no_implicit_reexport = true
 # frozen reference package and the Phase 24.1 dev shim.
 mypy_path = "$MYPY_CONFIG_FILE_DIR/tests/reference,$MYPY_CONFIG_FILE_DIR/src"
 explicit_package_bases = true
-# Exclude generated or transient build outputs from repo-wide type checks.
-exclude = '(^|/)(rust/target|\.worktrees|node_modules|\.venv)(/|$)'
+# Exclude generated or transient build outputs and experiment scripts from
+# repo-wide type checks. Experiments are ad-hoc benchmarks that share
+# filenames (run_benchmark.py) across sibling directories, which mypy's
+# explicit_package_bases mode cannot resolve without namespace collisions.
+exclude = '(^|/)(rust/target|\.worktrees|node_modules|\.venv|experiments)(/|$)'
 
 [[tool.mypy.overrides]]
 module = "psycopg.*"
@@ -167,7 +174,6 @@ exclude = [
 ]
 
 [tool.coverage.run]
-parallel = true
 source = ["tinyquant_py_reference"]
 omit = [
     "tests/reference/tinyquant_py_reference/tools/*",

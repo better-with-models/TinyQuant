@@ -346,7 +346,10 @@ def main() -> None:
     print("\n--- Running benchmarks ---\n")
 
     def tq(bits: int, *, residual: bool) -> MethodResult:
-        """Run TinyQuant at the given bit-width with or without FP16 residual correction."""
+        """Run TinyQuant at the given bit-width.
+
+        Optionally applies FP16 residual correction.
+        """
         return benchmark_tinyquant(embeddings, queries, bits, residual, dummy_cb, codec)
 
     suite: list[tuple[str, Callable[[], MethodResult]]] = [

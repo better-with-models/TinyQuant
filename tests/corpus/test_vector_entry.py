@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import numpy as np
-
 from tinyquant_py_reference.codec.compressed_vector import CompressedVector
 from tinyquant_py_reference.corpus.vector_entry import VectorEntry
 

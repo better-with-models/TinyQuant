@@ -6,7 +6,6 @@ from dataclasses import FrozenInstanceError
 from datetime import UTC, datetime
 
 import pytest
-
 from tinyquant_py_reference.codec.codec_config import CodecConfig
 from tinyquant_py_reference.corpus.compression_policy import CompressionPolicy
 from tinyquant_py_reference.corpus.events import (

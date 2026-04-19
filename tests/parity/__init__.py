@@ -1,1 +1,4 @@
-"""Cross-implementation parity tests comparing the Python reference against the Rust-backed implementation."""
+"""Cross-implementation parity tests.
+
+Compares the Python reference against the Rust-backed implementation.
+"""

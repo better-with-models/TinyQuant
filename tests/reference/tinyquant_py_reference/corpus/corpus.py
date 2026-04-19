@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
-
 from tinyquant_py_reference.codec._errors import (
     DimensionMismatchError,
     DuplicateVectorError,
@@ -23,7 +22,6 @@ from tinyquant_py_reference.corpus.vector_entry import VectorEntry
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
-
     from tinyquant_py_reference.codec.codebook import Codebook
     from tinyquant_py_reference.codec.codec_config import CodecConfig
 
