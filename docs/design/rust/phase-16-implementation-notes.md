@@ -33,10 +33,11 @@ TinyQuant.
   `TinyQuantIoError` variants on any malformed input.
 - `rust/crates/tinyquant-io/src/compressed_vector/pack.rs` /
   `unpack.rs` — bit-pack / bit-unpack for bw ∈ {2, 4, 8} indices into a
-  dense byte array. Endian-safe: indices are packed MSB-first within each byte.
-- `rust/crates/tinyquant-io/src/errors.rs` — `TinyQuantIoError` enum with
-  `MagicMismatch`, `UnsupportedVersion`, `AllocationTooLarge`, `Truncated`,
-  `UnexpectedEof` variants.
+  dense byte array. Indices are packed LSB-first within each byte (index 0
+  occupies the least-significant bits of byte 0).
+- `rust/crates/tinyquant-io/src/errors.rs` — `IoError` enum with
+  `Truncated`, `UnknownVersion`, `InvalidBitWidth`, `InvalidUtf8`,
+  `LengthMismatch`, `BadMagic`, `InvalidHeader`, `Decode`, `Io` variants.
 - `rust/crates/tinyquant-io/tests/bit_pack_exhaustive.rs` — exhaustive round-trip
   test covering every index value at every bit-width, verifying no information is
   dropped by the pack/unpack cycle.
@@ -75,28 +76,30 @@ The generator is invoked manually; fixture binaries are committed to LFS under
 
 ### 4. `cast_possible_truncation` allow in `to_bytes`
 
-The `dim as u16` cast in the serializer triggers Clippy's
-`cast_possible_truncation` lint. A narrow `#[allow]` at the call site was
-chosen over a checked cast with `unwrap` — the dimension is bounded at
-construction time by `CodecConfig::new` (max dim fits in u16), so the
-truncation can never occur in practice. A comment explains the invariant.
+The serializer uses `dimension as u8` for the `bit_width` field. The only
+cast that requires a lint suppression is in the `encode_header` call where
+`bit_width` (a `u8` from `CodecConfig`) is passed directly — no truncation
+occurs. In `from_bytes` the dimension is a `u32` and the config hash is a
+`&str`, so no width-narrowing cast is needed there either.
 
 ## Wire format
 
 ```
 offset  size  field
 ------  ----  -----
-0       4     magic: b"TQCV"
-4       1     format version: 0x01
-5       1     bit_width: 2 | 4 | 8
-6       2     dim (LE u16)
-8       4     config_hash (LE u32)
-12      1     flags: bit 0 = residual_present
-13      3     reserved (zeros)
---- header end (16 bytes) ---
-16      ceil(dim * bw / 8)   packed indices
-+       dim * 2              residual (FP16 LE, if flags.bit0 set)
+0       1     format version: 0x01
+1       64    config_hash (UTF-8, NUL-padded to 64 bytes)
+65      4     dimension (LE u32)
+69      1     bit_width: 2 | 4 | 8
+--- header end (70 bytes) ---
+70      ceil(dim * bw / 8)   packed indices (LSB-first)
++       dim * 2              residual (FP16 LE, if present)
 ```
+
+The `TQCV` magic bytes appear only in the Level-2 corpus file container
+header (Phase 17), not in individual `CompressedVector` blobs. Residual
+presence is indicated by the calling context (e.g., a `flags` byte in the
+corpus container), not by a field within the `CompressedVector` header itself.
 
 ## Parity guarantee
 

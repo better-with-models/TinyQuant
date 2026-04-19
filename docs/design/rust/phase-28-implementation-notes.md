@@ -25,10 +25,11 @@ caching** (`CachedPipelines`), a **GPU residual encode/decode pass**
 ### Concrete deliverables
 
 - `src/backend.rs` — `CachedPipelines` struct: holds `Option<wgpu::ComputePipeline>`
-  for every kernel (quantize, dequantize, cosine, residual encode, residual
-  decode). Pipelines are built lazily on first use via `get_or_build` closures;
-  subsequent calls return the cached handle. Previously every `WgpuBackend`
-  call recompiled shaders on construction.
+  for five kernels (`rotate`, `quantize`, `dequantize`, `residual_enc`,
+  `residual_dec`). Pipelines are built lazily on first use; subsequent calls
+  return the cached handle. Previously every `WgpuBackend` call recompiled
+  shaders on construction. The search (cosine) pipeline is a separate
+  `search_pipeline` field on `WgpuBackend` directly, unchanged since Phase 27.5.
 - `shaders/residual_decode.wgsl` — WGSL kernel that reads FP16-encoded residual
   bytes from a GPU buffer, converts each `f16` pair to `f32` (via bit-cast +
   decode), and adds the residual to the dequantized vector element-wise.
@@ -37,9 +38,12 @@ caching** (`CachedPipelines`), a **GPU residual encode/decode pass**
   very small `f32` values that map to subnormal FP16 representations are now
   flushed to zero before encoding, matching the CPU reference path.
 - `src/backend_preference.rs` — `BackendPreference` enum
-  (`Any | HighPerformance | LowPower | DiscreteGpu | IntegratedGpu`) and
+  (`Auto | Vulkan | Metal | Dx12 | HighPerformance | LowPower | Software`) and
   `AdapterCandidate` struct (`name`, `backend`, `device_type`). Neither type
   carries a wgpu handle; they are plain data for caller inspection.
+  `Auto` is the default, equivalent to the behaviour of `WgpuBackend::new`.
+  `Software` forces a CPU-emulated renderer (Mesa llvmpipe / ANGLE), useful
+  for headless testing.
 - `src/context.rs` — `WgpuContext::new_with_preference(BackendPreference)` and
   `enumerate_adapters() -> Vec<AdapterCandidate>`. The preference is passed
   through to `wgpu::Instance::request_adapter` as a `PowerPreference` hint.
@@ -52,10 +56,17 @@ caching** (`CachedPipelines`), a **GPU residual encode/decode pass**
   `cached_pipelines_no_recompile` (verifies that a second compress call against
   the same `WgpuBackend` completes faster than the first, as a regression gate
   on lazy caching).
-- `tests/context_probe.rs` — three new tests: `enumerate_adapters_returns_list`,
-  `new_with_preference_any_succeeds`, and `new_with_preference_unknown_fails`
-  (uses a synthetic preference value that no adapter can satisfy, asserts
-  `NoPreferredAdapter`).
+- `tests/context_probe.rs` — seven new tests across the lifecycle and preference
+  APIs:
+  - `load_pipelines_marks_loaded`, `unload_pipelines_clears_loaded_state`,
+    `load_pipelines_is_idempotent`, `compress_after_explicit_load_succeeds` —
+    lifecycle API coverage.
+  - `enumerate_adapters_returns_at_least_one_on_adapter_machine` — asserts at
+    least one adapter is returned when a GPU/software renderer is available.
+  - `new_with_preference_auto_equivalent_to_new` — asserts `BackendPreference::Auto`
+    produces the same result as the default constructor.
+  - `new_with_preference_software_available_on_ci` — asserts `Software` preference
+    succeeds on CI's software renderer (Mesa llvmpipe / ANGLE).
 
 All 18 `tinyquant-gpu-wgpu` tests pass on both the software renderer (CI)
 and on a hardware GPU (local).
@@ -128,9 +139,9 @@ of each type. Callers that need predictable latency (e.g., servers) should call
 
 - **R-GPU28-1**: `enumerate_adapters` returns all adapters visible to the wgpu
   instance, including software renderers. Callers must not assume that the
-  first adapter is a hardware GPU. The `BackendPreference::DiscreteGpu` variant
-  can be used to filter, but it will return `NoPreferredAdapter` in CI
-  environments that only expose software renderers.
+  first adapter is a hardware GPU. The `BackendPreference::HighPerformance`
+  variant selects the discrete GPU when available, but will return
+  `NoPreferredAdapter` in CI environments that only expose software renderers.
 - **R-GPU28-2**: The `cached_pipelines_no_recompile` regression test can produce
   false negatives on extremely loaded CI runners where the ratio condition is
   not met even with caching. The test is marked `#[ignore]` in the software-

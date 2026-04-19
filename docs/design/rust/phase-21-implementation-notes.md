@@ -29,9 +29,13 @@ largely independent delivery tracks that were merged together.
   a safe wrapper around `ManuallyDrop<T>` + `AtomicBool` initialization flags.
   Provides guaranteed cleanup (calls `drop` on every initialized slot) if the
   batch is abandoned mid-run due to an error.
-- `rust/crates/tinyquant-io/src/parallelism.rs` — `Parallelism` enum
-  (`Serial | Custom(fn() -> rayon::ThreadPool)`), plus
-  `rayon_parallelism() -> Parallelism` convenience constructor.
+- `rust/crates/tinyquant-core/src/codec/parallelism.rs` — `Parallelism` enum
+  (`Serial | Custom(fn(usize, &(dyn Fn(usize) + Sync + Send))`), first
+  introduced in Phase 15 as a stub. Phase 21 adds the `Custom` variant's
+  rayon wiring.
+- `rust/crates/tinyquant-io/src/parallelism.rs` — `rayon_parallelism() ->
+  Parallelism` convenience constructor that returns a `Custom` driver backed
+  by Rayon's global thread pool.
 - `tinyquant-core/tests/batch_determinism.rs` — asserts byte-identical output
   across `Serial` and `Custom(rayon)` with thread counts `[1, 2, 4, 8, N_CPU]`.
 - `tinyquant-core/tests/batch_parallel.rs` — error path and partial-success

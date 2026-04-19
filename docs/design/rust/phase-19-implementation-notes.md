@@ -35,7 +35,7 @@ PostgreSQL + pgvector database.
 - `rust/crates/tinyquant-bruteforce/src/similarity.rs` — `cosine_similarity`
   kernel: L2-normalize, then dot product. Operates on `f32` slices; no SIMD in
   this phase (SIMD kernels added in Phase 20).
-- `rust/crates/tinyquant-bruteforce/src/store.rs` — `VectorStore`: insertion-
+- `rust/crates/tinyquant-bruteforce/src/store.rs` — `OwnedStore`: insertion-
   ordered map that preserves ingest order for deterministic search tiebreaking.
 - `rust/crates/tinyquant-bruteforce/tests/backend.rs` — 308 lines covering
   ingest, search ranking, remove, clear, top-k clamping, and the golden fixture
@@ -67,7 +67,7 @@ cosine similarity results should be returned highest-first. Two fix commits
 - `BruteForceBackend::search` to call `.sort_unstable()` after collecting
   candidates, relying on the derived `Ord` impl.
 
-### 2. `shift_remove` instead of `remove` in VectorStore
+### 2. `shift_remove` instead of `remove` in OwnedStore
 
 The plan did not specify how remove interacts with insertion order. The first
 implementation used `IndexMap::swap_remove` (O(1) but disrupts order). The fix
