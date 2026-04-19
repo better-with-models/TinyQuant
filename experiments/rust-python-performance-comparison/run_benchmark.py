@@ -667,7 +667,7 @@ def _summary_codec_table(
         "",
         "## Codec Results",
         "| Corpus | Surface | Status | Setup ms | Compress ms"
-        " | Compress vec/s | Decompress ms | Decompress vec/s |",
+        + " | Compress vec/s | Decompress ms | Decompress vec/s |",
         "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
     ]
     for corpus in corpora:
@@ -703,7 +703,7 @@ def _summary_search_table(
         "",
         "## Search Results",
         "| Corpus | Surface | Status | Setup ms | Query batch ms"
-        " | Queries/s | Query p50 ms | Query p95 ms |",
+        + " | Queries/s | Query p50 ms | Query p95 ms |",
         "| --- | --- | --- | ---: | ---: | ---: | ---: | ---: |",
     ]
     for corpus in corpora:

@@ -14,7 +14,6 @@ at the sdist source-build instructions.
 
 from __future__ import annotations
 
-import hashlib
 import importlib.util
 import platform
 import sys

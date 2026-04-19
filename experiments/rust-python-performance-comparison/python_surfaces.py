@@ -28,7 +28,7 @@ class _Callable(Protocol):
 
     def __call__(self) -> object:
         """Invoke the callable."""
-        ...
+        pass
 
 
 class _Backend(Protocol):
@@ -36,11 +36,11 @@ class _Backend(Protocol):
 
     def ingest(self, vectors: dict[str, np.ndarray]) -> None:
         """Ingest a mapping of vector IDs to embedding arrays."""
-        ...
+        pass
 
     def search(self, query: np.ndarray, top_k: int) -> object:
         """Search for the top-k nearest vectors to query."""
-        ...
+        pass
 
 
 @dataclass(frozen=True)

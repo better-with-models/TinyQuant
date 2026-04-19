@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _ASSEMBLER_PATH = _REPO_ROOT / "scripts" / "packaging" / "assemble_fat_wheel.py"
-_TEMPLATES_DIR = _REPO_ROOT / "scripts" / "packaging" / "templates"
 
 
 def _load_assembler() -> types.ModuleType:
