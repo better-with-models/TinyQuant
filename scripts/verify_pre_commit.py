@@ -65,7 +65,10 @@ def ok(message: str) -> None:
 # - .worktrees/ : git worktrees share the repo's .git but live under a
 #                 separate directory; their docs/ contain Obsidian markdown
 #                 and are governed by their own branch's pre-commit hook.
-_EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv", ".worktrees"}
+# - .claude/    : Claude Code session state including ephemeral worktrees
+#                 spun up for background tasks; those worktrees contain
+#                 Obsidian docs governed by their own branch's hook.
+_EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv", ".worktrees", ".claude"}
 
 # Path-component predicates that exclude a file from obsidian-boundary and
 # markdownlint scope regardless of which top-level directory it lives in.

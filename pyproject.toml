@@ -174,7 +174,6 @@ exclude = [
 ]
 
 [tool.coverage.run]
-parallel = true
 source = ["tinyquant_py_reference"]
 omit = [
     "tests/reference/tinyquant_py_reference/tools/*",
