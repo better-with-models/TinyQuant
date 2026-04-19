@@ -1,18 +1,22 @@
 # TinyQuant
 
-*CPU-only vector quantization codec for embedding storage compression.*
+*Rust-native vector quantization codec for embedding compression — CPU SIMD, optional GPU acceleration, and Python/TypeScript bindings.*
 
 [![PyPI](https://img.shields.io/pypi/v/tinyquant-cpu.svg)](https://pypi.org/project/tinyquant-cpu/)
 [![CI](https://github.com/better-with-models/TinyQuant/actions/workflows/ci.yml/badge.svg)](https://github.com/better-with-models/TinyQuant/actions/workflows/ci.yml)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 
-TinyQuant is a CPU-only vector quantization codec that compresses
+TinyQuant is a Rust-native vector quantization codec that compresses
 high-dimensional embedding vectors to low-bit representations while
 preserving cosine similarity rankings. It combines random orthogonal
 preconditioning with two-stage scalar quantization and optional FP16
 residual correction to hit 8× compression at 4-bit with Pearson ρ ≈ 0.998
 and 95% top-5 recall on real OpenAI embeddings.
+
+The Rust core ships CPU SIMD dispatch (AVX2/NEON), Rayon parallel batch
+compression, an optional wgpu/WGSL GPU accelerator, and first-class bindings
+for Python and TypeScript.
 
 Research lineage: [TurboQuant], [PolarQuant], and [QJL].
 
@@ -53,39 +57,28 @@ publication-quality plots.
 
 ## Installation
 
-> **Heads up — Phase 23 reference demotion.**
-> `tinyquant-cpu==0.1.1` on PyPI is the **last pure-Python release**.
-> As of Phase 23 the pure-Python implementation has been demoted to a
-> test-only reference under `tests/reference/tinyquant_py_reference/`
-> and is no longer shipped. Phase 24 reclaims the `tinyquant-cpu` name
-> with a Rust-backed fat wheel at version `0.2.0+` — same import path
-> (`import tinyquant_cpu`), same public API surface, different engine.
+TinyQuant is published on PyPI as `tinyquant-cpu` (imports as `tinyquant_cpu`).
+The current release is a Rust-backed fat wheel with no Python-only fallback.
 
 ```bash
-# Pinned pure-Python release (Phase 22 and earlier)
-pip install tinyquant-cpu==0.1.1
-
-# Phase 24 Rust-backed fat wheel (when released)
-pip install 'tinyquant-cpu>=0.2.0'
+pip install tinyquant-cpu          # current Rust-backed release
+pip install "tinyquant-cpu[pgvector]"   # with PostgreSQL + pgvector support
 ```
 
-For PostgreSQL + pgvector backend support on the `0.1.1` line:
+For Rust projects:
+
+```toml
+[dependencies]
+tinyquant-core = "*"
+```
+
+For Node/Bun/TypeScript:
 
 ```bash
-pip install "tinyquant-cpu[pgvector]==0.1.1"
+npm install @tinyquant/core
 ```
 
-For development against this repository, dev dependencies are installed
-directly from the pinned set (the tree is no longer a buildable
-package):
-
-```bash
-pip install pytest pytest-cov hypothesis numpy ruff mypy
-pytest               # exercises tests/reference/tinyquant_py_reference via pythonpath
-pytest -m parity     # cross-impl parity scaffold
-```
-
-**Requirements:** Python 3.12+, NumPy 1.26+
+**Requirements:** Python 3.12+, NumPy 2.x, Rust 1.87+ MSRV for the Rust crate.
 
 ---
 
@@ -148,10 +141,10 @@ print(f"Ratio: {vector.nbytes / compressed.size_bytes:.1f}x")
 restored = codec.decompress(compressed, config, codebook)
 ```
 
-### Batch compression
+### Batch compression (Rayon-parallel on Rust side)
 
 ```python
-# Compress 10,000 vectors at once
+# Compress 10,000 vectors at once — parallelized via Rayon in the Rust core
 vectors = np.random.default_rng(0).standard_normal((10_000, 768)).astype(np.float32)
 compressed_batch = codec.compress_batch(vectors, config, codebook)
 restored_batch = codec.decompress_batch(compressed_batch, config, codebook)
@@ -196,8 +189,6 @@ suitable for disk or network transfer:
 from tinyquant_cpu.codec import CompressedVector
 
 raw_bytes = compressed.to_bytes()
-# Save raw_bytes to disk, send over network, etc.
-
 restored = CompressedVector.from_bytes(raw_bytes)
 ```
 
@@ -207,16 +198,11 @@ restored = CompressedVector.from_bytes(raw_bytes)
 import psycopg
 from tinyquant_cpu.backend.adapters.pgvector import PgvectorAdapter
 
-def connection_factory():
-    return psycopg.connect("postgresql://user:pass@localhost/mydb")
-
 adapter = PgvectorAdapter(
-    connection_factory=connection_factory,
+    connection_factory=lambda: psycopg.connect("postgresql://user:pass@localhost/mydb"),
     table_name="embeddings",
     dimension=768,
 )
-
-# Decompress TinyQuant vectors and ingest into pgvector
 adapter.ingest(corpus.decompress_all())
 results = adapter.search(query_vector, top_k=10)
 ```
@@ -228,11 +214,13 @@ results = adapter.search(query_vector, top_k=10)
 - **8x compression** at 4-bit without residuals (rho = 0.998, 95% recall)
 - **16x compression** at 2-bit (rho = 0.964, 85% recall)
 - **Perfect fidelity** with optional FP16 residual correction (rho = 1.000)
-- **Deterministic** — same inputs always produce byte-identical output
-- **CPU-only** — pure Python + NumPy, no GPU required
-- **Pluggable backends** — `BruteForceBackend` included, `PgvectorAdapter` for production
+- **Deterministic** — same inputs always produce byte-identical output across all language bindings
+- **Rust-native core** — `tinyquant-core` crate; CPU SIMD dispatch (AVX2/NEON) via runtime feature detection; Rayon parallel batch with determinism guarantee
+- **Optional GPU acceleration** — `tinyquant-gpu-wgpu` crate; WGSL kernels for rotate/quantize/dequantize/residual and corpus cosine search; lazy pipeline caching; `BackendPreference` adapter selection; automatic routing above 512-vector threshold
+- **Multi-language** — Python fat wheel (`tinyquant-cpu`), TypeScript/Node (`@tinyquant/core`), Rust native (`tinyquant-core`), C ABI (`tinyquant-sys`)
+- **Pluggable backends** — `BruteForceBackend` for in-process exact search; `PgvectorAdapter` for PostgreSQL + pgvector
 - **Three compression policies** — COMPRESS, PASSTHROUGH, FP16
-- **Versioned binary serialization** — compact, forward-compatible format
+- **Versioned binary serialization** — TQCV wire format with mmap corpus files (`tinyquant-io`)
 - **Apache-2.0 licensed**
 
 ---
@@ -262,12 +250,21 @@ implementation:
 
 | Path | Purpose |
 | --- | --- |
-| `rust/` | Cargo workspace for the shipping Rust implementation (tinyquant-core, tinyquant-py, tinyquant-sys, tinyquant-cli) |
-| `tests/reference/tinyquant_py_reference/` | Pure-Python reference implementation — test-only oracle, frozen at `v0.1.1` behavior |
-| `tests/parity/` | Cross-implementation parity suite (`pytest -m parity`); self-parity is live, Rust-side parity wires on at Phase 24 |
-| `tests/` | Unit, integration, E2E, calibration, and architecture suites (214 tests against the reference) |
+| `rust/crates/tinyquant-core/` | Codec, corpus, backend trait, SIMD dispatch (AVX2/NEON), Rayon batch |
+| `rust/crates/tinyquant-io/` | TQCV serialization format, zero-copy mmap corpus files |
+| `rust/crates/tinyquant-gpu-wgpu/` | Optional wgpu/WGSL GPU accelerator (Phase 27+) |
+| `rust/crates/tinyquant-py/` | pyo3 Python extension — the engine behind `tinyquant-cpu` |
+| `rust/crates/tinyquant-sys/` | C ABI via cbindgen |
+| `rust/crates/tinyquant-cli/` | Standalone CLI binary |
+| `rust/crates/tinyquant-js/` | napi-rs TypeScript/Node bindings |
+| `rust/crates/tinyquant-bruteforce/` | `BruteForceBackend` reference implementation |
+| `rust/crates/tinyquant-pgvector/` | PostgreSQL + pgvector ACL adapter |
+| `rust/crates/tinyquant-bench/` | Criterion benchmarks + calibration quality gates |
+| `tests/reference/tinyquant_py_reference/` | Pure-Python frozen oracle — differential test reference |
+| `tests/parity/` | Cross-implementation parity suite (`pytest -m parity`) |
+| `tests/` | Python unit, integration, E2E, calibration, and architecture suites (252 tests) |
 | `experiments/` | Benchmarks and empirical evaluations |
-| `docs/` | Obsidian wiki with design docs, research, and specs |
+| `docs/` | Obsidian wiki with design docs, research, and SDLC plans |
 
 ---
 
@@ -277,32 +274,30 @@ implementation:
 git clone https://github.com/better-with-models/TinyQuant.git
 cd TinyQuant
 
-# Install dev dependencies directly — the tree is no longer a buildable package.
+# Python dev dependencies
 pip install pytest pytest-cov hypothesis numpy ruff mypy build
 
-# Lint and type check (against tests/reference/tinyquant_py_reference)
+# Lint and type check
 ruff check . && ruff format --check .
 mypy --strict .
 
-# Run the full test suite (reference is reachable via pyproject's pythonpath).
+# Python test suite (exercises tests/reference/tinyquant_py_reference)
 pytest --cov=tinyquant_py_reference
 
-# Cross-impl parity scaffold (rs side skipped until Phase 24 fat wheel).
-pytest -m parity -v
+# Rust: lint, test, cross-impl parity
+cd rust
+cargo clippy --workspace -- -D warnings
+cargo test --workspace
 ```
 
-The test suite includes 214 tests covering unit, integration,
-end-to-end, calibration, and architecture-enforcement scenarios
-against the reference implementation. Coverage is held above 90% by
-CI. Live PostgreSQL+pgvector tests run against a Docker container in
-CI via testcontainers.
+The Python test suite includes 252 tests covering unit, integration,
+end-to-end, calibration, and architecture-enforcement scenarios.
+Coverage is held above 90% by CI. Live PostgreSQL + pgvector tests run
+against a Docker container in CI via `testcontainers`.
 
 ---
 
 ## Reproducing the Benchmark
-
-The full benchmark from the [report](experiments/quantization-benchmark/REPORT.md)
-can be reproduced with:
 
 ```bash
 export OPENAI_API_KEY="your-key-here"

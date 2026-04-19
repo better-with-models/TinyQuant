@@ -9,7 +9,7 @@ tags:
   - wgsl
   - backend-preference
 date-created: 2026-04-18
-status: active
+status: complete
 category: planning
 ---
 

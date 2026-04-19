@@ -13,6 +13,27 @@ status: active
 > Append-only record of documentation-system changes. Use the format
 > `## [YYYY-MM-DD] operation | description`.
 
+## [2026-04-18] normalize | Phase 28 complete; Phase 29 branch opened; vault normalized
+
+- Phase 28 (wgpu pipeline caching, residual GPU pass, backend preference) merged
+  via PR #31 — `c81f524`
+- Roadmap updated: Phase 28 → **complete**; Phase 29 → **active**
+- Plan file `status` fields updated: phase-28 → complete; phase-11 → complete
+  (was incorrectly left as draft)
+- Implementation notes created:
+  - [[design/rust/phase-16-implementation-notes]] — TQCV wire format and Python
+    byte-parity
+  - [[design/rust/phase-19-implementation-notes]] — `SearchBackend` trait,
+    `BruteForceBackend`, `PgvectorAdapter`
+  - [[design/rust/phase-21-implementation-notes]] — Rayon batch path,
+    calibration gates, xtask bench
+  - [[design/rust/phase-28-implementation-notes]] — pipeline caching, residual
+    GPU pass, lifecycle API, backend preference
+- `docs/index.md`: added implementation-notes entries for phases 16, 19, 21, 28;
+  removed Scratch section (scratch files deleted in `6b1bb8f`)
+- `docs/log.md`: removed dead wikilinks to deleted scratch files
+- Branch `feature/docs-normalize-phase-29` opened from `develop` for this turn
+
 ## [2026-04-18] normalize | Docs-normalize turn: Gantt, reading order, and log
 
 - `feature/phase-27.5-resident-corpus-search` merged to `develop` via PR #30 (`de0230e`)
@@ -31,7 +52,7 @@ status: active
 - Phase 28 plan fleshed out: `residual_decode.wgsl` shader written; Step 5 `todo!()` stubs replaced with full bind-group + dispatch + readback code; subnormal fix for `f32_to_f16` documented
 ## [2026-04-16] fix | Phase 27.5 audit findings resolved in tinyquant-gpu-wgpu
 
-Applied all six findings from [[scratch/audit-phase-27.5-best-practice-codex]]:
+Applied all six findings from the Phase 27.5 best-practice audit:
 
 - Added `InvalidTopK` variant to `TinyQuantGpuError`; `cosine_topk` now
   returns it when `top_k == 0`
@@ -51,11 +72,9 @@ Applied all six findings from [[scratch/audit-phase-27.5-best-practice-codex]]:
 
 All tests green; clippy clean on both crates.
 
-## [2026-04-16] audit | Repo-wide security audit note added
+## [2026-04-16] audit | Repo-wide security audit findings recorded
 
-Added [[scratch/security-audit-repo-codex-2026-04-16]] as a static
-security review of the current TinyQuant repo. The note records four
-findings:
+Static security review of the TinyQuant repo identified four findings:
 
 - one high-severity denial-of-service issue in `tinyquant-io`
   deserialization and corpus-file parsing
@@ -64,32 +83,24 @@ findings:
 - two low-severity release-workflow hardening gaps (`cargo vet`
   running advisory-only and mutable Action-tag pinning)
 
-The note also records non-findings for the `tinyquant-sys` C ABI,
-`tinyquant-pgvector` SQL adapter, and JS build tooling, plus the
-successful verification run `cargo test -p tinyquant-io --quiet`.
+Non-findings recorded for the `tinyquant-sys` C ABI, `tinyquant-pgvector`
+SQL adapter, and JS build tooling. Verification run
+`cargo test -p tinyquant-io --quiet` confirmed clean output.
 
-## [2026-04-16] review | Phase 27.5 Claude code review note added
+## [2026-04-16] review | Phase 27.5 code reviews conducted
 
-Added [[scratch/review-phase-27.5]] as a structured code review of commit `e78ec8e`
-on `feature/phase-27.5-resident-corpus-search`. Covers plan compliance, acceptance
-criteria status, and nine findings (four risks, four nits, one design question)
-against [[plans/rust/phase-27.5-resident-corpus-search]]. Normalized to Obsidian
-vault conventions: full frontmatter, callouts for all finding entries, and
-wikilink for the plan cross-reference.
+Three review passes performed against `feature/phase-27.5-resident-corpus-search`
+before merge:
 
-## [2026-04-16] review | Phase 27.5 best-practice and code-smell audit added
+- Structured code review of commit `e78ec8e`: plan compliance, acceptance
+  criteria status, nine findings (four risks, four nits, one design question)
+  against [[plans/rust/phase-27.5-resident-corpus-search]].
+- Best-practice and code-smell audit: worktree-based review focused on
+  best-practice drift, shared search-contract mismatches, and maintainability
+  findings in `tinyquant-gpu-wgpu`.
+- Branch review against `develop`: 1 high, 2 medium, 1 low finding.
 
-Added [[scratch/audit-phase-27.5-best-practice-codex]] as a worktree-based audit
-of `feature/phase-27.5-resident-corpus-search`, focused on best-practice drift,
-shared search-contract mismatches, and maintainability/code-smell findings in
-`tinyquant-gpu-wgpu`.
-
-## [2026-04-16] review | Phase 27.5 branch review note added
-
-Added [[scratch/review-phase-27.5-codex]] as an ad hoc review note for the branch
-`feature/phase-27.5-resident-corpus-search`, covering code-review findings
-against `develop` and against
-[[plans/rust/phase-27.5-resident-corpus-search]].
+All findings resolved before merge (`6e40661`, `392c29a`, `4869f00`).
 
 ## [2026-04-08] init | Documentation system scaffolding created
 

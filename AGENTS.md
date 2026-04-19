@@ -1,6 +1,6 @@
 # AGENTS.md — TinyQuant
 
-TinyQuant is a CPU-only vector quantization codec for embedding storage compression.
+TinyQuant is a Rust-native vector quantization codec for embedding compression — CPU SIMD, optional GPU acceleration, and Python/TypeScript bindings.
 
 ## Layout
 

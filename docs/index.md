@@ -162,21 +162,26 @@ status: active
 | [[plans/phase-08-ci-cd-workflows|Phase 8: CI/CD Workflows]] | ci.yml and release.yml GitHub Actions workflows | 2026-04-08 |
 | [[plans/phase-09-pgvector-adapter|Phase 9: Pgvector Adapter]] | PgvectorAdapter ACL + ~6 integration tests | 2026-04-08 |
 | [[plans/phase-10-calibration-release|Phase 10: Calibration & Release]] | Calibration tests, CHANGELOG, README, v0.1.0 tag | 2026-04-08 |
-| [[plans/rust/phase-11-rust-workspace-scaffold\|Phase 11: Rust Workspace Scaffold]] | Cargo workspace scaffold: 10 members, toolchain pin 1.78.0, lint wall, smoke tests, rust-ci.yml | 2026-04-10 |
+| [[plans/rust/phase-11-rust-workspace-scaffold\|Phase 11: Rust Workspace Scaffold]] | Cargo workspace scaffold: 10 members, toolchain pin 1.78.0, lint wall, smoke tests, rust-ci.yml — **complete** | 2026-04-10 |
 | [[plans/rust/phase-12-shared-types-and-errors\|Phase 12: Shared Types and Errors]] | `tinyquant-core::types` aliases and `tinyquant-core::errors` enums, MSRV 1.78→1.81, thiserror v2 under no_std — **complete** | 2026-04-10 |
 | [[plans/rust/phase-13-rotation-numerics\|Phase 13: Rotation Matrix and Numerics]] | `codec::CodecConfig`, `ChaChaGaussianStream`, `RotationMatrix`, `RotationCache`, Python-parity `config_hash`, Rust-canonical rotation fixtures under LFS — **complete** | 2026-04-10 |
 | [[design/rust/phase-13-implementation-notes\|Phase 13 Implementation Notes]] | Execution-log view of Phase 13: what landed, deviations from the plan, gotchas (Python bool parity, faer stack, clippy lints), locked-in invariants, and carryover into Phase 14+ | 2026-04-10 |
 | [[plans/rust/phase-14-codebook-quantize\|Phase 14: Codebook and Quantize Kernels]] | `tinyquant_core::codec::Codebook` value object + private `scalar_quantize` / `scalar_dequantize` kernels, Python-parity `train` + `quantize` across `bw ∈ {2, 4, 8}`, 10 000 × 64 training corpus + 10 000-value quantize corpus frozen under LFS — **complete** | 2026-04-10 |
 | [[design/rust/phase-14-implementation-notes\|Phase 14 Implementation Notes]] | Execution-log view of Phase 14: bit-width sweep scoped in during execution, proptest deferred on MSRV 1.81 (replaced by a deterministic `rand_chacha` scan), runtime `fs::read` fixture pattern, narrow `#[allow(clippy::cast_*)]` on `Codebook::train`, and the Python-literal tie-break gotcha in the round-trip test | 2026-04-10 |
 | [[design/rust/phase-15-implementation-notes\|Phase 15 Implementation Notes]] | Execution-log view of Phase 15: codec service, residual, and CompressedVector — Rust-canonical fixture strategy due to RNG divergence, clippy constraint patterns, and fidelity gate numbers | 2026-04-10 |
+| [[design/rust/phase-16-implementation-notes\|Phase 16 Implementation Notes]] | Execution-log view of Phase 16: `tinyquant-io` serialization — TQCV wire format, `to_bytes`/`from_bytes`, bit-pack exhaustive tests, Python byte-parity fixtures, allocation-bound guard | 2026-04-11 |
 | [[design/rust/phase-17-implementation-notes\|Phase 17 Implementation Notes]] | Execution-log view of Phase 17: `tinyquant-io` zero-copy views, Level-2 TQCV corpus file container, and mmap-based reader — TQCV magic-byte layout, `mmap-lock` feature flag, and `MmapView` lifetime safety model | 2026-04-11 |
 | [[design/rust/phase-18-implementation-notes\|Phase 18 Implementation Notes]] | Execution-log view of Phase 18: `Corpus` aggregate root, vector insertion, batch atomicity, three-policy decompression, domain events, and insertion-ordered vector map | 2026-04-11 |
+| [[design/rust/phase-19-implementation-notes\|Phase 19 Implementation Notes]] | Execution-log view of Phase 19: `SearchBackend` trait, `BruteForceBackend`, `PgvectorAdapter` — FP32-boundary enforcement, descending-score sort fix, `shift_remove` ordering, pgvector integration CI | 2026-04-11 |
+| [[design/rust/phase-20-implementation-notes\|Phase 20 Implementation Notes]] | Execution-log for Phase 20: SIMD dispatch framework — `DispatchKind`, `CachedDispatch`, `kernels::avx2`/`neon` wrappers delegating to scalar, parity test binaries split by kind | 2026-04-11 |
+| [[design/rust/phase-21-implementation-notes\|Phase 21 Implementation Notes]] | Execution-log for Phase 21: Rayon parallel batch with `PartialInit`, calibration gates (PearsonOnline, mean_recall_at_k, GoldCorpus), `cargo xtask bench` capture/check/diff — determinism contract and CI budget job | 2026-04-12 |
 | [[design/rust/phase-22-implementation-notes\|Phase 22 Implementation Notes]] | Execution-log for Phase 22: pyo3 wheel, C ABI via cbindgen, standalone CLI, and multi-arch release workflow — declared deviations and release-gate pattern | 2026-04-14 |
 | [[design/rust/phase-23-implementation-notes\|Phase 23 Implementation Notes]] | Execution-log for Phase 23: Python reference demotion to `tests/reference/`, parity scaffold, CI guard against reference leakage into wheels | 2026-04-14 |
 | [[design/rust/phase-24-implementation-notes\|Phase 24 Implementation Notes]] | Execution-log for Phase 24: fat-wheel assembler, PEP 376 RECORD, xtask publish guards, dry-run release workflow — 6 declared deviations | 2026-04-14 |
 | [[design/rust/phase-25-implementation-notes\|Phase 25 Implementation Notes]] | Execution-log for Phase 25: `@tinyquant/core` napi-rs bindings, CJS bundle, JSDoc, and npm release workflow — 142/142 tests, slice provenance | 2026-04-14 |
 | [[design/rust/phase-27-implementation-notes\|Phase 27 Implementation Notes]] | Execution-log for Phase 27: `tinyquant-gpu-wgpu` crate skeleton, WGSL kernels, parity tests, Layer 2/3 CI — residual pass and pipeline caching deferred to Phase 28 | 2026-04-15 |
 | [[design/rust/phase-27.5-implementation-notes\|Phase 27.5 Implementation Notes]] | Execution-log for Phase 27.5: GPU-resident corpus search, `cosine_topk` WGSL kernel, `GpuCorpusState`, Phase 27.5 best-practice audit resolutions | 2026-04-18 |
+| [[design/rust/phase-28-implementation-notes\|Phase 28 Implementation Notes]] | Execution-log for Phase 28: `CachedPipelines` lazy caching, `residual_decode.wgsl` GPU pass, `load_pipelines` lifecycle API, `BackendPreference` and `enumerate_adapters` — subnormal fix and ratio-based regression gate | 2026-04-18 |
 | [[plans/rust/phase-15-codec-service-residual\|Phase 15: Codec Service, Residual, and CompressedVector]] | `tinyquant-core::codec::Codec` service with compress/decompress, `compute_residual`, `CompressedVector` — Rust-canonical fixture strategy | 2026-04-10 |
 | [[plans/rust/phase-16-serialization-parity\|Phase 16: Serialization and Python Byte Parity]] | `tinyquant-io` serialization with Python byte-level parity, endian contract, version tag | 2026-04-10 |
 | [[plans/rust/phase-17-zero-copy-mmap\|Phase 17: Zero-copy Views and Mmap Corpus Files]] | `tinyquant-io` zero-copy views, Level-2 TQCV file container, mmap-based reader | 2026-04-10 |
@@ -194,7 +199,7 @@ status: active
 | [[plans/rust/phase-26-preparedcodec-calibration\|Phase 26: PreparedCodec + Calibration Gates]] | `PreparedCodec` in `tinyquant-core`, `Codec::compress_prepared` / `decompress_prepared_into`, calibration gate restoration (GAP-QUAL-*) — **complete** | 2026-04-15 |
 | [[plans/rust/phase-27-wgpu-wgsl-kernels\|Phase 27: wgpu + WGSL Kernels]] | `tinyquant-gpu-wgpu` crate skeleton, WGSL rotate/quantize/dequantize kernels, parity tests, Layer 2/3 CI — **complete** | 2026-04-15 |
 | [[plans/rust/phase-27.5-resident-corpus-search\|Phase 27.5: Resident Corpus GPU Search]] | `cosine_topk` WGSL kernel, `GpuCorpusState`, `prepare_corpus_for_device`, FR-GPU-004 criterion bench — **complete** | 2026-04-15 |
-| [[plans/rust/phase-28-wgpu-pipeline-caching\|Phase 28: wgpu Pipeline Caching, Residual Pass & Backend Preference]] | `CachedPipelines`, residual encode/decode GPU passes, `load_pipelines` lifecycle API, `BackendPreference` and `enumerate_adapters` — **active** | 2026-04-18 |
+| [[plans/rust/phase-28-wgpu-pipeline-caching\|Phase 28: wgpu Pipeline Caching, Residual Pass & Backend Preference]] | `CachedPipelines`, residual encode/decode GPU passes, `load_pipelines` lifecycle API, `BackendPreference` and `enumerate_adapters` — **complete** | 2026-04-18 |
 | [[plans/rust/phase-29-cuda-backend\|Phase 29: Optional CUDA Backend]] | `tinyquant-gpu-cuda` crate, `cust`-based `CudaBackend`, PTX kernels for quantize/dequantize/cosine, FR-GPU-007 stub CI | 2026-04-15 |
 
 ## Specs
@@ -211,19 +216,6 @@ status: active
 | Page | Summary | Date |
 |------|---------|------|
 | *No comparison pages yet* | | |
-
-## Scratch
-
-Ad-hoc notes, review artifacts, and working documents that may be promoted to
-permanent wiki pages or discarded. Not subject to the same freshness obligations
-as other vault pages.
-
-| Page | Summary | Date |
-|------|---------|------|
-| [[scratch/security-audit-repo-codex-2026-04-16\|Repo Security Audit]] | Static repo-wide security audit: 1 high, 1 medium, and 2 low findings, centered on untrusted `tinyquant-io` deserialization bounds and release-workflow hardening gaps | 2026-04-16 |
-| [[scratch/audit-phase-27.5-best-practice-codex\|Phase 27.5 Best-Practice Audit]] | Worktree-based audit of `feature/phase-27.5-resident-corpus-search`: best-practice drift, shared-contract mismatches, and code smells in `tinyquant-gpu-wgpu` | 2026-04-16 |
-| [[scratch/review-phase-27.5\|Phase 27.5 Claude Code Review]] | Structured review of commit `e78ec8e`: plan compliance, acceptance criteria status, 4 risks, 4 nits, 1 design question | 2026-04-16 |
-| [[scratch/review-phase-27.5-codex\|Phase 27.5 Branch Review]] | Ad hoc review of `feature/phase-27.5-resident-corpus-search` against `develop`: 1 high, 2 medium, 1 low finding | 2026-04-16 |
 
 ## Meta
 
