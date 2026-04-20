@@ -166,6 +166,7 @@ Gates Phase 22 (release). Scope: add integration tests to close all P0 and P1
 Rust gaps plus the P2 and P3 Rust gaps that do not require the gold corpus.
 
 **P0 closures:**
+
 - `corpus_aggregate.rs`: inject one corrupt `VectorEntry` into a batch of 10;
   verify 9 FP32 vectors delivered and corrupt `vector_id` in error report
   (GAP-BACK-004).
@@ -174,6 +175,7 @@ Rust gaps plus the P2 and P3 Rust gaps that do not require the gold corpus.
   (GAP-BACK-005).
 
 **P1 closures** (all in `tinyquant-core/tests/codec_service.rs` unless noted):
+
 - `compress_dimension_mismatch_returns_error_and_no_output` (GAP-COMP-006)
 - `compress_embeds_config_hash_in_output` (GAP-COMP-007)
 - `decompress_config_mismatch_returns_error_and_no_output` (GAP-DECOMP-003)
@@ -182,6 +184,7 @@ Rust gaps plus the P2 and P3 Rust gaps that do not require the gold corpus.
 - `pgvector_adapter_preserves_dimension` unit test without live DB (GAP-BACK-003)
 
 **P2 closures:**
+
 - `compress_with_residual_sets_correct_payload_length` in `codec_service.rs` (GAP-COMP-004)
 - `each_corpus_gets_unique_id` in `corpus_aggregate.rs` (GAP-CORP-001)
 - `fp16_policy_precision_within_bound` in `compression_policy.rs` (GAP-CORP-006)
@@ -189,6 +192,7 @@ Rust gaps plus the P2 and P3 Rust gaps that do not require the gold corpus.
   `zero_copy.rs` (GAP-SER-003)
 
 **P3 closure:**
+
 - Architecture test asserting `SearchBackend` trait methods accept no
   `CompressedVector` parameter (GAP-BACK-001)
 

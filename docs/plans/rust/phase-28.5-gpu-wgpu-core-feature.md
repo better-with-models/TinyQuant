@@ -25,8 +25,8 @@ category: planning
 > No new compute logic. Every kernel, pipeline, and test introduced in
 > Phases 27–28 ships unchanged. This phase is purely about the public
 > surface and the crate publication graph.
-
 > [!note] Reference docs
+>
 > - [[design/rust/gpu-acceleration|GPU Acceleration Design]]
 > - [[design/rust/feature-flags|Feature Flags and Optional Dependencies]]
 > - [[plans/rust/phase-27-wgpu-wgsl-kernels|Phase 27]] — crate skeleton
@@ -603,7 +603,6 @@ Add a new job after the `gpu-compile` job:
 > `libegl1-mesa-dev` by default. The explicit `apt-get install` step is
 > required; without it `wgpu` cannot find an EGL context for the `gl`
 > backend and all tests skip/panic.
-
 > [!note] Cache key separation
 > The `key: gpu-feature-gate-1.87` cache key prevents cache collisions with
 > the `1.81.0`-toolchain jobs that also use `rust -> target` as the
@@ -919,20 +918,17 @@ Gated in the test harness as `#[cfg(not(feature = "gpu-wgpu"))]`.
 > feature alias. This confuses downstream users who see two feature names
 > (`gpu-wgpu` and `tinyquant-gpu-wgpu`) for the same thing. Always use
 > `dep:` to suppress the implicit alias.
-
 > [!warning] `gpu-wgpu` must imply `std`
 > If you forget `"std"` in `gpu-wgpu = ["dep:tinyquant-gpu-wgpu", "std"]`,
 > the build will fail with confusing linker or missing-symbol errors when wgpu
 > tries to pull in OS primitives that are absent from the no_std build. The
 > compiler error appears in wgpu, not in your code.
-
 > [!warning] Toolchain 1.87 only for the GPU feature
 > The `gpu-feature-gate` CI job must use `1.87.0`. Accidentally running it
 > with `1.81.0` will fail at the wgpu transitive deps with confusing edition
 > errors. Use `RUSTUP_TOOLCHAIN: "1.87.0"` env at the job level (same pattern
 > as the existing `gpu-compile` job) so it applies to all steps without
 > per-step annotation.
-
 > [!warning] `#[non_exhaustive]` + feature-gated variants
 > `CodecError` is `#[non_exhaustive]`. Adding `#[cfg(feature = "gpu-wgpu")]`
 > variants does not break existing match statements in downstream code because
@@ -940,14 +936,12 @@ Gated in the test harness as `#[cfg(not(feature = "gpu-wgpu"))]`.
 > within `tinyquant-core` itself (which is in the defining crate), exhaustive
 > matches must be updated to include the new variants — or use a `cfg`-gated
 > arm. The CI clippy pass will catch any exhaustiveness failures.
-
 > [!warning] `PreparedCodec` must be built from the same `(config, codebook)` as the GPU path
 > `backend.compress_batch(vectors, rows, cols, prepared)` uses the rotation
 > matrix inside `PreparedCodec` to rotate on the GPU. If `prepared` was built
 > from a different config than the one used to train the codebook, the output
 > will be silently wrong (not an error). This is the same silent misuse risk
 > as the CPU `compress_prepared` path — document it clearly.
-
 > [!warning] `prepare_for_device` uploads rotation + codebook buffers
 > The first call to `prepare_for_device` performs a GPU upload. For large
 > codebooks or rotation matrices (e.g. dim=4096), this can be tens of
