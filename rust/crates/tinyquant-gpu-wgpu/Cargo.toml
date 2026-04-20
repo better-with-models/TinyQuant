@@ -7,7 +7,7 @@ publish         = false
 description     = "wgpu/WGSL GPU-accelerated batch compression backend for TinyQuant"
 
 [dependencies]
-tinyquant-core = { workspace = true }
+tinyquant-core = { workspace = true, features = ["gpu-wgpu"] }
 wgpu           = { version = "22", features = ["wgsl"] }
 tokio          = { version = "1", features = ["rt"] }
 thiserror      = { workspace = true }

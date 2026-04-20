@@ -362,6 +362,118 @@ impl Codec {
     }
 }
 
+/// Minimum batch size below which GPU offload is not attempted.
+///
+/// Below this threshold the host↔device transfer overhead exceeds the
+/// compute savings.  Mirrors `tinyquant_gpu_wgpu::GPU_BATCH_THRESHOLD`.
+///
+/// Only present when the `gpu-wgpu` feature is enabled.
+#[cfg(feature = "gpu-wgpu")]
+pub const GPU_BATCH_THRESHOLD: usize = 512;
+
+/// Trait that every `TinyQuant` GPU compute backend must satisfy.
+///
+/// Implementations of this trait live in external crates (e.g.
+/// `tinyquant-gpu-wgpu`). The trait is defined here so
+/// `tinyquant-core` can express the `compress_batch_gpu_with` method
+/// without a dependency on any concrete GPU crate (which would create
+/// a cyclic crate dependency, since GPU crates already depend on
+/// `tinyquant-core`).
+///
+/// Only present when the `gpu-wgpu` feature is enabled.
+#[cfg(feature = "gpu-wgpu")]
+pub trait GpuComputeBackend {
+    /// The error type returned by this backend's operations.
+    ///
+    /// Must be convertible to [`CodecError`] so
+    /// [`Codec::compress_batch_gpu_with`] can map errors uniformly.
+    type Error: core::fmt::Debug + Into<crate::errors::CodecError>;
+
+    /// Upload `PreparedCodec` buffers to device memory. Idempotent.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Self::Error` if device upload fails.
+    fn prepare_for_device(
+        &mut self,
+        prepared: &mut PreparedCodec,
+    ) -> Result<(), Self::Error>;
+
+    /// Compress `rows` FP32 vectors of dimension `cols` on the GPU.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Self::Error` if the GPU kernel dispatch or readback fails.
+    fn compress_batch(
+        &mut self,
+        input: &[f32],
+        rows: usize,
+        cols: usize,
+        prepared: &PreparedCodec,
+    ) -> Result<alloc::vec::Vec<CompressedVector>, Self::Error>;
+}
+
+#[cfg(feature = "gpu-wgpu")]
+impl Codec {
+    /// Batch compress with automatic GPU routing.
+    ///
+    /// When `rows >= GPU_BATCH_THRESHOLD` (currently 512), the batch is
+    /// dispatched to `backend` via the [`GpuComputeBackend`] trait.
+    /// Otherwise the call falls through to the CPU path using `parallelism`.
+    ///
+    /// # Caller responsibility
+    ///
+    /// `backend` must have been created and initialized by the caller (which
+    /// may require an async executor, depending on the backend). This method
+    /// only calls synchronous trait methods on the backend.
+    ///
+    /// `prepared` is passed by mutable reference so `prepare_for_device` can
+    /// attach GPU-resident state (idempotent — safe to call before every batch).
+    ///
+    /// # Async-context safety
+    ///
+    /// Do **not** call this function from an async context that owns an active
+    /// tokio or other executor on the same thread. `wgpu` may internally call
+    /// `device.poll(wgpu::Maintain::Wait)`, which blocks the thread.
+    ///
+    /// # Errors
+    ///
+    /// - [`CodecError::GpuUnavailable`] if `prepare_for_device` fails.
+    /// - [`CodecError::GpuError`] if the GPU kernel dispatch or readback fails.
+    /// - All errors from [`Codec::compress_batch_with`] when the CPU fallback
+    ///   is taken.
+    pub fn compress_batch_gpu_with<B>(
+        &self,
+        vectors: &[f32],
+        rows: usize,
+        cols: usize,
+        prepared: &mut PreparedCodec,
+        backend: &mut B,
+        parallelism: Parallelism,
+    ) -> Result<Vec<CompressedVector>, CodecError>
+    where
+        B: GpuComputeBackend,
+    {
+        if rows >= GPU_BATCH_THRESHOLD {
+            backend
+                .prepare_for_device(prepared)
+                .map_err(Into::into)?;
+            backend
+                .compress_batch(vectors, rows, cols, prepared)
+                .map_err(Into::into)
+        } else {
+            self.compress_batch_with(
+                vectors,
+                rows,
+                cols,
+                prepared.config(),
+                prepared.codebook(),
+                parallelism,
+            )
+        }
+    }
+}
+
 /// Module-level `compress` free function — mirrors `tinyquant_cpu.codec.compress`.
 ///
 /// # Errors
