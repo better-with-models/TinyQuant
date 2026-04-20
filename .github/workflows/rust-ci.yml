@@ -473,3 +473,43 @@ jobs:
         # --no-deps: pre-existing tinyquant-core lints fail at 1.87 clippy;
         # those are tracked separately in the 1.81 clippy job.
         run: cargo clippy --no-deps -p tinyquant-gpu-wgpu -- -D warnings
+
+  gpu-feature-gate:
+    name: build + test (tinyquant-core gpu-wgpu feature)
+    runs-on: ubuntu-22.04
+    # This job is independent of the runner-selection matrix because it always
+    # runs on a fixed GitHub-hosted image (needs mesa software renderer).
+    env:
+      RUSTUP_TOOLCHAIN: "1.87.0"
+      # Force wgpu to use the OpenGL software renderer available in mesa.
+      WGPU_BACKEND: "gl"
+      MESA_NO_ERROR: "1"
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.87.0"
+          components: clippy
+      - name: install mesa EGL (software renderer)
+        run: sudo apt-get update -q && sudo apt-get install -y libegl1-mesa-dev libgl1-mesa-dri
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+          key: gpu-feature-gate-1.87
+      - name: build tinyquant-core with gpu-wgpu feature
+        run: cargo build -p tinyquant-core --features gpu-wgpu
+      - name: test tinyquant-core with gpu-wgpu feature (software renderer)
+        run: cargo test -p tinyquant-core --features gpu-wgpu
+      - name: clippy tinyquant-core with gpu-wgpu feature
+        run: cargo clippy --no-deps -p tinyquant-core --features gpu-wgpu -- -D warnings
+      - name: clippy tinyquant-core without gpu-wgpu feature
+        run: cargo clippy --no-deps -p tinyquant-core -- -D warnings
+      - name: verify no_std still compiles without gpu-wgpu
+        run: |
+          rustup target add thumbv7em-none-eabihf
+          cargo build -p tinyquant-core --no-default-features --target thumbv7em-none-eabihf
