@@ -33,8 +33,6 @@ pub mod types;
 
 /// GPU acceleration trait and threshold constant.
 ///
-/// Only present when the `gpu-wgpu` Cargo feature is enabled.
-///
 /// # Why these are defined here (not re-exported from `tinyquant-gpu-wgpu`)
 ///
 /// `tinyquant-gpu-wgpu` depends on `tinyquant-core`, so adding
@@ -43,20 +41,13 @@ pub mod types;
 /// Therefore `GpuComputeBackend` and `GPU_BATCH_THRESHOLD` are defined
 /// directly in `tinyquant-core`. Concrete implementations (`WgpuBackend`)
 /// live in `tinyquant-gpu-wgpu` and implement `GpuComputeBackend`.
-#[cfg(feature = "gpu-wgpu")]
 pub mod gpu {
     pub use crate::codec::service::{GpuComputeBackend, GPU_BATCH_THRESHOLD};
 }
 
 // Flat re-exports for ergonomic use without the `gpu` module prefix.
 /// The backend trait for GPU-accelerated compute operations.
-///
-/// Only present when the `gpu-wgpu` Cargo feature is enabled.
-#[cfg(feature = "gpu-wgpu")]
 pub use crate::codec::service::GpuComputeBackend;
 
 /// Minimum batch size below which GPU offload is not attempted.
-///
-/// Only present when the `gpu-wgpu` Cargo feature is enabled.
-#[cfg(feature = "gpu-wgpu")]
 pub use crate::codec::service::GPU_BATCH_THRESHOLD;

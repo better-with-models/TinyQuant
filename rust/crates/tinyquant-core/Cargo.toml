@@ -53,7 +53,6 @@ bytemuck   = { workspace = true }
 rand       = { workspace = true, features = ["std", "std_rng"] }
 # Phase 21: batch determinism tests exercise local rayon pools.
 rayon      = { workspace = true }
-tokio = { version = "1", features = ["rt"] }
 
 [[example]]
 name              = "dump_rotation_fixture"

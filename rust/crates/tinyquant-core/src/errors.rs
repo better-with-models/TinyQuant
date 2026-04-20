@@ -124,16 +124,10 @@ pub enum CodecError {
     },
 
     /// GPU backend is not available or failed to initialize.
-    ///
-    /// Only present when the `gpu-wgpu` feature is enabled.
-    #[cfg(feature = "gpu-wgpu")]
     #[error("GPU unavailable: {0}")]
     GpuUnavailable(alloc::sync::Arc<str>),
 
     /// A GPU compute operation returned an error.
-    ///
-    /// Only present when the `gpu-wgpu` feature is enabled.
-    #[cfg(feature = "gpu-wgpu")]
     #[error("GPU error: {0}")]
     GpuError(alloc::sync::Arc<str>),
 }

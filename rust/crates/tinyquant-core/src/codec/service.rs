@@ -366,9 +366,6 @@ impl Codec {
 ///
 /// Below this threshold the host↔device transfer overhead exceeds the
 /// compute savings.  Mirrors `tinyquant_gpu_wgpu::GPU_BATCH_THRESHOLD`.
-///
-/// Only present when the `gpu-wgpu` feature is enabled.
-#[cfg(feature = "gpu-wgpu")]
 pub const GPU_BATCH_THRESHOLD: usize = 512;
 
 /// Trait that every `TinyQuant` GPU compute backend must satisfy.
@@ -379,9 +376,6 @@ pub const GPU_BATCH_THRESHOLD: usize = 512;
 /// without a dependency on any concrete GPU crate (which would create
 /// a cyclic crate dependency, since GPU crates already depend on
 /// `tinyquant-core`).
-///
-/// Only present when the `gpu-wgpu` feature is enabled.
-#[cfg(feature = "gpu-wgpu")]
 pub trait GpuComputeBackend {
     /// The error type returned by this backend's operations.
     ///
