@@ -11,14 +11,20 @@
 //! so the routing and error conversion logic can be exercised without a live
 //! wgpu adapter.  Parity against the real `WgpuBackend` is covered by the
 //! `tinyquant-gpu-wgpu` integration tests in `parity_compress.rs`.
-
-#![cfg(feature = "gpu-wgpu")]
+//!
+//! Tests for items that are unconditionally compiled (`GpuComputeBackend`,
+//! `GPU_BATCH_THRESHOLD`, `CodecError::GpuUnavailable`, `CodecError::GpuError`)
+//! run in all configurations.  Tests that call `Codec::compress_batch_gpu_with`
+//! (which is still behind `#[cfg(feature = "gpu-wgpu")]`) are individually
+//! gated.
 
 use tinyquant_core::{
-    codec::{Codebook, Codec, CodecConfig, Parallelism, PreparedCodec},
+    codec::{Codec, Parallelism, PreparedCodec},
     errors::CodecError,
     GpuComputeBackend, GPU_BATCH_THRESHOLD,
 };
+#[cfg(feature = "gpu-wgpu")]
+use tinyquant_core::codec::{Codebook, CodecConfig};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -28,6 +34,7 @@ use tinyquant_core::{
 ///
 /// Uses `bit_width=4`, `seed=42`, `dimension=64`, `residual_enabled=false`.
 /// Training data: 256 sine-wave samples of dim 64 (enough distinct entries).
+#[cfg(feature = "gpu-wgpu")]
 fn make_prepared() -> (CodecConfig, Codebook, PreparedCodec) {
     let config = CodecConfig::new(4, 42, 64, false).unwrap();
     let training: Vec<f32> = (0..256 * 64)
@@ -64,6 +71,7 @@ impl MockCpuBackend {
         }
     }
 
+    #[cfg(feature = "gpu-wgpu")]
     fn with_error(err: CodecError) -> Self {
         Self {
             prepare_calls: 0,
@@ -180,6 +188,7 @@ fn codec_error_gpu_unavailable_message_contains_detail() {
 /// When `rows < GPU_BATCH_THRESHOLD`, `compress_batch_gpu_with` must fall
 /// through to the CPU path and produce byte-identical output to
 /// `compress_batch_with`.
+#[cfg(feature = "gpu-wgpu")]
 #[test]
 fn compress_batch_gpu_with_below_threshold_uses_cpu_path() {
     let (config, codebook, mut prepared) = make_prepared();
@@ -229,6 +238,7 @@ fn compress_batch_gpu_with_below_threshold_uses_cpu_path() {
 
 /// When `rows >= GPU_BATCH_THRESHOLD`, `compress_batch_gpu_with` must call
 /// `prepare_for_device` then `compress_batch` on the backend.
+#[cfg(feature = "gpu-wgpu")]
 #[test]
 fn compress_batch_gpu_with_above_threshold_calls_backend() {
     let (_config, _codebook, mut prepared) = make_prepared();
@@ -264,6 +274,7 @@ fn compress_batch_gpu_with_above_threshold_calls_backend() {
 
 /// Calling `compress_batch_gpu_with` twice on the same `PreparedCodec` must
 /// succeed (idempotency: `prepare_for_device` is safe to call multiple times).
+#[cfg(feature = "gpu-wgpu")]
 #[test]
 fn prepare_for_device_is_idempotent_via_codec() {
     let (_config, _codebook, mut prepared) = make_prepared();
@@ -311,6 +322,7 @@ fn prepare_for_device_is_idempotent_via_codec() {
 
 /// When the backend returns `CodecError::GpuUnavailable`, it must propagate
 /// unchanged through `compress_batch_gpu_with`.
+#[cfg(feature = "gpu-wgpu")]
 #[test]
 fn compress_batch_gpu_with_propagates_backend_error() {
     let (_config, _codebook, mut prepared) = make_prepared();
