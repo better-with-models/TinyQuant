@@ -102,7 +102,7 @@ impl<T> Drop for PartialInit<T> {
             let initialized = self
                 .flags
                 .get(i)
-                .map_or(false, |f| f.load(Ordering::Acquire));
+                .is_some_and(|f| f.load(Ordering::Acquire));
             if initialized {
                 // SAFETY: flag true means the caller wrote a valid T at slot i.
                 // assume_init_drop calls T::drop without freeing the slot's memory.
