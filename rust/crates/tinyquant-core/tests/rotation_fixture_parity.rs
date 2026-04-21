@@ -95,7 +95,6 @@ fn seed_42_dim_64_fixture_is_orthogonal_within_1e_12() {
 /// orthogonality test below, which checks a mathematical invariant
 /// of the build output rather than a byte-for-byte fingerprint.
 #[test]
-#[ignore = "cross-runner SIMD ISA nondeterminism at dim=768; see R19"]
 fn seed_42_dim_768_matches_frozen_snapshot_bit_for_bit() {
     let expected = load_fixture("seed_42_dim_768.f64.bin", 768);
     let rot = RotationMatrix::build(42, 768);

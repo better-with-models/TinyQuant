@@ -74,19 +74,16 @@ fn run_case(bw: u8) {
 // different codebook entries and therefore different compressed bytes.
 // Same root cause as the codebook d64 and dim=768 rotation tests (R19).
 #[test]
-#[ignore]
 fn codec_byte_parity_bw2() {
     run_case(2);
 }
 
 #[test]
-#[ignore]
 fn codec_byte_parity_bw4() {
     run_case(4);
 }
 
 #[test]
-#[ignore]
 fn codec_byte_parity_bw8() {
     run_case(8);
 }
@@ -118,7 +115,6 @@ fn pearson(x: &[f32], y: &[f32]) -> f32 {
 // Fidelity gate also depends on Codebook::train which is SIMD-ISA-sensitive.
 // Ignored for the same reason as the byte-parity tests above.
 #[test]
-#[ignore]
 fn codec_fidelity_pearson_rho_meets_gate() {
     use std::collections::HashMap;
 

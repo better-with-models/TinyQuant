@@ -147,19 +147,16 @@ fn assert_train_matches_fixture(bit_width: u8) {
 // and round-trip checks below until RotationMatrix::build is made
 // bit-reproducible across ISAs.
 #[test]
-#[ignore]
 fn train_matches_python_fixture_bw2_seed42_n10000_d64() {
     assert_train_matches_fixture(2);
 }
 
 #[test]
-#[ignore]
 fn train_matches_python_fixture_bw4_seed42_n10000_d64() {
     assert_train_matches_fixture(4);
 }
 
 #[test]
-#[ignore]
 fn train_matches_python_fixture_bw8_seed42_n10000_d64() {
     assert_train_matches_fixture(8);
 }
