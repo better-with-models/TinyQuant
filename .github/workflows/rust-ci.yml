@@ -513,3 +513,34 @@ jobs:
         run: |
           rustup target add thumbv7em-none-eabihf
           cargo build -p tinyquant-core --no-default-features --target thumbv7em-none-eabihf
+
+  python-pyo3-parity:
+    name: Python PyO3 parity (tinyquant_rs vs tinyquant_cpu)
+    runs-on: ubuntu-22.04
+    # Independent of runner selection — always use GitHub-hosted.
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+          key: python-pyo3-1.81
+      - name: Install maturin and build deps
+        run: pip install maturin numpy pytest
+      - name: Build and install tinyquant_rs (maturin develop)
+        working-directory: rust/crates/tinyquant-py
+        run: maturin develop
+      - name: Install tinyquant_cpu (Python reference)
+        run: pip install -e .
+      - name: Run parity tests
+        run: pytest rust/crates/tinyquant-py/tests/python/test_parity.py -v
