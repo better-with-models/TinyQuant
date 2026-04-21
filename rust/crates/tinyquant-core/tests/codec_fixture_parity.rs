@@ -69,10 +69,11 @@ fn run_case(bw: u8) {
     }
 }
 
-// Byte-exact parity against Python-generated fixtures is SIMD-ISA-sensitive:
+// Byte-exact parity against Python-generated fixtures was SIMD-ISA-sensitive:
 // pulp/faer picks different f64 kernels on AVX2 vs AVX-512 hosts, producing
 // different codebook entries and therefore different compressed bytes.
-// Same root cause as the codebook d64 and dim=768 rotation tests (R19).
+// The nondeterminism is resolved by capping x86_64 builds to AVX2 via
+// `-C target-feature=-avx512f,...` in `.cargo/config.toml`.
 #[test]
 fn codec_byte_parity_bw2() {
     run_case(2);
@@ -112,8 +113,8 @@ fn pearson(x: &[f32], y: &[f32]) -> f32 {
     num / (sx.sqrt() * sy.sqrt())
 }
 
-// Fidelity gate also depends on Codebook::train which is SIMD-ISA-sensitive.
-// Ignored for the same reason as the byte-parity tests above.
+// Fidelity gate also depends on Codebook::train, which was SIMD-ISA-sensitive.
+// Now stable with AVX2 capping in `.cargo/config.toml`.
 #[test]
 fn codec_fidelity_pearson_rho_meets_gate() {
     use std::collections::HashMap;
