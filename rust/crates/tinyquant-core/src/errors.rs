@@ -189,7 +189,7 @@ pub enum CorpusError {
         /// Zero-based index of the first failing vector in the batch.
         index: usize,
         /// The error produced by the failing vector.
-        source: alloc::boxed::Box<CorpusError>,
+        source: alloc::boxed::Box<Self>,
     },
 }
 
