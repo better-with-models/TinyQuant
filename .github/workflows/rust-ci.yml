@@ -517,6 +517,7 @@ jobs:
   python-pyo3-parity:
     name: Python PyO3 parity (tinyquant_rs vs tinyquant_cpu)
     runs-on: ubuntu-22.04
+    needs: [clippy]
     # Independent of runner selection — always use GitHub-hosted.
     defaults:
       run:
