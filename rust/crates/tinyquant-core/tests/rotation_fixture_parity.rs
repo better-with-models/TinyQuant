@@ -90,12 +90,11 @@ fn seed_42_dim_64_fixture_is_orthogonal_within_1e_12() {
 /// [[design/rust/risks-and-mitigations#r19-faer-parallel-kernel-nondeterminism-across-platforms|Risks §R19]]
 /// and [[design/rust/phase-14-implementation-notes#ci-follow-ups-queued-after-phase-14|Phase 14 Implementation Notes §CI follow-ups]].
 ///
-/// Until that lands, the dim=768 fixture is kept on disk but the
-/// bit-exact assertion is `#[ignore]`d. Coverage is preserved by the
-/// orthogonality test below, which checks a mathematical invariant
-/// of the build output rather than a byte-for-byte fingerprint.
+/// The nondeterminism is resolved by capping x86_64 builds to AVX2 via
+/// `-C target-feature=-avx512f,...` in `.cargo/config.toml`, which forces
+/// `pulp` to always select the AVX2 kernel. The bit-exact assertion is now
+/// active again.
 #[test]
-#[ignore = "cross-runner SIMD ISA nondeterminism at dim=768; see R19"]
 fn seed_42_dim_768_matches_frozen_snapshot_bit_for_bit() {
     let expected = load_fixture("seed_42_dim_768.f64.bin", 768);
     let rot = RotationMatrix::build(42, 768);

@@ -316,7 +316,7 @@ fn decode_variable_prefix(
         .to_vec();
     pos = meta_end;
 
-    let body_offset = ((pos + 7) / 8) * 8;
+    let body_offset = pos.next_multiple_of(8);
 
     Ok((config_hash, metadata, body_offset))
 }

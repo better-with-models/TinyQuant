@@ -21,3 +21,6 @@ tinyquant-bruteforce = { workspace = true }
 [features]
 default = ["simd"]
 simd    = ["tinyquant-core/simd", "tinyquant-io/simd", "tinyquant-bruteforce/simd"]
+# Enables GPU-accelerated batch compression in the Python wheel.
+# Wheel logistics (separate wheel artifact, PyPI extras) are deferred to Phase 29.
+gpu-wgpu = ["tinyquant-core/gpu-wgpu"]

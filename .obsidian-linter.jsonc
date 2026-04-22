@@ -16,7 +16,8 @@
     "docs/research/**",
     "docs/.obsidian/**",
     "node_modules/**",
-    ".worktrees/**"
+    ".worktrees/**",
+    ".pre-commit-cache/**"
   ],
   "rules": {
     "MD013": { "enabled": false }

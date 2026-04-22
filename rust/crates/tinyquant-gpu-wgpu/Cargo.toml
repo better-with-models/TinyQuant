@@ -1,10 +1,13 @@
 [package]
-name            = "tinyquant-gpu-wgpu"
-version.workspace = true
-edition.workspace = true
-rust-version    = "1.87"
-publish         = false
-description     = "wgpu/WGSL GPU-accelerated batch compression backend for TinyQuant"
+name              = "tinyquant-gpu-wgpu"
+version.workspace   = true
+edition.workspace   = true
+rust-version      = "1.87"
+license.workspace   = true
+repository.workspace = true
+description       = "wgpu/WGSL GPU-accelerated batch compression backend for TinyQuant (optional dependency — prefer `tinyquant-core` with the `gpu-wgpu` feature)"
+keywords          = ["quantization", "embeddings", "wgpu", "gpu", "machine-learning"]
+categories        = ["compression", "science", "wasm"]
 
 [dependencies]
 tinyquant-core = { workspace = true }

@@ -57,12 +57,27 @@ rayon = ["std", "dep:rayon"]
 
 Build matrix:
 
-| Features | Purpose |
-|---|---|
-| (none) | `no_std + alloc` smoke build (embedded, WASM) |
-| `std` | Standard baseline |
-| `std,simd` | Default for leaf crates |
-| `std,simd,rayon` | Integration with `tinyquant-io` |
+| Features | MSRV | Purpose |
+| --- | --- | --- |
+| (none) | 1.81 | `no_std + alloc` smoke build (embedded, WASM) |
+| `std` | 1.81 | Standard baseline |
+| `std,simd` | 1.81 | Default for leaf crates |
+| `std,simd,rayon` | 1.81 | Integration with `tinyquant-io` |
+| `gpu-wgpu` | 1.87 | GPU-accelerated batch compression |
+
+#### `gpu-wgpu` feature (Phase 28.5)
+
+```toml
+# Enables GPU-accelerated batch compression via the GpuComputeBackend trait.
+# Implies `std`. Raises the effective MSRV from 1.81 to 1.87 when the
+# `tinyquant-gpu-wgpu` crate is also in the dependency graph.
+gpu-wgpu = ["std"]
+```
+
+When this feature is enabled, `Codec::compress_batch_gpu_with` becomes
+available. The method accepts any type implementing `GpuComputeBackend`
+and routes to GPU when `rows >= GPU_BATCH_THRESHOLD` (512), otherwise
+falls back to the CPU path.
 
 ### `tinyquant-io`
 
@@ -219,8 +234,10 @@ regressions:
 | `io-minimal` | `cargo test -p tinyquant-io --no-default-features` |
 | `sys-jemalloc` | `cargo test -p tinyquant-sys --features simd,jemalloc` |
 | `sys-mimalloc` | `cargo test -p tinyquant-sys --features simd,mimalloc` |
+| `gpu-wgpu` build | `cargo build -p tinyquant-core --features gpu-wgpu` |
+| `gpu-wgpu` tests | `cargo test -p tinyquant-core --features gpu-wgpu` |
 
-Total: 9 cargo invocations. All run in parallel on a matrix job.
+Total: 11 cargo invocations. All run in parallel on a matrix job.
 
 > [!note] GPU crates excluded from the 1.81 MSRV gate
 > The workspace MSRV check (`cargo +1.81.0 check`) explicitly excludes

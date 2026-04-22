@@ -45,9 +45,10 @@ use tinyquant_core::errors::{BackendError, CodecError, CorpusError};
 /// minor-version bumps. Adding a new variant is always allowed; changing
 /// an existing discriminant is a breaking change.
 #[repr(C)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub enum TinyQuantErrorKind {
     /// Operation succeeded. `TinyQuantError::message` is guaranteed null.
+    #[default]
     Ok = 0,
     /// A handle argument was null or previously freed.
     InvalidHandle = 1,
@@ -73,12 +74,6 @@ pub enum TinyQuantErrorKind {
     Panic = 98,
     /// An error kind the wrapper could not classify.
     Unknown = 99,
-}
-
-impl Default for TinyQuantErrorKind {
-    fn default() -> Self {
-        Self::Ok
-    }
 }
 
 /// Out-pointer structure populated by every fallible `tq_*` entry point.

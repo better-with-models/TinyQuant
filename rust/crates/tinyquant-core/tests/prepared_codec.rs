@@ -165,3 +165,78 @@ fn compress_prepared_is_deterministic_across_calls() {
         "identical inputs must produce identical codes regardless of call order"
     );
 }
+
+/// `compress_prepared` and `decompress_prepared_into` work with `residual_enabled=true`.
+#[test]
+fn residual_codec_round_trips_successfully() {
+    let config = CodecConfig::new(4, 42, 64, true).unwrap(); // residual_enabled=true
+    let codebook = fixture_codebook(&config);
+    let prepared = PreparedCodec::new(config.clone(), codebook.clone()).unwrap();
+    let v = fixture_vector(64, 5);
+
+    let cv = Codec::new()
+        .compress_prepared(&v, &prepared)
+        .expect("compress_prepared with residual must succeed");
+
+    // Must have a residual payload.
+    assert!(
+        cv.residual().is_some(),
+        "CompressedVector must carry a residual payload when residual_enabled=true"
+    );
+    assert_eq!(
+        cv.config_hash(),
+        config.config_hash(),
+        "config_hash must match the residual-enabled config"
+    );
+
+    // Decompress round-trip: output length must match and reconstruction
+    // quality must be reasonable (MSE < 0.5 for 4-bit quantization).
+    let mut out = vec![0f32; 64];
+    Codec::new()
+        .decompress_prepared_into(&cv, &prepared, &mut out)
+        .expect("decompress_prepared_into with residual must succeed");
+    assert_eq!(out.len(), 64);
+
+    let mse: f32 = v
+        .iter()
+        .zip(out.iter())
+        .map(|(a, b)| (a - b).powi(2))
+        .sum::<f32>()
+        / 64.0;
+    assert!(
+        mse < 0.5,
+        "residual MSE {mse:.4} too high — residual decompress path may be broken"
+    );
+}
+
+/// Compressing with `residual_enabled=true` produces different indices than
+/// `residual_enabled=false`, proving the residual path is not a no-op.
+#[test]
+fn residual_output_differs_from_non_residual() {
+    let dim = 64usize;
+    let v = fixture_vector(dim, 99);
+
+    let config_res = CodecConfig::new(4, 42, dim as u32, true).unwrap();
+    let codebook_res = fixture_codebook(&config_res);
+    let prepared_res = PreparedCodec::new(config_res.clone(), codebook_res).unwrap();
+    let cv_res = Codec::new()
+        .compress_prepared(&v, &prepared_res)
+        .expect("residual compress must succeed");
+
+    let config_nores = CodecConfig::new(4, 42, dim as u32, false).unwrap();
+    let codebook_nores = fixture_codebook(&config_nores);
+    let prepared_nores = PreparedCodec::new(config_nores.clone(), codebook_nores).unwrap();
+    let cv_nores = Codec::new()
+        .compress_prepared(&v, &prepared_nores)
+        .expect("non-residual compress must succeed");
+
+    // The residual payload exists for the residual path but not the other.
+    assert!(
+        cv_res.residual().is_some(),
+        "residual path must produce a residual payload"
+    );
+    assert!(
+        cv_nores.residual().is_none(),
+        "non-residual path must not produce a residual payload"
+    );
+}

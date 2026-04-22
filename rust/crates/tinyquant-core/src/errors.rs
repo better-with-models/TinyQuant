@@ -122,6 +122,14 @@ pub enum CodecError {
         /// The invalid flag byte found.
         got: u8,
     },
+
+    /// GPU backend is not available or failed to initialize.
+    #[error("GPU unavailable: {0}")]
+    GpuUnavailable(alloc::sync::Arc<str>),
+
+    /// A GPU compute operation returned an error.
+    #[error("GPU error: {0}")]
+    GpuError(alloc::sync::Arc<str>),
 }
 
 /// Errors produced by the corpus aggregate layer.
@@ -181,7 +189,7 @@ pub enum CorpusError {
         /// Zero-based index of the first failing vector in the batch.
         index: usize,
         /// The error produced by the failing vector.
-        source: alloc::boxed::Box<CorpusError>,
+        source: alloc::boxed::Box<Self>,
     },
 }
 

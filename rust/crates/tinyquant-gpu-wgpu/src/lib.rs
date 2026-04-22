@@ -21,6 +21,8 @@ use tinyquant_core::codec::{CompressedVector, PreparedCodec};
 
 /// [`WgpuBackend`]: the primary GPU backend type.
 pub mod backend;
+/// Implements `tinyquant_core::GpuComputeBackend` for [`WgpuBackend`].
+mod backend_gpu_impl;
 /// Backend and adapter selection hints for [`WgpuBackend::new_with_preference`].
 pub mod backend_preference;
 /// Adapter initialisation and pipeline construction.
