@@ -137,12 +137,24 @@ fn residual_codec_round_trips_successfully() {
         "config_hash must match the residual-enabled config"
     );
 
-    // Decompress round-trip: output length must match.
+    // Decompress round-trip: output length must match and reconstruction
+    // quality must be reasonable (MSE < 0.5 for 4-bit quantization).
     let mut out = vec![0f32; 64];
     Codec::new()
         .decompress_prepared_into(&cv, &prepared, &mut out)
         .expect("decompress_prepared_into with residual must succeed");
     assert_eq!(out.len(), 64);
+
+    let mse: f32 = v
+        .iter()
+        .zip(out.iter())
+        .map(|(a, b)| (a - b).powi(2))
+        .sum::<f32>()
+        / 64.0;
+    assert!(
+        mse < 0.5,
+        "residual MSE {mse:.4} too high — residual decompress path may be broken"
+    );
 }
 
 /// Compressing with `residual_enabled=true` produces different indices than

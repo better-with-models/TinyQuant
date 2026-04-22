@@ -4,7 +4,7 @@
 /// ensure `out.len() == dim` and `packed.len() == (dim * bit_width as usize + 7) / 8`.
 pub fn unpack_indices(packed: &[u8], dim: usize, bit_width: u8, out: &mut [u8]) {
     debug_assert_eq!(out.len(), dim);
-    debug_assert_eq!(packed.len(), (dim * bit_width as usize + 7) / 8);
+    debug_assert_eq!(packed.len(), (dim * bit_width as usize).div_ceil(8));
     if bit_width == 8 {
         out.copy_from_slice(packed);
         return;

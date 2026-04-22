@@ -116,7 +116,7 @@ fn read_and_decode_header<R: Read + Seek>(r: &mut R) -> Result<CorpusFileHeader,
         .and_then(|n| n.checked_add(4))
         .and_then(|n| n.checked_add(metadata_len))
         .ok_or(IoError::InvalidHeader)?;
-    let body_offset = ((header_end + 7) / 8) * 8;
+    let body_offset = header_end.next_multiple_of(8);
     let remaining_header = body_offset
         .checked_sub(24 + config_hash_len + 4)
         .ok_or(IoError::InvalidHeader)?;
