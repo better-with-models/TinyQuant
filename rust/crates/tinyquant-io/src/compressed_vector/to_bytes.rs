@@ -9,7 +9,7 @@ use tinyquant_core::codec::CompressedVector;
 pub fn to_bytes(cv: &CompressedVector) -> Vec<u8> {
     let dim = cv.dimension() as usize;
     let bw = cv.bit_width();
-    let packed_len = (dim * bw as usize + 7) / 8;
+    let packed_len = (dim * bw as usize).div_ceil(8);
     // 1 flag + optional (4 length bytes + residual data)
     let residual_overhead = cv.residual().map_or(0, |r| 5 + r.len());
     let total = 70 + packed_len + 1 + residual_overhead;
