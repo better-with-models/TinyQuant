@@ -90,6 +90,58 @@ fn decompress_prepared_matches_legacy_decompress() {
     }
 }
 
+/// Residual path: MSE between original and decompressed output must be below the
+/// threshold and must be no worse than the non-residual path, so a broken residual
+/// that silently outputs garbage is detected.
+#[test]
+#[allow(clippy::cast_precision_loss)]
+fn residual_codec_round_trips_successfully() {
+    const DIM: usize = 64;
+    const MSE_THRESHOLD: f32 = 0.5;
+
+    let config_res = CodecConfig::new(4, 42, DIM as u32, true).unwrap();
+    let config_nores = CodecConfig::new(4, 42, DIM as u32, false).unwrap();
+    let codebook_res = fixture_codebook(&config_res);
+    let codebook_nores = fixture_codebook(&config_nores);
+    let v = fixture_vector(DIM, 7);
+
+    let cv_res = Codec::new()
+        .compress(&v, &config_res, &codebook_res)
+        .expect("residual compress must succeed");
+    assert!(cv_res.has_residual(), "CompressedVector must carry residual bytes");
+
+    let out_res = Codec::new()
+        .decompress(&cv_res, &config_res, &codebook_res)
+        .expect("residual decompress must succeed");
+
+    let cv_nores = Codec::new()
+        .compress(&v, &config_nores, &codebook_nores)
+        .expect("non-residual compress must succeed");
+    let out_nores = Codec::new()
+        .decompress(&cv_nores, &config_nores, &codebook_nores)
+        .expect("non-residual decompress must succeed");
+
+    let mse = |recon: &[f32]| -> f32 {
+        v.iter()
+            .zip(recon.iter())
+            .map(|(o, r)| (o - r).powi(2))
+            .sum::<f32>()
+            / DIM as f32
+    };
+
+    let mse_res = mse(&out_res);
+    let mse_nores = mse(&out_nores);
+
+    assert!(
+        mse_res < MSE_THRESHOLD,
+        "residual MSE {mse_res} exceeds threshold {MSE_THRESHOLD}"
+    );
+    assert!(
+        mse_res <= mse_nores,
+        "residual MSE {mse_res} must be no worse than non-residual MSE {mse_nores}"
+    );
+}
+
 /// Identical inputs produce identical codes on repeated `compress_prepared` calls,
 /// confirming the cached `RotationMatrix` is stable (no re-generation per call).
 ///
