@@ -144,11 +144,11 @@ impl CodecFileWriter {
     // Cannot be const because Err()/Ok() in const fns require Rust >= 1.83.
     #[allow(clippy::missing_const_for_fn)]
     pub fn body_offset(config_hash: &str, metadata_len: usize) -> Result<usize, IoError> {
-        let hash_len = config_hash.as_bytes().len();
+        let hash_len = config_hash.len();
         if hash_len > 256 {
             return Err(IoError::InvalidHeader);
         }
         let header_end = FIXED_HEADER_SIZE + hash_len + 4 + metadata_len;
-        Ok(((header_end + 7) / 8) * 8)
+        Ok(header_end.div_ceil(8) * 8)
     }
 }
