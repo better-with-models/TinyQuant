@@ -33,6 +33,9 @@ def rs() -> Iterator[Any]:
     """The Rust-backed implementation. Phase 24 wires this up."""
     try:
         import tinyquant_cpu as rs_pkg
+        import tinyquant_cpu.backend  # noqa: F401
+        import tinyquant_cpu.codec  # noqa: F401
+        import tinyquant_cpu.corpus  # noqa: F401
     except ImportError:
         pytest.skip(
             "Rust-backed tinyquant_cpu not installed; "
