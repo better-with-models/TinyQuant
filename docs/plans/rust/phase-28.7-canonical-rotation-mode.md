@@ -102,11 +102,13 @@ is preserved as the legacy fallback.
 
 ## Deliverables
 
-### D1. `RotationMatrix.matrix_f64_bytes()` PyO3 binding
+### D1. `RotationMatrix.matrix_f64_bytes()` and `from_seed_and_dim()` PyO3 bindings
 
-Add a method to the `RotationMatrix` PyO3 class in
-`rust/crates/tinyquant-py/src/codec.rs` that returns the raw row-major f64
-bytes of the matrix as a Python `bytes` object.
+Add two methods to the `RotationMatrix` PyO3 class in
+`rust/crates/tinyquant-py/src/codec.rs`.
+
+**`matrix_f64_bytes`** — returns the raw row-major f64 bytes of the matrix
+as a Python `bytes` object:
 
 ```rust
 fn matrix_f64_bytes(&self) -> Vec<u8> {
@@ -118,29 +120,61 @@ fn matrix_f64_bytes(&self) -> Vec<u8> {
 }
 ```
 
-Expose in `tinyquant_cpu._core.codec.RotationMatrix`.
+**`from_seed_and_dim`** — a `@classmethod` constructor that bypasses
+`CodecConfig` entirely, eliminating the `bit_width` problem in D3:
+
+```rust
+#[classmethod]
+fn from_seed_and_dim(
+    _cls: &Bound<'_, pyo3::types::PyType>,
+    seed: u64,
+    dimension: u32,
+) -> Self {
+    Self {
+        inner: CoreRotationMatrix::build(seed, dimension),
+    }
+}
+```
+
+Both are exposed in `tinyquant_cpu._core.codec.RotationMatrix`.
 
 ### D2. `RotationMatrix.faer_parallelism_none` fix (R19)
 
 In `rust/crates/tinyquant-core/src/codec/rotation_matrix.rs`, replace the
-`a.qr()` call with the explicit scalar-path API:
+`a.qr()` call with a call that forces global parallelism to `None` for the
+duration of the QR computation. faer 0.19 (the pinned version) exposes
+`faer::set_global_parallelism` and its scoped equivalent for exactly this
+purpose. The low-level `faer::linalg::qr::no_pivoting::compute::qr_in_place`
+API exists in faer 0.19 but requires pre-allocated `householder_factor` and
+`PodStack` arguments whose types and construction changed between minor
+versions; using it directly is fragile and couples the code to faer internals.
+
+The correct, stable fix for faer 0.19 is:
 
 ```rust
-use faer::linalg::qr::no_pivoting;
 use faer::Parallelism;
 
-let qr = no_pivoting::compute::qr_in_place(
-    a.as_mut(),
-    householder_coeffs.as_mut(),
-    Parallelism::None,
-    stack,
-    Default::default(),
-);
+// Force the scalar (single-threaded, no-SIMD-dispatch) QR path so the
+// output is bit-identical across host CPUs regardless of AVX-512 vs AVX2
+// capability detection by `pulp`. This is the R19 mitigation.
+let prev_par = faer::get_global_parallelism();
+faer::set_global_parallelism(Parallelism::None);
+let qr = a.qr();
+faer::set_global_parallelism(prev_par);
+let q = qr.compute_q();
+let r = qr.compute_r();
 ```
+
+> [!note] API note for faer 0.19
+> `faer::get_global_parallelism` / `faer::set_global_parallelism` are stable
+> public API in faer 0.19. If faer is upgraded beyond 0.19, re-check whether
+> the parallelism override is still required — faer may introduce a per-call
+> parallelism parameter on the high-level `.qr()` method in later versions.
+> The fixture must be regenerated whenever the override mechanism changes.
 
 Regenerate `tests/fixtures/rotation/seed_42_dim_768.f64.bin` from the scalar
 kernel and re-enable the `#[ignore]`d bit-exact fixture test in
-`rust/crates/tinyquant-core/tests/rotation_matrix.rs`.
+`rust/crates/tinyquant-core/tests/rotation_fixture_parity.rs`.
 
 ### D3. `_install_canonical_rotation` in Python reference
 
@@ -155,6 +189,9 @@ def _install_canonical_rotation() -> None:
     RotationMatrix.from_config call produces a matrix byte-identical to
     the Rust implementation's output for the same (seed, dimension).
 
+    Safe to call more than once — subsequent calls are no-ops because
+    lru_cache identity is preserved across re-assignments of _cached_build.
+
     Call once at import time from the parity test conftest when the rs
     fixture is live.
     """
@@ -163,9 +200,10 @@ def _install_canonical_rotation() -> None:
     @staticmethod  # type: ignore[misc]
     @functools.lru_cache(maxsize=8)
     def _canonical_build(seed: int, dimension: int) -> "RotationMatrix":
-        rs_rot = _core.codec.RotationMatrix.from_config(
-            _core.codec.CodecConfig(bit_width=4, seed=seed, dimension=dimension)
-        )
+        # Use from_seed_and_dim to avoid hardcoding a bit_width in CodecConfig.
+        # RotationMatrix generation depends only on (seed, dimension); bit_width
+        # is irrelevant and must not be baked into this bridge.
+        rs_rot = _core.codec.RotationMatrix.from_seed_and_dim(seed, dimension)
         raw = rs_rot.matrix_f64_bytes()
         mat = np.frombuffer(raw, dtype="<f8").reshape(dimension, dimension).copy()
         mat.flags.writeable = False
@@ -235,9 +273,9 @@ for row in batch[:8]:
 
 | File | Change |
 |------|--------|
-| `rust/crates/tinyquant-py/src/codec.rs` | Add `matrix_f64_bytes` PyO3 method to `RotationMatrix` |
-| `rust/crates/tinyquant-core/src/codec/rotation_matrix.rs` | Pass `Parallelism::None` to faer QR (R19 fix) |
-| `rust/crates/tinyquant-core/tests/rotation_matrix.rs` | Re-enable `#[ignore]`d bit-exact fixture test |
+| `rust/crates/tinyquant-py/src/codec.rs` | Add `matrix_f64_bytes` and `from_seed_and_dim` PyO3 methods to `RotationMatrix` |
+| `rust/crates/tinyquant-core/src/codec/rotation_matrix.rs` | Wrap `a.qr()` with `set_global_parallelism(Parallelism::None)` guard (R19 fix) |
+| `rust/crates/tinyquant-core/tests/rotation_fixture_parity.rs` | Re-enable `#[ignore]`d bit-exact fixture test (`seed_42_dim_768_matches_frozen_snapshot_bit_for_bit`) |
 | `rust/crates/tinyquant-core/tests/fixtures/rotation/seed_42_dim_768.f64.bin` | Regenerate from scalar kernel |
 | `tests/reference/tinyquant_py_reference/codec/rotation_matrix.py` | Add `_install_canonical_rotation()` |
 | `tests/parity/conftest.py` | Add `_canonical_rotation_mode` autouse session fixture |
@@ -252,6 +290,17 @@ for row in batch[:8]:
 3. `pytest tests/parity/ -v` — full parity suite green (no regressions from
    D3/D4 changes to the Python reference).
 4. `cargo test --workspace` — no regressions from R19 scalar-path fix.
+5. **Legacy path must not break.** Run `pytest tests/parity/ -v` in an
+   environment where `tinyquant_cpu` is *not* installed (remove or mock the
+   package). The conftest's `ImportError` guard must activate the legacy NumPy
+   path silently — no import errors, no test failures from missing attributes.
+   The statistical parity gate (`atol` relaxed to the legacy tolerance) must
+   still pass.
+6. **`_install_canonical_rotation` is idempotent.** Call it twice from a test
+   shim and assert that `RotationMatrix._cached_build` resolves to the same
+   object identity (or at minimum produces the same matrix bytes for the same
+   `(seed, dimension)` pair on both calls). A double-install must not corrupt
+   cache state or raise.
 
 ## Risks
 
@@ -262,20 +311,31 @@ for row in batch[:8]:
 | `CodecConfig` seed type mismatch (Python `int` vs Rust `u64`) | Low | `_canonical_build` receives `seed: int` from Python's `lru_cache` key; Rust `CodecConfig` accepts `seed: u64` via PyO3 type coercion — verify with seed=0 edge case |
 | dim=768 scalar-path fixture disagrees with previous `#[ignore]`d value | Certain (R19 was the cause) | Regenerate fixture; document regeneration command in this file |
 
+## Sequencing
+
+Phase 29 (Optional CUDA Backend) lists Phase 27.5 and Phase 28 (wgpu pipeline
+caching) as prerequisites; it does **not** depend on Phase 28.7. The CUDA
+backend operates on the compressed index stream and does not consume the
+rotation matrix's byte representation directly. Phase 28.7 can be developed and
+merged independently of Phase 29 without sequencing risk in either direction.
+
 ## Regenerating the dim=768 fixture
 
 After the R19 scalar-path fix lands:
 
 ```bash
 cd rust
-cargo xtask fixtures refresh-rotation --seed 42 --dim 768
+cargo xtask fixtures refresh-rotation
 ```
 
-If `xtask` does not yet support `refresh-rotation`, run:
+`cargo xtask fixtures refresh-rotation` exists and iterates the canonical gold
+set `ROTATION_GOLD_SET = [(42, 64), (42, 768)]`, invoking the
+`dump_rotation_fixture` example binary for each pair. It does **not** accept
+`--seed`/`--dim` flags; to regenerate only the `dim=768` fixture, either run
+the full subcommand (it regenerates both) or invoke the example binary directly:
 
 ```bash
-cargo test -p tinyquant-core -- rotation_matrix::dump_fixture --ignored --nocapture
+cd rust
+cargo run -p tinyquant-core --example dump_rotation_fixture --features std \
+    -- 42 768 crates/tinyquant-core/tests/fixtures/rotation/seed_42_dim_768.f64.bin
 ```
-
-and copy the printed bytes to
-`tests/fixtures/rotation/seed_42_dim_768.f64.bin`.

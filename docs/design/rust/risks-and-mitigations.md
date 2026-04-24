@@ -450,6 +450,8 @@ the lessons-learned docs PR. Final Phase 14 resolution
 in [[design/rust/phase-14-implementation-notes|Phase 14
 Implementation Notes]] §L4.
 
+**Delivery:** Phase 28.7 (canonical rotation mode).
+
 ### R20 — Design-doc drift from actual YAML / Rust source
 
 **Problem.** Design docs in `docs/design/rust/` can claim a
