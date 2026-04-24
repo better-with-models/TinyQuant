@@ -75,8 +75,17 @@ impl RotationMatrix {
         // Step 2: load into faer (column-major internal storage) and QR.
         // We pass a closure that reads from our row-major buffer.
         let a = Mat::<f64>::from_fn(dim, dim, |i, j| data[i * dim + j]);
-        // Force scalar (no-SIMD) QR so pulp's runtime AVX2/AVX-512 dispatch
-        // cannot produce different bit patterns across host CPUs. R19 mitigation.
+        // Prevent parallel (rayon) Householder reduction so that reduction
+        // order cannot vary across thread counts. SIMD divergence (R19) is
+        // separately handled by the AVX2 feature cap in rust/.cargo/config.toml.
+        //
+        // FIXME(thread-safety): get/set_global_parallelism mutates a
+        // process-global atomic; concurrent builds of distinct (seed, dim)
+        // pairs in different rotation-cache shards can race. Currently benign
+        // because each shard is Mutex-guarded and non-rotation callers do not
+        // change parallelism, but must be revisited if faer 0.20+ exposes a
+        // per-call parallelism API. Track: github.com/better-with-models/
+        // TinyQuant/issues/<TBD>.
         let prev_par = faer::get_global_parallelism();
         faer::set_global_parallelism(Parallelism::None);
         let qr = a.qr();

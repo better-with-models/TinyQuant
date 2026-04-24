@@ -170,10 +170,13 @@ impl PyRotationMatrix {
         _cls: &Bound<'_, pyo3::types::PyType>,
         seed: u64,
         dimension: u32,
-    ) -> Self {
-        Self {
-            inner: CoreRotationMatrix::build(seed, dimension),
+    ) -> PyResult<Self> {
+        if dimension == 0 {
+            return Err(PyValueError::new_err("dimension must be > 0"));
         }
+        Ok(Self {
+            inner: CoreRotationMatrix::build(seed, dimension),
+        })
     }
 
     /// Return the raw row-major `f64` bytes of the rotation matrix.

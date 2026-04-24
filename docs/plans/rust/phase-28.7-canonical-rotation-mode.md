@@ -8,7 +8,7 @@ tags:
   - numerics
   - parity
 date-created: 2026-04-23
-status: planned
+status: complete
 category: planning
 ---
 

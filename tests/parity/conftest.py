@@ -68,13 +68,18 @@ def _canonical_rotation_mode() -> None:
         )
 
         _install_canonical_rotation()
-    except (ImportError, AttributeError):
+    except ImportError:
         pass
 
 
-@pytest.fixture(params=[(4, 42, 64), (2, 0, 128), (8, 999, 256)])
+@pytest.fixture(params=[(4, 42, 64), (2, 0, 128), (8, 999, 256), (4, 42, 512)])
 def cfg_triplet(request: pytest.FixtureRequest) -> tuple[int, int, int]:
-    """(bit_width, seed, dimension) tuples covering every bit-width."""
+    """(bit_width, seed, dimension) tuples covering every bit-width.
+
+    The dim=512 case exceeds the faer parallel-kernel dispatch threshold
+    (dim ≥ 384) and exercises the Parallelism::None guard added as the
+    R19 mitigation.
+    """
     return cast(tuple[int, int, int], request.param)
 
 
