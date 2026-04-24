@@ -388,10 +388,7 @@ pub trait GpuComputeBackend {
     /// # Errors
     ///
     /// Returns `Self::Error` if device upload fails.
-    fn prepare_for_device(
-        &mut self,
-        prepared: &mut PreparedCodec,
-    ) -> Result<(), Self::Error>;
+    fn prepare_for_device(&mut self, prepared: &mut PreparedCodec) -> Result<(), Self::Error>;
 
     /// Compress `rows` FP32 vectors of dimension `cols` on the GPU.
     ///
@@ -449,9 +446,7 @@ impl Codec {
         B: GpuComputeBackend,
     {
         if rows >= GPU_BATCH_THRESHOLD {
-            backend
-                .prepare_for_device(prepared)
-                .map_err(Into::into)?;
+            backend.prepare_for_device(prepared).map_err(Into::into)?;
             backend
                 .compress_batch(vectors, rows, cols, prepared)
                 .map_err(Into::into)

@@ -108,7 +108,10 @@ fn residual_codec_round_trips_successfully() {
     let cv_res = Codec::new()
         .compress(&v, &config_res, &codebook_res)
         .expect("residual compress must succeed");
-    assert!(cv_res.has_residual(), "CompressedVector must carry residual bytes");
+    assert!(
+        cv_res.has_residual(),
+        "CompressedVector must carry residual bytes"
+    );
 
     let out_res = Codec::new()
         .decompress(&cv_res, &config_res, &codebook_res)

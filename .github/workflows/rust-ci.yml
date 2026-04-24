@@ -490,7 +490,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: false
+          lfs: true
+      - name: Pull LFS objects
+        run: git lfs pull
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.87.0"

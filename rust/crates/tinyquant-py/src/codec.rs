@@ -190,7 +190,8 @@ impl PyRotationMatrix {
     /// Used by the Python canonical bridge to reconstruct a bit-identical matrix
     /// in the Python reference without re-running QR.
     fn matrix_f64_bytes<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
-        let bytes: Vec<u8> = self.inner
+        let bytes: Vec<u8> = self
+            .inner
             .matrix()
             .iter()
             .flat_map(|f| f.to_le_bytes())
