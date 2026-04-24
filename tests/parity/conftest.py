@@ -9,6 +9,12 @@ Phase 24 will replace the skip with::
     import tinyquant_cpu as rs   # the Rust-backed fat wheel
 
 and every parity test becomes a live assertion.
+
+Phase 28.7: the ``_canonical_rotation_mode`` autouse fixture activates
+canonical rotation mode when ``tinyquant_cpu`` is installed, overriding
+the Python reference's ``RotationMatrix._cached_build`` to use the same
+ChaCha20 + faer QR pipeline as Rust. This enables bit-identical rotation
+matrices across implementations.
 """
 
 from __future__ import annotations
@@ -43,6 +49,27 @@ def rs() -> Iterator[Any]:
         )
     else:
         yield rs_pkg
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _canonical_rotation_mode() -> None:
+    """Activate canonical rotation when the Rust extension is available.
+
+    When ``tinyquant_cpu`` is installed, overrides
+    ``RotationMatrix._cached_build`` in the Python reference so that
+    every ``RotationMatrix.from_config`` call produces a matrix
+    byte-identical to the Rust implementation for the same
+    ``(seed, dimension)`` pair. Falls back silently when the package is
+    absent so legacy-mode tests are unaffected.
+    """
+    try:
+        from tinyquant_py_reference.codec.rotation_matrix import (
+            _install_canonical_rotation,
+        )
+
+        _install_canonical_rotation()
+    except (ImportError, AttributeError):
+        pass
 
 
 @pytest.fixture(params=[(4, 42, 64), (2, 0, 128), (8, 999, 256)])

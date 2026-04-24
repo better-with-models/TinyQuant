@@ -25,7 +25,7 @@
 use alloc::sync::Arc;
 use alloc::vec;
 
-use faer::Mat;
+use faer::{Mat, Parallelism};
 use libm::fabs;
 
 use crate::codec::codec_config::CodecConfig;
@@ -75,7 +75,12 @@ impl RotationMatrix {
         // Step 2: load into faer (column-major internal storage) and QR.
         // We pass a closure that reads from our row-major buffer.
         let a = Mat::<f64>::from_fn(dim, dim, |i, j| data[i * dim + j]);
+        // Force scalar (no-SIMD) QR so pulp's runtime AVX2/AVX-512 dispatch
+        // cannot produce different bit patterns across host CPUs. R19 mitigation.
+        let prev_par = faer::get_global_parallelism();
+        faer::set_global_parallelism(Parallelism::None);
         let qr = a.qr();
+        faer::set_global_parallelism(prev_par);
         let q = qr.compute_q();
         let r = qr.compute_r();
 

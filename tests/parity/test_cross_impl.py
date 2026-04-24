@@ -1,8 +1,13 @@
-"""Cross-implementation parity scaffold.
+"""Cross-implementation parity tests.
 
 Phase 23 deliverable: structure exists, runs green against the
 reference alone (trivial self-parity), and Phase 24 flips the
 ``rs`` fixture on to make every test meaningful.
+
+Phase 28.7: ``_canonical_rotation_mode`` autouse fixture (conftest)
+activates the Rust ChaCha20 + faer QR pipeline in the Python reference,
+enabling bit-identical rotation matrices and full cross-impl round-trip
+parity.
 """
 
 from __future__ import annotations
@@ -62,54 +67,23 @@ class TestRotationParity:
         ref: ModuleType,
         rs: ModuleType,
         cfg_triplet: tuple[int, int, int],
-        batch: npt.NDArray[np.float32],
+        vector: npt.NDArray[np.float32],
     ) -> None:
-        """Legacy mode: both impls produce valid orthogonal matrices.
+        """Canonical mode: Python and Rust rotation outputs agree within 1e-6.
 
-        Tight numerical parity on raw rotation output is a non-goal in legacy
-        mode: NumPy PCG64 and ChaCha20 produce different Gaussian samples so
-        the matrices differ completely. The gate is the invariant both must
-        satisfy — an orthogonal transform preserves pairwise cosine
-        similarities exactly. We verify Pearson ρ ≥ 0.9999 between original
-        and rotated pairwise similarities for each implementation.
-
-        Bit-identical rotation matrices across impls require canonical mode;
-        see Phase 28.7 plan.
+        Requires the ``_canonical_rotation_mode`` autouse fixture (conftest)
+        to have overridden ``RotationMatrix._cached_build`` with the Rust
+        ChaCha20 + faer QR pipeline. Both impls then produce bit-identical
+        matrices for the same ``(seed, dimension)`` pair.
         """
         bw, seed, dim = cfg_triplet
         py_cfg = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         rs_cfg = rs.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         py_rot = ref.codec.RotationMatrix.from_config(py_cfg)
         rs_rot = rs.codec.RotationMatrix.from_config(rs_cfg)
-
-        vecs = batch[:16].astype(np.float64)
-        py_rotated = np.stack(
-            [py_rot.apply(r.astype(np.float32)).astype(np.float64) for r in vecs]
-        )
-        rs_rotated = np.stack(
-            [rs_rot.apply(r.astype(np.float32)).astype(np.float64) for r in vecs]
-        )
-
-        def _pairwise_cos_sims(
-            m: npt.NDArray[np.float64],
-        ) -> npt.NDArray[np.float64]:
-            unit = m / np.linalg.norm(m, axis=1, keepdims=True)
-            gram = unit @ unit.T
-            return gram[np.triu_indices(len(m), k=1)]
-
-        orig_sims = _pairwise_cos_sims(vecs)
-        py_sims = _pairwise_cos_sims(py_rotated)
-        rs_sims = _pairwise_cos_sims(rs_rotated)
-
-        rho_py = float(np.corrcoef(orig_sims, py_sims)[0, 1])
-        rho_rs = float(np.corrcoef(orig_sims, rs_sims)[0, 1])
-        assert rho_py >= 0.9999, (
-            f"Python RotationMatrix breaks cosine-similarity preservation: "
-            f"ρ={rho_py:.6f}"
-        )
-        assert rho_rs >= 0.9999, (
-            f"Rust RotationMatrix breaks cosine-similarity preservation: "
-            f"ρ={rho_rs:.6f}"
+        np.testing.assert_allclose(
+            py_rot.apply(vector), rs_rot.apply(vector), atol=1e-6,
+            err_msg="Python and Rust rotation outputs differ in canonical mode",
         )
 
 
@@ -139,43 +113,28 @@ class TestCompressRoundTrip:
         cfg_triplet: tuple[int, int, int],
         batch: npt.NDArray[np.float32],
     ) -> None:
-        """Legacy mode: byte serialization is interoperable; same-impl MSE within sanity bound.
+        """Canonical mode: py-compress → rs-decompress matches py-decompress within 1e-3.
 
-        Cross-impl decompression parity (py-compress → rs-decompress giving
-        the same output as py-decompress) requires canonical mode: Python
-        compresses in PCG64-rotation space while Rust decompresses using
-        ChaCha20 inverse rotation, so reconstructions diverge completely.
-        That gate is a Phase 28.7 deliverable.
-
-        What we assert here without canonical mode:
-        - Python-compressed bytes round-trip through the Rust serializer
-          unchanged (`CompressedVector.from_bytes` + `.to_bytes()` is stable).
-        - Python same-impl round-trip MSE is within the sanity bound (< 1.0).
+        With canonical rotation active (``_canonical_rotation_mode`` autouse
+        fixture), both impls rotate in the same ChaCha20 basis so the Rust
+        inverse rotation recovers the same approximation as the Python path.
         """
         bw, seed, dim = cfg_triplet
         py_cfg = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
+        rs_cfg = rs.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         py_cb = ref.codec.Codebook.train(batch, py_cfg)
+        rs_cb = rs.codec.Codebook(entries=py_cb.entries, bit_width=bw)
         py_codec = ref.codec.Codec()
+        rs_codec = rs.codec.Codec()
 
         for row in batch[:8]:
             py_cv = py_codec.compress(row, py_cfg, py_cb)
-
-            # Byte serialization compatibility: Rust can load Python-compressed
-            # bytes and re-serialise them without corruption.
             rs_cv = rs.codec.CompressedVector.from_bytes(py_cv.to_bytes())
-            assert rs_cv.to_bytes() == py_cv.to_bytes(), (
-                "CompressedVector byte round-trip through Rust is not stable"
-            )
-
-            # Same-impl reconstruction quality.
-            py_recon = py_codec.decompress(py_cv, py_cfg, py_cb)
-            mse = float(
-                np.mean(
-                    (py_recon.astype(np.float64) - row.astype(np.float64)) ** 2
-                )
-            )
-            assert mse < 1.0, (
-                f"Python same-impl round-trip MSE {mse:.4f} exceeds sanity bound"
+            np.testing.assert_allclose(
+                py_codec.decompress(py_cv, py_cfg, py_cb),
+                rs_codec.decompress(rs_cv, rs_cfg, rs_cb),
+                atol=1e-3,
+                err_msg="Cross-impl decompression diverges in canonical mode",
             )
 
 

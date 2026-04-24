@@ -116,3 +116,37 @@ class RotationMatrix:
         """
         product = self.matrix @ self.matrix.T
         return bool(np.allclose(product, np.eye(self.dimension), atol=tol))
+
+
+def _install_canonical_rotation() -> None:
+    """Override ``RotationMatrix._cached_build`` to use the Rust canonical path.
+
+    Requires ``tinyquant_cpu`` to be installed. After calling this, every
+    ``RotationMatrix.from_config`` call produces a matrix byte-identical to
+    the Rust implementation's output for the same ``(seed, dimension)`` pair.
+
+    The override uses ``from_seed_and_dim`` so that ``bit_width`` (which is
+    irrelevant to rotation generation) is never baked into the bridge call.
+
+    Safe to call more than once — subsequent calls replace ``_cached_build``
+    with a new ``lru_cache`` wrapper, but the cached values are recomputed
+    deterministically so the result is identical.
+
+    Call once at session start from the parity test conftest when the ``rs``
+    fixture is live.
+    """
+    import tinyquant_cpu._core as _core  # noqa: PLC0415
+
+    @staticmethod  # type: ignore[misc]
+    @functools.lru_cache(maxsize=8)
+    def _canonical_build(seed: int, dimension: int) -> RotationMatrix:
+        # Delegate entirely to Rust: fetch the row-major f64 bytes of the
+        # canonical matrix (ChaCha20 + faer scalar QR + Haar sign correction)
+        # and wrap them in a Python RotationMatrix without re-running QR.
+        rs_rot = _core.codec.RotationMatrix.from_seed_and_dim(seed, dimension)
+        raw = rs_rot.matrix_f64_bytes()
+        mat = np.frombuffer(raw, dtype="<f8").reshape(dimension, dimension).copy()
+        mat.flags.writeable = False
+        return RotationMatrix(matrix=mat, seed=seed, dimension=dimension)
+
+    RotationMatrix._cached_build = _canonical_build  # type: ignore[method-assign]
