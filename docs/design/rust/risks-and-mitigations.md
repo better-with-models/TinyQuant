@@ -450,7 +450,11 @@ the lessons-learned docs PR. Final Phase 14 resolution
 in [[design/rust/phase-14-implementation-notes|Phase 14
 Implementation Notes]] §L4.
 
-**Delivery:** Phase 28.7 (canonical rotation mode).
+**Partial delivery:** Phase 28.7 lands the `Parallelism::None` guard
+around `a.qr()` (parallel reduction order) and relies on the AVX2
+feature cap in `rust/.cargo/config.toml` for SIMD ISA pinning. Fixture
+regeneration from the scalar kernel and a `RAYON_NUM_THREADS` matrix
+test remain open follow-ups.
 
 ### R20 — Design-doc drift from actual YAML / Rust source
 

@@ -80,12 +80,13 @@ impl RotationMatrix {
         // separately handled by the AVX2 feature cap in rust/.cargo/config.toml.
         //
         // FIXME(thread-safety): get/set_global_parallelism mutates a
-        // process-global atomic; concurrent builds of distinct (seed, dim)
-        // pairs in different rotation-cache shards can race. Currently benign
-        // because each shard is Mutex-guarded and non-rotation callers do not
-        // change parallelism, but must be revisited if faer 0.20+ exposes a
-        // per-call parallelism API. Track: github.com/better-with-models/
-        // TinyQuant/issues/<TBD>.
+        // process-global atomic. Today the rotation cache is a single
+        // Mutex<Vec<…>> in rotation_cache.rs so all builds serialise and the
+        // race is unreachable. Any future concurrent caller of
+        // RotationMatrix::build (a sharded cache, or a non-cache call site)
+        // can race with another thread's get/set, returning a wrong-mode QR.
+        // Revisit if faer 0.20+ exposes a per-call parallelism API. Track:
+        // github.com/better-with-models/TinyQuant/issues/<TBD>.
         let prev_par = faer::get_global_parallelism();
         faer::set_global_parallelism(Parallelism::None);
         let qr = a.qr();
