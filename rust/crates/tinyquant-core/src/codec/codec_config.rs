@@ -28,6 +28,16 @@ use crate::types::ConfigHash;
 /// Mirrors `tinyquant_cpu.codec.codec_config.SUPPORTED_BIT_WIDTHS`.
 pub const SUPPORTED_BIT_WIDTHS: &[u8] = &[2, 4, 8];
 
+/// Maximum supported `dimension` for any codec config or rotation matrix.
+///
+/// `RotationMatrix::build` allocates `O(dim²)` `f64` storage and runs
+/// `O(dim³)` QR. Capping at 16384 bounds peak rotation memory at
+/// ~2 GiB and keeps build time tractable on commodity hardware. The
+/// largest production embedding sizes (e.g. 4096) sit well below this
+/// cap. Phase 28.7 added the cap as defence-in-depth against DoS via
+/// the new `RotationMatrix::from_seed_and_dim` PyO3 entry point.
+pub const MAX_DIMENSION: u32 = 16_384;
+
 /// Immutable configuration snapshot that fully determines codec behavior.
 ///
 /// Two configs with identical primary fields are interchangeable. The
@@ -51,6 +61,7 @@ impl CodecConfig {
     /// * [`CodecError::UnsupportedBitWidth`] — `bit_width` is not in
     ///   [`SUPPORTED_BIT_WIDTHS`].
     /// * [`CodecError::InvalidDimension`] — `dimension == 0`.
+    /// * [`CodecError::DimensionTooLarge`] — `dimension > MAX_DIMENSION`.
     pub fn new(
         bit_width: u8,
         seed: u64,
@@ -62,6 +73,12 @@ impl CodecConfig {
         }
         if dimension == 0 {
             return Err(CodecError::InvalidDimension { got: 0 });
+        }
+        if dimension > MAX_DIMENSION {
+            return Err(CodecError::DimensionTooLarge {
+                got: dimension,
+                max: MAX_DIMENSION,
+            });
         }
         let config_hash = compute_config_hash(bit_width, seed, dimension, residual_enabled);
         Ok(Self {

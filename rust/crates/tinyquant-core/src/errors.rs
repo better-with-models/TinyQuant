@@ -38,6 +38,15 @@ pub enum CodecError {
         got: u32,
     },
 
+    /// `dimension` exceeds the supported upper bound.
+    #[error("dimension must be <= {max}, got {got}")]
+    DimensionTooLarge {
+        /// The over-large dimension value that was provided.
+        got: u32,
+        /// The maximum supported dimension.
+        max: u32,
+    },
+
     /// Input vector length does not match the config's declared dimension.
     #[error("vector length {got} does not match config dimension {expected}")]
     DimensionMismatch {

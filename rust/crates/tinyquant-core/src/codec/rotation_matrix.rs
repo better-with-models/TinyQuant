@@ -28,7 +28,7 @@ use alloc::vec;
 use faer::{Mat, Parallelism};
 use libm::fabs;
 
-use crate::codec::codec_config::CodecConfig;
+use crate::codec::codec_config::{CodecConfig, MAX_DIMENSION};
 use crate::codec::gaussian::ChaChaGaussianStream;
 use crate::errors::CodecError;
 
@@ -54,14 +54,20 @@ impl RotationMatrix {
     ///
     /// # Panics
     ///
-    /// Panics if `dimension == 0`. In the normal flow, dimensions reach
-    /// this function only via a validated [`CodecConfig`], so this cannot
-    /// be triggered by safe public APIs of the crate.
+    /// Panics if `dimension == 0` or `dimension > MAX_DIMENSION`. In the
+    /// normal flow, dimensions reach this function only via a validated
+    /// [`CodecConfig`] or the `from_seed_and_dim` PyO3 wrapper, both of
+    /// which return errors instead of panicking. The asserts here are
+    /// defence-in-depth against a future caller bypassing those gates.
     #[allow(clippy::indexing_slicing)] // bounds are statically derived from `dim`
     pub fn build(seed: u64, dimension: u32) -> Self {
         assert!(
             dimension > 0,
             "RotationMatrix::build requires dimension > 0"
+        );
+        assert!(
+            dimension <= MAX_DIMENSION,
+            "RotationMatrix::build requires dimension <= {MAX_DIMENSION}, got {dimension}",
         );
         let dim = dimension as usize;
 
@@ -85,8 +91,10 @@ impl RotationMatrix {
         // race is unreachable. Any future concurrent caller of
         // RotationMatrix::build (a sharded cache, or a non-cache call site)
         // can race with another thread's get/set, returning a wrong-mode QR.
-        // Revisit if faer 0.20+ exposes a per-call parallelism API. Track:
-        // github.com/better-with-models/TinyQuant/issues/<TBD>.
+        // Revisit when faer exposes a per-call parallelism API (faer 0.20+
+        // is expected to thread Parallelism through `qr()` directly, removing
+        // the global-state dance entirely). Tracking lives with the R19 entry
+        // in docs/design/rust/risks-and-mitigations.md.
         let prev_par = faer::get_global_parallelism();
         faer::set_global_parallelism(Parallelism::None);
         let qr = a.qr();

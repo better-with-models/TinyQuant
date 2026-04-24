@@ -12,7 +12,7 @@ use pyo3::types::PyBytes;
 use tinyquant_core::codec::{
     compress as core_compress, decompress as core_decompress, Codebook as CoreCodebook,
     Codec as CoreCodec, CodecConfig as CoreCodecConfig, CompressedVector as CoreCompressedVector,
-    RotationMatrix as CoreRotationMatrix,
+    RotationMatrix as CoreRotationMatrix, MAX_DIMENSION,
 };
 use tinyquant_io::{from_bytes as io_from_bytes, to_bytes as io_to_bytes};
 
@@ -173,6 +173,11 @@ impl PyRotationMatrix {
     ) -> PyResult<Self> {
         if dimension == 0 {
             return Err(PyValueError::new_err("dimension must be > 0"));
+        }
+        if dimension > MAX_DIMENSION {
+            return Err(PyValueError::new_err(format!(
+                "dimension must be <= {MAX_DIMENSION}, got {dimension}",
+            )));
         }
         Ok(Self {
             inner: CoreRotationMatrix::build(seed, dimension),

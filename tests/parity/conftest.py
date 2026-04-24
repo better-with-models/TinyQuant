@@ -63,11 +63,24 @@ def _canonical_rotation_mode() -> None:
     absent so legacy-mode tests are unaffected.
     """
     try:
+        import tinyquant_cpu  # noqa: F401, PLC0415
+
         from tinyquant_py_reference.codec.rotation_matrix import (
+            RotationMatrix,
             _install_canonical_rotation,
         )
 
         _install_canonical_rotation()
+        # Loud-failure guard: a future regression that silently leaves
+        # _cached_build pointing at the legacy NumPy QR path would let
+        # parity tests pass against the wrong baseline. The canonical
+        # closure is always named "_canonical_build".
+        assert RotationMatrix._cached_build.__wrapped__.__name__ == (
+            "_canonical_build"
+        ), (
+            "_install_canonical_rotation did not patch _cached_build; "
+            "parity tests would silently run in legacy mode"
+        )
     except ImportError:
         pass
 
