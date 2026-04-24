@@ -118,7 +118,10 @@ impl GpuComputeBackend for MockCpuBackend {
 /// constant are accessible from `tinyquant_core` when `gpu-wgpu` is enabled.
 #[test]
 fn gpu_types_accessible_via_tinyquant_core() {
-    assert!(GPU_BATCH_THRESHOLD > 0);
+    // Compile-time assertion — `assert!(const > 0)` is folded by clippy as
+    // `assertions_on_constants`. A `const _: ()` block exercises the same
+    // invariant at compile time without tripping the lint.
+    const _: () = assert!(GPU_BATCH_THRESHOLD > 0);
     // Instantiate the trait bound to confirm the type is reachable.
     let _backend: &dyn GpuComputeBackend<Error = CodecError> = &MockCpuBackend::new();
 }

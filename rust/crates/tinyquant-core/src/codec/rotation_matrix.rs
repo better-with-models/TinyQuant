@@ -56,7 +56,7 @@ impl RotationMatrix {
     ///
     /// Panics if `dimension == 0` or `dimension > MAX_DIMENSION`. In the
     /// normal flow, dimensions reach this function only via a validated
-    /// [`CodecConfig`] or the `from_seed_and_dim` PyO3 wrapper, both of
+    /// [`CodecConfig`] or the `from_seed_and_dim` `PyO3` wrapper, both of
     /// which return errors instead of panicking. The asserts here are
     /// defence-in-depth against a future caller bypassing those gates.
     #[allow(clippy::indexing_slicing)] // bounds are statically derived from `dim`

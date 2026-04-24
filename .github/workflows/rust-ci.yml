@@ -66,6 +66,14 @@ jobs:
     name: Clippy
     runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
     needs: [choose-runner, fmt]
+    # Force the MSRV toolchain for cargo too. Without this, cargo invoked
+    # from `working-directory: rust` would silently switch to the version
+    # pinned in `rust/rust-toolchain.toml` (1.87, required by
+    # tinyquant-gpu-wgpu) and run a much stricter clippy that raises
+    # pedantic lints which post-date MSRV. The `RUSTUP_TOOLCHAIN` env var
+    # overrides `rust-toolchain.toml`.
+    env:
+      RUSTUP_TOOLCHAIN: "1.81.0"
     defaults:
       run:
         working-directory: rust
