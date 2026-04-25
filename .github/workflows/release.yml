@@ -117,8 +117,20 @@ jobs:
           retention-days: 7
           if-no-files-found: error
 
+  # Phase 24+ split: PyPI publishing is owned by `python-fatwheel.yml`
+  # (triggered by `py-v*` tags), which assembles the cross-arch fat
+  # wheel from the per-target binaries built by `rust-release.yml`.
+  # The `pyproject.toml` at repo root is intentionally an empty
+  # placeholder enforced by the "Wheel leakage guard" job in `ci.yml`,
+  # so building and publishing it from here would push a 10 KB
+  # module-less wheel that breaks `pip install tinyquant-cpu`.
+  #
+  # Keep verify-tag, calibration-tests, build, and Create GitHub
+  # Release running on every `v*` tag — those are the cross-language
+  # release-gate; only the PyPI publish steps below are off.
   publish-testpypi:
     name: Publish to TestPyPI
+    if: false  # PyPI publish moved to python-fatwheel.yml (py-v* tags)
     runs-on: ubuntu-22.04
     needs: [build]
     environment: testpypi
@@ -160,6 +172,7 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
+    if: false  # PyPI publish moved to python-fatwheel.yml (py-v* tags)
     runs-on: ubuntu-22.04
     needs: [publish-testpypi]
     environment: pypi
