@@ -239,6 +239,12 @@ jobs:
           workspaces: rust -> target
       - name: Install cross (linux/bsd cross-compile)
         if: matrix.cross
+        # Same edition2024 issue as cargo-auditable below: latest `cross`
+        # may require rustc 1.85+. Run the install under a newer toolchain
+        # that rustup auto-fetches; cross itself is just a Docker driver
+        # and doesn't dictate the cross-compiled binary's toolchain.
+        env:
+          RUSTUP_TOOLCHAIN: "1.87.0"
         run: cargo install cross --locked
 
       - name: Build tinyquant-cli (standalone binary)
@@ -328,6 +334,13 @@ jobs:
       # there and the SBOM leg itself already skips Windows.
       - name: Install cargo-auditable (Linux only)
         if: contains(matrix.target, 'linux')
+        # cargo-auditable 0.7+ requires edition2024 (rustc 1.85+). Install
+        # under the 1.87 toolchain that's already on the runner; the actual
+        # `cargo auditable build` invocation below still uses the workflow's
+        # MSRV-pinned toolchain because cargo-auditable is just a wrapper
+        # that shells out to whatever `cargo` is on PATH at build time.
+        env:
+          RUSTUP_TOOLCHAIN: "1.87.0"
         run: cargo install cargo-auditable --locked
       - name: Build CLI with auditable metadata (Linux only)
         if: contains(matrix.target, 'linux')
