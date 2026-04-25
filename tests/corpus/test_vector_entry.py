@@ -5,9 +5,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 import numpy as np
-
-from tinyquant_cpu.codec.compressed_vector import CompressedVector
-from tinyquant_cpu.corpus.vector_entry import VectorEntry
+from tinyquant_py_reference.codec.compressed_vector import CompressedVector
+from tinyquant_py_reference.corpus.vector_entry import VectorEntry
 
 
 def _make_compressed(config_hash: str = "abc123", dim: int = 4) -> CompressedVector:

@@ -51,7 +51,7 @@ impl<'a> CompressedVectorView<'a> {
             return Err(IoError::InvalidBitWidth { got: bit_width });
         }
         let dim = dimension as usize;
-        let packed_len = (dim * bit_width as usize + 7) / 8;
+        let packed_len = (dim * bit_width as usize).div_ceil(8);
         let flag_offset = HEADER_SIZE + packed_len;
         if data.len() < flag_offset + 1 {
             return Err(IoError::Truncated {

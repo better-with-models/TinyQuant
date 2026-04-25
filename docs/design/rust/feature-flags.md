@@ -57,12 +57,27 @@ rayon = ["std", "dep:rayon"]
 
 Build matrix:
 
-| Features | Purpose |
-|---|---|
-| (none) | `no_std + alloc` smoke build (embedded, WASM) |
-| `std` | Standard baseline |
-| `std,simd` | Default for leaf crates |
-| `std,simd,rayon` | Integration with `tinyquant-io` |
+| Features | MSRV | Purpose |
+| --- | --- | --- |
+| (none) | 1.81 | `no_std + alloc` smoke build (embedded, WASM) |
+| `std` | 1.81 | Standard baseline |
+| `std,simd` | 1.81 | Default for leaf crates |
+| `std,simd,rayon` | 1.81 | Integration with `tinyquant-io` |
+| `gpu-wgpu` | 1.87 | GPU-accelerated batch compression |
+
+#### `gpu-wgpu` feature (Phase 28.5)
+
+```toml
+# Enables GPU-accelerated batch compression via the GpuComputeBackend trait.
+# Implies `std`. Raises the effective MSRV from 1.81 to 1.87 when the
+# `tinyquant-gpu-wgpu` crate is also in the dependency graph.
+gpu-wgpu = ["std"]
+```
+
+When this feature is enabled, `Codec::compress_batch_gpu_with` becomes
+available. The method accepts any type implementing `GpuComputeBackend`
+and routes to GPU when `rows >= GPU_BATCH_THRESHOLD` (512), otherwise
+falls back to the CPU path.
 
 ### `tinyquant-io`
 
@@ -134,6 +149,65 @@ numpy = ["dep:numpy"]  # always on for defaults
 # abi3-py312 is specified on pyo3 directly, not as a tinyquant feature
 ```
 
+### `tinyquant-gpu-wgpu` (Phase 27)
+
+```toml
+[package]
+name = "tinyquant-gpu-wgpu"
+# MSRV override: wgpu requires Rust ≥ 1.87. This field overrides the
+# workspace rust-version (1.81) for this crate only. Cargo respects
+# the per-package field when it exists.
+rust-version = "1.87"
+
+[features]
+default = []
+
+# Enable compile-time shader validation (wgpu naga validator).
+# Default off: validator adds ~6 s to cold build; only needed in dev.
+validate-shaders = []
+
+# Enable dhat heap profiling on GPU buffer allocations.
+dhat-heap = ["dep:dhat"]
+```
+
+Build matrix:
+
+| Features | Purpose |
+|---|---|
+| (none) | Default — adapter probe + WGSL compile, no extras |
+| `validate-shaders` | Shader-compile CI job |
+| `dhat-heap` | GPU allocation profiling only |
+
+`wgpu` is declared as:
+
+```toml
+[dependencies]
+wgpu = { version = "22", default-features = false, features = ["wgsl"] }
+tinyquant-core = { path = "../tinyquant-core" }
+```
+
+`default-features = false` keeps the dep from pulling in `naga`'s
+GLSL and HLSL parsers, which are not needed.
+
+### `tinyquant-gpu-cuda` (Phase 29)
+
+```toml
+[package]
+rust-version = "1.87"
+
+[features]
+default = []
+
+# Enable CUDA device enumeration and kernel launch.
+# Off by default: build fails if no CUDA toolkit is installed.
+cuda = ["dep:cust"]
+```
+
+When the `cuda` feature is absent the crate compiles to an empty stub
+so downstream code that conditionally enables it does not need `#[cfg]`
+fences everywhere — `CudaBackend::is_available()` always returns
+`false` without the feature.
+
 ### `tinyquant-bench`
 
 ```toml
@@ -160,8 +234,19 @@ regressions:
 | `io-minimal` | `cargo test -p tinyquant-io --no-default-features` |
 | `sys-jemalloc` | `cargo test -p tinyquant-sys --features simd,jemalloc` |
 | `sys-mimalloc` | `cargo test -p tinyquant-sys --features simd,mimalloc` |
+| `gpu-wgpu` build | `cargo build -p tinyquant-core --features gpu-wgpu` |
+| `gpu-wgpu` tests | `cargo test -p tinyquant-core --features gpu-wgpu` |
 
-Total: 9 cargo invocations. All run in parallel on a matrix job.
+Total: 11 cargo invocations. All run in parallel on a matrix job.
+
+> [!note] GPU crates excluded from the 1.81 MSRV gate
+> The workspace MSRV check (`cargo +1.81.0 check`) explicitly excludes
+> `tinyquant-gpu-wgpu` and `tinyquant-gpu-cuda` via
+> `--exclude tinyquant-gpu-wgpu --exclude tinyquant-gpu-cuda` because
+> those crates declare `package.rust-version = "1.87"`. A separate CI
+> job (`gpu-compile-check`) runs `cargo +1.87.0 check -p
+> tinyquant-gpu-wgpu` on `ubuntu-22.04` without a physical GPU, gating
+> only on successful compilation and shader validation.
 
 ## Feature interactions audit
 

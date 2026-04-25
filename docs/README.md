@@ -76,8 +76,27 @@ graph TD
 
 ### Lint the wiki
 
-Check for orphan pages, missing cross-links, stale claims, contradictions, and
-gaps worth filling.
+Two complementary layers of linting run against this vault:
+
+1. **Automated** — `markdownlint-obsidian` gates `docs/**/*.md` (except
+   `research/`) as both a pre-commit hook (`.pre-commit-config.yaml`) and
+   a CI job (`.github/workflows/docs-lint.yml`). Configuration lives at
+   `.obsidian-linter.jsonc` at the repo root. The linter understands
+   wikilinks, embeds, callouts, and block references, so conventional
+   `markdownlint-cli2` rules that conflict with Obsidian syntax are
+   pre-wired off.
+2. **Editorial** — a periodic LLM-driven check for orphan pages, missing
+   cross-links, stale claims, contradictions, and gaps worth filling.
+   This complements the mechanical lint; it is not automated.
+
+> [!tip] To run the Obsidian lint locally
+>
+> ```bash
+> npm install -g markdownlint-obsidian-cli@1.0.6
+> markdownlint-obsidian
+> ```
+>
+> The config file at the repo root supplies globs and ignore patterns.
 
 ## See also
 

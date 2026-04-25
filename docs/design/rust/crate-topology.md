@@ -37,6 +37,8 @@ TinyQuant/
 │   │   ├── tinyquant-sys/        # C ABI façade (cdylib + staticlib + header)
 │   │   ├── tinyquant-py/         # pyo3 bindings (importable as tinyquant_rs)
 │   │   ├── tinyquant-cli/        # Standalone `tinyquant` binary (multi-arch)
+│   │   ├── tinyquant-gpu-wgpu/   # wgpu (Metal/Vulkan/D3D12) GPU backend — MSRV 1.87
+│   │   ├── tinyquant-gpu-cuda/   # cust CUDA backend — MSRV 1.87, optional Phase 29
 │   │   ├── tinyquant-bench/      # criterion benchmarks (not published)
 │   │   └── tinyquant-fuzz/       # libfuzzer-sys targets (not published)
 │   └── xtask/                    # Release, parity-check, bench-run tooling
@@ -59,6 +61,8 @@ graph TD
     Sys["tinyquant-sys<br/>(cdylib + staticlib, C ABI)"]
     Py["tinyquant-py<br/>(cdylib, pyo3)"]
     CLI["tinyquant-cli<br/>(bin 'tinyquant')"]
+    GpuWgpu["tinyquant-gpu-wgpu<br/>(wgpu — Phase 27, MSRV 1.87)"]
+    GpuCuda["tinyquant-gpu-cuda<br/>(cust — Phase 29, MSRV 1.87)"]
     Bench["tinyquant-bench"]
     Fuzz["tinyquant-fuzz"]
     XTask["xtask"]
@@ -76,6 +80,8 @@ graph TD
     CLI --> Core
     CLI --> IO
     CLI --> BF
+    GpuWgpu --> Core
+    GpuCuda --> Core
     Bench --> Core
     Bench --> IO
     Bench --> BF
@@ -84,6 +90,14 @@ graph TD
     XTask --> Core
     XTask --> IO
 ```
+
+> [!note] GPU crate isolation
+> `tinyquant-gpu-wgpu` and `tinyquant-gpu-cuda` depend on
+> `tinyquant-core` only. They carry their own `package.rust-version =
+> "1.87"` override and are **not** included in the workspace-level MSRV
+> gate (`cargo +1.81.0 check`). They are gated behind a workspace
+> `optional = true` entry so they are never compiled unless explicitly
+> requested. See [[design/rust/gpu-acceleration|GPU Acceleration Design]].
 
 **Invariants enforced by CI**
 
@@ -98,10 +112,14 @@ graph TD
    allowed to produce a `bin` target (the standalone `tinyquant`
    executable). Verified by `cargo metadata | jq` in CI.
 4. `tinyquant-bench`, `tinyquant-fuzz`, and `xtask` are marked
-   `publish = false` — crates.io sees seven published crates:
+   `publish = false` — crates.io sees nine published crates:
    `tinyquant-core`, `tinyquant-io`, `tinyquant-bruteforce`,
-   `tinyquant-pgvector`, `tinyquant-sys`, `tinyquant-py`, and
-   `tinyquant-cli`.
+   `tinyquant-pgvector`, `tinyquant-sys`, `tinyquant-py`,
+   `tinyquant-cli`, `tinyquant-gpu-wgpu`, and `tinyquant-gpu-cuda`.
+5. `tinyquant-gpu-wgpu` and `tinyquant-gpu-cuda` must **not** appear in
+   `cargo tree -p tinyquant-core` or any crate above them. GPU is
+   always a leaf — it is consumed by applications, never pulled
+   transitively through the codec stack.
 
 ## Per-crate responsibility
 
@@ -341,6 +359,61 @@ x86_64/aarch64, Windows x86_64/i686, FreeBSD x86_64) and the
 `rust-release.yml` workflow that publishes archives to GitHub
 Releases plus a multi-arch container image to GHCR.
 
+### `tinyquant-gpu-wgpu` (Phase 27, published)
+
+wgpu-backed GPU execution layer. Produces `rlib`. Requires `std`.
+MSRV: 1.87 (carried as `package.rust-version` — not the workspace
+MSRV). Depends only on `tinyquant-core`.
+
+```text
+tinyquant-gpu-wgpu/
+├── Cargo.toml               # package.rust-version = "1.87"
+├── src/
+│   ├── lib.rs               # Re-exports WgpuBackend; links ComputeBackend
+│   ├── backend.rs           # WgpuBackend — impl ComputeBackend
+│   ├── context.rs           # WgpuContext: device, queue, adapter init
+│   ├── prepared.rs          # GPU-side PreparedCodec extensions (buffer upload)
+│   ├── kernels/
+│   │   ├── mod.rs
+│   │   ├── rotate.wgsl      # Rotation matmul kernel
+│   │   ├── quantize.wgsl    # Scalar quantize + index lookup kernel
+│   │   ├── dequantize.wgsl  # Codebook dequantize kernel
+│   │   └── cosine_topk.wgsl # Cosine similarity + top-k reduction kernel
+│   └── error.rs             # TinyQuantGpuError
+└── tests/
+    ├── differential.rs      # GPU vs CPU differential tests (same output ±ε)
+    └── shader_compile.rs    # Compile-only shader validation
+```
+
+`WgpuBackend` implements the `ComputeBackend` trait (see
+[[design/rust/gpu-acceleration|GPU Acceleration Design]]). All WGSL
+shaders are embedded via `include_str!` and compiled at device-init
+time. If no GPU adapter is found, `ComputeBackend::is_available()`
+returns `false` and the caller falls back to CPU.
+
+### `tinyquant-gpu-cuda` (Phase 29, published, optional)
+
+`cust`-backed CUDA specialist backend for NVIDIA GPUs. Produces
+`rlib`. Requires `std` and CUDA toolkit at build time. MSRV: 1.87.
+This crate is strictly optional; nothing in the main workspace depends
+on it.
+
+```text
+tinyquant-gpu-cuda/
+├── Cargo.toml               # package.rust-version = "1.87"
+├── build.rs                 # Compile .cu sources via nvcc if CUDA present
+├── src/
+│   ├── lib.rs
+│   ├── backend.rs           # CudaBackend — impl ComputeBackend
+│   ├── context.rs           # CudaContext: device selection, stream init
+│   └── error.rs             # CudaError wrapping cust errors
+├── kernels/
+│   ├── rotate.cu
+│   └── quantize.cu
+└── tests/
+    └── differential.rs      # Only runs if CUDA device present (skip otherwise)
+```
+
 ### `tinyquant-bench` (not published)
 
 ```text
@@ -404,6 +477,13 @@ members = [
     "crates/tinyquant-sys",
     "crates/tinyquant-py",
     "crates/tinyquant-cli",
+    # GPU crates carry their own package.rust-version = "1.87".
+    # They are workspace members so `cargo test --workspace` reaches
+    # them, but the top-level MSRV gate (`cargo +1.81.0 check`) must
+    # exclude them explicitly: `--exclude tinyquant-gpu-wgpu
+    # --exclude tinyquant-gpu-cuda`.
+    "crates/tinyquant-gpu-wgpu",
+    "crates/tinyquant-gpu-cuda",
     "crates/tinyquant-bench",
     "crates/tinyquant-fuzz",
     "xtask",

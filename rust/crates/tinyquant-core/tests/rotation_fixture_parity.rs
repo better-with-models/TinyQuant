@@ -90,12 +90,30 @@ fn seed_42_dim_64_fixture_is_orthogonal_within_1e_12() {
 /// [[design/rust/risks-and-mitigations#r19-faer-parallel-kernel-nondeterminism-across-platforms|Risks §R19]]
 /// and [[design/rust/phase-14-implementation-notes#ci-follow-ups-queued-after-phase-14|Phase 14 Implementation Notes §CI follow-ups]].
 ///
-/// Until that lands, the dim=768 fixture is kept on disk but the
-/// bit-exact assertion is `#[ignore]`d. Coverage is preserved by the
-/// orthogonality test below, which checks a mathematical invariant
-/// of the build output rather than a byte-for-byte fingerprint.
+/// The AVX2 ISA cap in `.cargo/config.toml` (commit `e04ce5c`) reduced
+/// — but does not fully eliminate — the cross-runner divergence. As of
+/// 2026-04-25 the CI runner pool started producing bit-different
+/// `dim=768` matrices on every Linux x86_64 / aarch64 / macOS / Windows
+/// host (529832/589824 f64 words differ from the frozen snapshot) even
+/// though host-CPU dispatch is pinned at AVX2. The runtime divergence is
+/// independent of any tinyquant code change — develop's CI flipped from
+/// green to red between 2026-04-23 and 2026-04-25 with no fixture or
+/// build-path commit between those dates. The orthogonality companion
+/// (`seed_42_dim_768_build_is_orthogonal_within_1e_12`) below still
+/// guarantees the actual semantic invariant; bit-exact reproducibility
+/// remains a separate goal that needs either:
+///
+/// 1. faer 0.20+ exposing a per-call `Parallelism` so we can force
+///    serial Householder reduction without process-global mutation, or
+/// 2. a fixture regenerated under a known scalar/non-SIMD QR path that
+///    every runner can reproduce.
+///
+/// Both are tracked under R19 in
+/// [[design/rust/risks-and-mitigations#r19-faer-parallel-kernel-nondeterminism-across-platforms|Risks §R19]].
+#[ignore = "R19: AVX2 cap insufficient for cross-runner bit reproducibility; \
+            re-enable after fixture regen under per-call Parallelism::None or scalar QR. \
+            Orthogonality companion test below still gates semantic correctness."]
 #[test]
-#[ignore = "cross-runner SIMD ISA nondeterminism at dim=768; see R19"]
 fn seed_42_dim_768_matches_frozen_snapshot_bit_for_bit() {
     let expected = load_fixture("seed_42_dim_768.f64.bin", 768);
     let rot = RotationMatrix::build(42, 768);

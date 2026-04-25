@@ -1,3 +1,13 @@
+"""Verify that pre-commit hooks agree with the repository's expectations.
+
+This script runs the configured pre-commit suite against the current
+working tree and reports any hooks that fail or drift from the pinned
+versions declared in ``.pre-commit-config.yaml``. It is intended to be
+invoked manually or from CI as a belt-and-braces check that the hook
+contract stays honest between contributor machines and the gated
+pipeline.
+"""
+
 from __future__ import annotations
 
 import re
@@ -30,10 +40,12 @@ OBSIDIAN_PATTERNS = [
 
 
 def fail(message: str) -> None:
+    """Print a FAIL-prefixed message to stdout."""
     print(f"FAIL: {message}")
 
 
 def ok(message: str) -> None:
+    """Print a PASS-prefixed message to stdout."""
     print(f"PASS: {message}")
 
 
@@ -53,20 +65,41 @@ def ok(message: str) -> None:
 # - .worktrees/ : git worktrees share the repo's .git but live under a
 #                 separate directory; their docs/ contain Obsidian markdown
 #                 and are governed by their own branch's pre-commit hook.
-_EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv", ".worktrees"}
+# - .claude/    : Claude Code session state including ephemeral worktrees
+#                 spun up for background tasks; those worktrees contain
+#                 Obsidian docs governed by their own branch's hook.
+_EXCLUDED_TOP_DIRS = {".git", "docs", ".github", ".venv", ".worktrees", ".claude"}
+
+# Path-component predicates that exclude a file from obsidian-boundary and
+# markdownlint scope regardless of which top-level directory it lives in.
+#
+# - node_modules : vendored third-party packages anywhere in the tree
+#                  (e.g. javascript/@tinyquant/core/node_modules/).
+# - results      : auto-generated benchmark output under experiments/**/results/;
+#                  machine-written SUMMARY.md files are not subject to lint rules.
+_EXCLUDED_PATH_PARTS = {"node_modules", "results"}
+
+
+def _is_excluded(relative: Path) -> bool:
+    """Return True if *relative* should be skipped by Obsidian/lint checks."""
+    if relative.parts[0] in _EXCLUDED_TOP_DIRS:
+        return True
+    return bool(_EXCLUDED_PATH_PARTS & set(relative.parts))
 
 
 def markdown_files_outside_docs() -> list[Path]:
+    """Return all ``*.md`` files that are outside the excluded top-level directories."""
     files: list[Path] = []
     for path in REPO_ROOT.rglob("*.md"):
         relative = path.relative_to(REPO_ROOT)
-        if relative.parts[0] in _EXCLUDED_TOP_DIRS:
+        if _is_excluded(relative):
             continue
         files.append(path)
     return sorted(files)
 
 
 def wiki_markdown_files() -> list[Path]:
+    """Return all ``*.md`` files under ``docs/`` excluding the ``research/`` subtree."""
     files: list[Path] = []
     for path in (REPO_ROOT / "docs").rglob("*.md"):
         relative = path.relative_to(REPO_ROOT)
@@ -77,6 +110,7 @@ def wiki_markdown_files() -> list[Path]:
 
 
 def check_required_files() -> bool:
+    """Verify that every file in ``REQUIRED_ROOT_FILES`` exists. Returns ``True`` on success."""
     success = True
     for relative_path in REQUIRED_ROOT_FILES:
         path = REPO_ROOT / relative_path
@@ -89,6 +123,7 @@ def check_required_files() -> bool:
 
 
 def check_claude_stub() -> bool:
+    """Verify that ``CLAUDE.md`` contains a reference to ``AGENTS.md``. Returns ``True`` on success."""
     claude = (REPO_ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     if "AGENTS.md" in claude:
         ok("CLAUDE.md points to AGENTS.md")
@@ -98,6 +133,7 @@ def check_claude_stub() -> bool:
 
 
 def check_obsidian_boundary() -> bool:
+    """Verify that Obsidian-specific markdown (wikilinks, callouts) is confined to ``docs/``. Returns ``True`` on success."""
     success = True
     for path in markdown_files_outside_docs():
         text = path.read_text(encoding="utf-8")
@@ -116,6 +152,7 @@ def check_obsidian_boundary() -> bool:
 
 
 def parse_frontmatter(text: str) -> tuple[bool, set[str]]:
+    """Parse YAML frontmatter from ``text``. Returns ``(has_frontmatter, key_set)``."""
     lines = text.splitlines()
     if len(lines) < 3 or lines[0].strip() != "---":
         return False, set()
@@ -134,12 +171,14 @@ def parse_frontmatter(text: str) -> tuple[bool, set[str]]:
 
 
 def strip_code(text: str) -> str:
+    """Remove fenced code blocks and inline code spans from ``text`` before pattern-matching."""
     text = re.sub(r"```[\s\S]*?```", "", text)
     text = re.sub(r"`[^`\n]+`", "", text)
     return text
 
 
 def check_wiki_frontmatter() -> bool:
+    """Verify that every Obsidian wiki page has required YAML frontmatter keys. Returns ``True`` on success."""
     success = True
     for path in wiki_markdown_files():
         text = path.read_text(encoding="utf-8")
@@ -162,17 +201,16 @@ def check_wiki_frontmatter() -> bool:
 
 
 def run_markdownlint() -> bool:
-    files = markdown_files_outside_docs()
-    if not files:
-        ok("no markdown files outside docs/ to lint")
-        return True
-
+    """Run ``markdownlint-cli2`` against the repository via ``npx``. Returns ``True`` on clean exit."""
     npx = shutil.which("npx.cmd") or shutil.which("npx")
     if not npx:
         fail("npx was not found, so markdownlint could not run")
         return False
 
-    command = [npx, "markdownlint-cli2", *[str(path) for path in files]]
+    # Drive scope from .markdownlint-cli2.jsonc `ignores` rather than an
+    # explicit file list — Windows command-line length caps out around a
+    # few hundred paths once the bootstrap subtree docs are included.
+    command = [npx, "markdownlint-cli2", "**/*.md"]
     result = subprocess.run(command, cwd=REPO_ROOT, check=False)
     if result.returncode == 0:
         ok("markdownlint passed for markdown outside docs/")
@@ -182,13 +220,150 @@ def run_markdownlint() -> bool:
     return False
 
 
+def staged_rust_files() -> list[str]:
+    """Return staged ``*.rs`` paths (added, copied, modified, renamed).
+
+    Returns an empty list when no Rust files are staged, allowing the fmt
+    check to be skipped entirely for documentation-only or non-Rust commits.
+    """
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return [p for p in result.stdout.splitlines() if p.endswith(".rs")]
+
+
+def check_rust_fmt() -> bool:
+    """Run ``cargo fmt --all -- --check`` when Rust files are staged.
+
+    Mirrors the ``fmt`` job in ``.github/workflows/rust-ci.yml`` so
+    formatting failures are caught locally before they reach CI.
+
+    Skipped when no ``*.rs`` files are staged.  Returns ``True`` on success
+    or skip, ``False`` on failure.
+    """
+    rust_files = staged_rust_files()
+    if not rust_files:
+        ok("no staged Rust files — skipping cargo fmt check")
+        return True
+
+    cargo = shutil.which("cargo")
+    if not cargo:
+        fail("cargo not found — cannot run fmt check (install Rust toolchain)")
+        return False
+
+    rust_dir = REPO_ROOT / "rust"
+    if not rust_dir.is_dir():
+        fail(f"rust/ directory not found at {rust_dir} — skipping fmt check")
+        return True
+
+    result = subprocess.run(
+        [cargo, "fmt", "--all", "--", "--check"],
+        cwd=rust_dir,
+        check=False,
+    )
+    if result.returncode == 0:
+        ok(f"cargo fmt clean ({len(rust_files)} staged Rust file(s))")
+        return True
+
+    suffix = " …" if len(rust_files) > 5 else ""
+    fail(
+        f"cargo fmt check failed — run `cargo fmt --all` from rust/ to fix\n"
+        f"  Staged Rust files: {', '.join(rust_files[:5])}{suffix}"
+    )
+    return False
+
+
+def staged_python_files() -> list[str]:
+    """Return staged ``*.py`` paths (added, copied, modified, renamed).
+
+    Returns an empty list when no Python files are staged, allowing the
+    ruff check to be skipped entirely for non-Python commits.
+    """
+    result = subprocess.run(
+        ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return [p for p in result.stdout.splitlines() if p.endswith(".py")]
+
+
+def check_python_lint() -> bool:
+    """Run ``ruff check`` and ``ruff format --check`` when Python files are staged.
+
+    Mirrors the ``lint`` job in ``.github/workflows/ci.yml`` so linting and
+    formatting failures are caught locally before they reach CI.
+
+    Skipped when no ``*.py`` files are staged.  Returns ``True`` on success
+    or skip, ``False`` on failure.
+    """
+    py_files = staged_python_files()
+    if not py_files:
+        ok("no staged Python files — skipping ruff check")
+        return True
+
+    python = shutil.which("python") or shutil.which("python3")
+    if not python:
+        fail("python not found — cannot run ruff (install Python)")
+        return False
+
+    # Check ruff is available via python -m ruff
+    probe = subprocess.run(
+        [python, "-m", "ruff", "--version"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        check=False,
+    )
+    if probe.returncode != 0:
+        fail("ruff not found — run `pip install ruff` to fix")
+        return False
+
+    suffix = " …" if len(py_files) > 5 else ""
+    staged_label = f"{len(py_files)} staged Python file(s)"
+
+    lint_result = subprocess.run(
+        [python, "-m", "ruff", "check", "."],
+        cwd=REPO_ROOT,
+        check=False,
+    )
+    fmt_result = subprocess.run(
+        [python, "-m", "ruff", "format", "--check", "."],
+        cwd=REPO_ROOT,
+        check=False,
+    )
+
+    if lint_result.returncode != 0:
+        fail(
+            f"ruff check failed — run `python -m ruff check --fix .` to fix\n"
+            f"  Staged Python files: {', '.join(py_files[:5])}{suffix}"
+        )
+        return False
+    if fmt_result.returncode != 0:
+        fail(
+            f"ruff format check failed — run `python -m ruff format .` to fix\n"
+            f"  Staged Python files: {', '.join(py_files[:5])}{suffix}"
+        )
+        return False
+
+    ok(f"ruff clean ({staged_label})")
+    return True
+
+
 def main() -> int:
+    """Run all pre-commit verification checks and return an exit code (0 = pass, 1 = fail)."""
     checks = [
         check_required_files(),
         check_claude_stub(),
         check_obsidian_boundary(),
         check_wiki_frontmatter(),
         run_markdownlint(),
+        check_rust_fmt(),
+        check_python_lint(),
     ]
     if all(checks):
         print("TinyQuant pre-commit verification passed.")

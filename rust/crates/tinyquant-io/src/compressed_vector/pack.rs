@@ -8,7 +8,10 @@
 /// the LSB-first packed representation. `packed.len()` must equal
 /// `(indices.len() * bit_width as usize + 7) / 8`.
 pub fn pack_indices(indices: &[u8], bit_width: u8, packed: &mut [u8]) {
-    debug_assert_eq!(packed.len(), (indices.len() * bit_width as usize + 7) / 8);
+    debug_assert_eq!(
+        packed.len(),
+        (indices.len() * bit_width as usize).div_ceil(8)
+    );
     if bit_width == 8 {
         packed.copy_from_slice(indices);
         return;

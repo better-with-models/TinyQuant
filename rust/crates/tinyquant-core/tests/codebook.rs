@@ -140,26 +140,22 @@ fn assert_train_matches_fixture(bit_width: u8) {
 
 // These three tests compare Rust training output byte-for-byte against
 // Python-generated fixtures. Like the dim=768 rotation test (see R19 in
-// docs/design/rust/risks-and-mitigations.md), they are sensitive to the
+// docs/design/rust/risks-and-mitigations.md), they were sensitive to the
 // SIMD ISA active at runtime: AVX2 and AVX-512 kernels in pulp/faer
-// produce different f64 bit patterns for the same input, so the fixture
-// generated on one machine fails on another. Replaced by the orthogonality
-// and round-trip checks below until RotationMatrix::build is made
-// bit-reproducible across ISAs.
+// produce different f64 bit patterns for the same input. The nondeterminism
+// is resolved by capping x86_64 builds to AVX2 via `-C target-feature=-avx512f,...`
+// in `.cargo/config.toml`, which forces `pulp` to always select the AVX2 kernel.
 #[test]
-#[ignore]
 fn train_matches_python_fixture_bw2_seed42_n10000_d64() {
     assert_train_matches_fixture(2);
 }
 
 #[test]
-#[ignore]
 fn train_matches_python_fixture_bw4_seed42_n10000_d64() {
     assert_train_matches_fixture(4);
 }
 
 #[test]
-#[ignore]
 fn train_matches_python_fixture_bw8_seed42_n10000_d64() {
     assert_train_matches_fixture(8);
 }

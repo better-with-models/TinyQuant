@@ -54,8 +54,20 @@ source-count: 0
 17. [[design/rust/phase-13-implementation-notes|Phase 13 Implementation Notes]] — execution-log view of the Phase 13 landing (rotation matrix and numerics): deviations from the plan, gotchas, and locked-in invariants
 18. [[design/rust/phase-14-implementation-notes|Phase 14 Implementation Notes]] — execution-log view of the Phase 14 landing (`Codebook` + scalar quantize kernels): bit-width sweep, `rand_chacha` substitute for `proptest`, `fs::read` fixture pattern, and the `#[allow(clippy::cast_*)]` locality that made the quantile math lint-clean
 19. [[design/rust/phase-15-implementation-notes|Phase 15 Implementation Notes]] — execution-log view of the Phase 15 landing (`Codec` service, `compute_residual`, `CompressedVector`): Rust-canonical fixture strategy due to RNG divergence, clippy constraint patterns, and fidelity gate numbers
-20. [[design/rust/phase-17-implementation-notes|Phase 17 Implementation Notes]] — execution-log view of the Phase 17 landing (`tinyquant-io` zero-copy views, Level-2 TQCV corpus file container, mmap-based reader): TQCV magic-byte layout, `mmap-lock` feature flag design, and `MmapView` lifetime safety model
-21. [[design/rust/phase-18-implementation-notes|Phase 18 Implementation Notes]] — execution-log view of the Phase 18 landing (`Corpus` aggregate root, vector insertion, batch atomicity, three-policy decompression, domain events, insertion-ordered vector map)
+20. [[design/rust/phase-16-implementation-notes|Phase 16 Implementation Notes]] — execution-log view of Phase 16: `tinyquant-io` serialization — TQCV wire format, `to_bytes`/`from_bytes`, bit-pack exhaustive tests, Python byte-parity fixtures, allocation-bound guard
+21. [[design/rust/phase-17-implementation-notes|Phase 17 Implementation Notes]] — execution-log view of the Phase 17 landing (`tinyquant-io` zero-copy views, Level-2 TQCV corpus file container, mmap-based reader): TQCV magic-byte layout, `mmap-lock` feature flag design, and `MmapView` lifetime safety model
+22. [[design/rust/phase-18-implementation-notes|Phase 18 Implementation Notes]] — execution-log view of the Phase 18 landing (`Corpus` aggregate root, vector insertion, batch atomicity, three-policy decompression, domain events, insertion-ordered vector map)
+23. [[design/rust/phase-19-implementation-notes|Phase 19 Implementation Notes]] — execution-log view of Phase 19: `SearchBackend` trait, `BruteForceBackend`, `PgvectorAdapter` — FP32-boundary enforcement, descending-score sort fix, `shift_remove` ordering, pgvector integration CI
+24. [[design/rust/phase-20-implementation-notes|Phase 20 Implementation Notes]] — execution-log for Phase 20: SIMD dispatch framework — `DispatchKind`, `OnceLock` dispatch cache, `kernels::avx2`/`neon` wrappers delegating to scalar, parity test binaries split by kind
+25. [[design/rust/gpu-acceleration|GPU Acceleration Design]] — optional wgpu and CUDA backends: `PreparedCodec`, `ComputeBackend` trait, WGSL kernels, MSRV isolation, CI strategy, and Phase 27-28 rollout plan
+26. [[design/rust/phase-21-implementation-notes|Phase 21 Implementation Notes]] — execution-log for Phase 21: Rayon parallel batch with `PartialInit`, calibration gates (PearsonOnline, mean_recall_at_k, GoldCorpus), `cargo xtask bench` capture/check/diff — determinism contract and CI budget job
+27. [[design/rust/phase-22-implementation-notes|Phase 22 Implementation Notes]] — execution-log view of the Phase 22 landing (pyo3 wheel, C ABI via cbindgen, standalone CLI, multi-arch release workflow): declared deviations and release-gate pattern
+28. [[design/rust/phase-23-implementation-notes|Phase 23 Implementation Notes]] — execution-log view of Phase 23: Python reference demotion to `tests/reference/`, parity scaffold, CI guard against reference leakage into wheels
+29. [[design/rust/phase-24-implementation-notes|Phase 24 Implementation Notes]] — execution-log view of Phase 24: fat-wheel assembler, PEP 376 RECORD, xtask publish guards, dry-run release workflow — 6 declared deviations
+30. [[design/rust/phase-25-implementation-notes|Phase 25 Implementation Notes]] — execution-log view of Phase 25: `@tinyquant/core` napi-rs bindings, CJS bundle, JSDoc, and npm release workflow — 142/142 tests, slice provenance
+31. [[design/rust/phase-27-implementation-notes|Phase 27 Implementation Notes]] — execution-log view of Phase 27: `tinyquant-gpu-wgpu` crate skeleton, WGSL kernels, parity tests, Layer 2/3 CI — residual pass and pipeline caching deferred to Phase 28
+32. [[design/rust/phase-27.5-implementation-notes|Phase 27.5 Implementation Notes]] — execution-log view of Phase 27.5: GPU-resident corpus search, `cosine_topk` WGSL kernel, `GpuCorpusState`, six best-practice audit findings resolved
+33. [[design/rust/phase-28-implementation-notes|Phase 28 Implementation Notes]] — execution-log for Phase 28: `CachedPipelines` lazy caching, `residual_decode.wgsl` GPU pass, `load_pipelines` lifecycle API, `BackendPreference` and `enumerate_adapters` — subnormal fix and ratio-based regression gate
 
 ## How the design layers relate
 
@@ -115,6 +127,7 @@ graph TD
 | **Standalone `tinyquant` CLI binary** cross-compiled to Linux x86_64/aarch64 (glibc and musl), macOS x86_64/aarch64, Windows x86_64/i686, and FreeBSD x86_64, plus a multi-arch GHCR container image | iOS/Android binaries |
 | Cargo library crates on crates.io, Python wheel on PyPI, binary archives on GitHub Releases — all produced from one tag in one workflow | — |
 | Benchmarks: criterion + flamegraphs + regression gates | Research-grade novel algorithms |
+| **Optional GPU acceleration** via `tinyquant-gpu-wgpu` (wgpu, Phase 27) and `tinyquant-gpu-cuda` (cust, Phase 29) — additive crates, never in core | Requiring a GPU for the base install |
 
 ## Relationship to the Python codebase
 

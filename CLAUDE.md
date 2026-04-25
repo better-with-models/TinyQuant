@@ -1,13 +1,5 @@
-# CLAUDE.md
+# TinyQuant Claude Guidance
 
-> *CPU-only vector quantization codec for embedding storage compression.*
+*Rust-native vector quantization codec for embedding compression — CPU SIMD, optional GPU acceleration, and Python/TypeScript bindings.*
 
-This repository uses [AGENTS.md](AGENTS.md) as the primary operating contract.
-
-If you are working in TinyQuant, read [AGENTS.md](AGENTS.md) first and treat it
-as the authoritative source for:
-
-- documentation structure
-- markdown policy
-- wiki maintenance rules
-- pre-commit verification expectations
+See [AGENTS.md](./AGENTS.md) for the authoritative instructions for this repository.

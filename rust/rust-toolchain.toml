@@ -1,4 +1,12 @@
 [toolchain]
+# Workspace MSRV. The bit-exact rotation fixture
+# (rust/crates/tinyquant-core/tests/fixtures/rotation/seed_42_dim_768.f64.bin)
+# was generated under 1.81; faer 0.19's QR output is sensitive to rustc
+# patch-version codegen, so cross-runner bit parity (R19) is currently
+# pinned to this version. The tinyquant-gpu-wgpu crate requires Rust 1.87
+# and overrides this via RUSTUP_TOOLCHAIN at the job level (see the
+# `gpu-compile` and `build + test (... gpu-wgpu feature)` jobs in
+# .github/workflows/rust-ci.yml). Bump in lockstep with a fixture regen.
 channel = "1.81.0"
 components = ["rustfmt", "clippy"]
 targets = ["thumbv7em-none-eabihf"]

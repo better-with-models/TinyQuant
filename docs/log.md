@@ -13,6 +13,95 @@ status: active
 > Append-only record of documentation-system changes. Use the format
 > `## [YYYY-MM-DD] operation | description`.
 
+## [2026-04-18] normalize | Phase 28 complete; Phase 29 branch opened; vault normalized
+
+- Phase 28 (wgpu pipeline caching, residual GPU pass, backend preference) merged
+  via PR #31 — `c81f524`
+- Roadmap updated: Phase 28 → **complete**; Phase 29 → **active**
+- Plan file `status` fields updated: phase-28 → complete; phase-11 → complete
+  (was incorrectly left as draft)
+- Implementation notes created:
+  - [[design/rust/phase-16-implementation-notes]] — TQCV wire format and Python
+    byte-parity
+  - [[design/rust/phase-19-implementation-notes]] — `SearchBackend` trait,
+    `BruteForceBackend`, `PgvectorAdapter`
+  - [[design/rust/phase-21-implementation-notes]] — Rayon batch path,
+    calibration gates, xtask bench
+  - [[design/rust/phase-28-implementation-notes]] — pipeline caching, residual
+    GPU pass, lifecycle API, backend preference
+- `docs/index.md`: added implementation-notes entries for phases 16, 19, 21, 28;
+  removed Scratch section (scratch files deleted in `6b1bb8f`)
+- `docs/log.md`: removed dead wikilinks to deleted scratch files
+- Branch `feature/docs-normalize-phase-29` opened from `develop` for this turn
+
+## [2026-04-18] normalize | Docs-normalize turn: Gantt, reading order, and log
+
+- `feature/phase-27.5-resident-corpus-search` merged to `develop` via PR #30 (`de0230e`)
+- `feature/docs-normalize-phase-28` rebased onto updated `develop`
+- wgpu local test run: 9/9 tests pass (`batch_threshold`, `context_probe` ×3, `parity_compress` ×2, `parity_search` ×2, doc-test ×1)
+- [[roadmap]]: added `:done,` Mermaid tags for phases 13, 14, 15 (were missing despite "complete" in the phase table)
+- [[design/rust/README|Rust Port Design Overview]]: extended reading order from 22 items to 28 — added implementation notes for phases 22, 23, 24, 25, 27, 27.5 (all existed in vault, none were linked from the reading order)
+
+## [2026-04-18] normalize | Phase 27.5 complete; Phase 28 activated; vault metadata normalized
+
+- Phase 27.5 (GPU-resident corpus search) merged via PR #29 — `791b195`
+- Roadmap updated: Phases 22, 25.5, 26, 27, 27.5 → **complete**; Phase 28 → **active**
+- Plan file `status` fields updated to match roadmap (phase-25.5 through phase-27.5 → complete; phase-28 → active)
+- `docs/index.md`: added Phase 25.5–29 plan entries; added Phase 27 and Phase 27.5 implementation notes entries
+- Created [[design/rust/phase-27.5-implementation-notes]] documenting Phase 27.5 execution and deviations
+- Phase 28 plan fleshed out: `residual_decode.wgsl` shader written; Step 5 `todo!()` stubs replaced with full bind-group + dispatch + readback code; subnormal fix for `f32_to_f16` documented
+## [2026-04-16] fix | Phase 27.5 audit findings resolved in tinyquant-gpu-wgpu
+
+Applied all six findings from the Phase 27.5 best-practice audit:
+
+- Added `InvalidTopK` variant to `TinyQuantGpuError`; `cosine_topk` now
+  returns it when `top_k == 0`
+- Added `search_pipeline: Option<wgpu::ComputePipeline>` field; pipeline
+  lazily built and cached on first `cosine_topk` call
+- `cosine_topk` changed to `&mut self`; removed corpus-upload idempotency
+  guard (always re-uploads)
+- Sort order aligned with `SearchResult: Ord` contract (descending score,
+  ascending `vector_id` tiebreaker)
+- Extracted `create_readback_buf` and `poll_map_read` private helpers,
+  removing duplicated readback pattern across three methods
+- Added corpus normalisation in `throughput_search.rs` bench; added
+  descending-score assertions in `parity_search.rs`
+- Fixed three Clippy lints in `tinyquant-core`: `manual_div_ceil`
+  (`compressed_vector.rs`), `doc_overindented_list_items` (`scalar.rs`),
+  `struct_field_names` (`aggregate.rs`)
+
+All tests green; clippy clean on both crates.
+
+## [2026-04-16] audit | Repo-wide security audit findings recorded
+
+Static security review of the TinyQuant repo identified four findings:
+
+- one high-severity denial-of-service issue in `tinyquant-io`
+  deserialization and corpus-file parsing
+- one medium-severity oversized-record allocation issue in the
+  non-mmap Level-2 reader
+- two low-severity release-workflow hardening gaps (`cargo vet`
+  running advisory-only and mutable Action-tag pinning)
+
+Non-findings recorded for the `tinyquant-sys` C ABI, `tinyquant-pgvector`
+SQL adapter, and JS build tooling. Verification run
+`cargo test -p tinyquant-io --quiet` confirmed clean output.
+
+## [2026-04-16] review | Phase 27.5 code reviews conducted
+
+Three review passes performed against `feature/phase-27.5-resident-corpus-search`
+before merge:
+
+- Structured code review of commit `e78ec8e`: plan compliance, acceptance
+  criteria status, nine findings (four risks, four nits, one design question)
+  against [[plans/rust/phase-27.5-resident-corpus-search]].
+- Best-practice and code-smell audit: worktree-based review focused on
+  best-practice drift, shared search-contract mismatches, and maintainability
+  findings in `tinyquant-gpu-wgpu`.
+- Branch review against `develop`: 1 high, 2 medium, 1 low finding.
+
+All findings resolved before merge (`6e40661`, `392c29a`, `4869f00`).
+
 ## [2026-04-08] init | Documentation system scaffolding created
 
 Initialized the TinyQuant documentation system using the same structural model
@@ -739,3 +828,69 @@ correct and not misleading.
 
 All pages now have zero orphans and zero broken wikilinks (scanner + manual
 review).
+
+## [2026-04-13] operation | Phase 23 — Python reference demotion landed
+
+Executed Phase 23 of the Rust port
+([[plans/rust/phase-23-python-reference-demotion|plan]]) across three
+commit slices. Step 1 rewrote test imports from `tinyquant_cpu` to
+`tinyquant_py_reference` (red snapshot — no source moved yet). Step 2
+`git mv`'d `src/tinyquant_cpu/` to
+`tests/reference/tinyquant_py_reference/` with history preserved,
+leaving no shipping source under `src/`. Step 3 updated
+`pyproject.toml` — cleared `[tool.hatch.build.targets.wheel].packages`,
+extended `pythonpath` to `tests/reference`, and rewrote coverage paths
+— bringing the full 214-test suite back to green under the new name.
+Step 4 added the `build-package-does-not-leak-reference` CI job to
+`.github/workflows/ci.yml`; with hatchling `≥ 1.25` + `bypass-selection
+= true` the `python -m build` invocation emits an empty metadata-only
+wheel rather than failing, so the guard was structured as a
+leakage-check on any produced wheel rather than a fail-on-success
+assertion. Step 5 scaffolded `tests/parity/` (three files — empty
+`__init__.py`, `conftest.py` with session-scoped `ref` / `rs`
+fixtures, `test_cross_impl.py` with four classes and eight tests
+under `pytestmark = pytest.mark.parity`). The `rs` fixture skips with
+`Rust-backed tinyquant_cpu not installed` until Phase 24 installs the
+fat wheel. Step 6 updated the prose surface: `AGENTS.md`, `CLAUDE.md`,
+`README.md`, `.github/README.md`, [[entities/TinyQuant]], this log,
+[[roadmap]], [[design/rust/testing-strategy]],
+[[qa/unit-tests/README|qa/unit-tests]],
+[[CI-plan/workflow-definition]], [[CD-plan/release-workflow]],
+`scripts/ci_local_simulate.sh`, `scripts/generate_rust_fixtures.py`,
+`CHANGELOG.md`, and added
+[[entities/python-reference-implementation|python-reference-implementation]]
+and [[design/rust/phase-23-implementation-notes]]. Phase 23 is a pure
+refactor — no PyPI publish, no tag, version string stays at `0.1.1`.
+
+
+## [2026-04-14] investigation | Rust vs. Python reference throughput comparison
+
+Measured end-to-end throughput of `tinyquant_py_reference` and
+`tinyquant-core` on a 335×1536 embedding corpus to characterise the
+performance gap before the rotation-cache fix.
+
+Key findings:
+
+- Python reference (4-bit+residual): encode ~3,600 vec/s, decode ~2,646 vec/s
+- Rust batch path (release, t=1, 256×1536): ~1.3 vec/s (~2,800× regression)
+- Rust kernels (d=1536): quantize 214 Melem/s (~195× vs. Python scalar),
+  dequantize 3.2 Gelem/s (~5×), cosine ~678 Melem/s (~1× tie with NumPy BLAS)
+
+Root cause confirmed: `compress_batch_parallel` calls
+`RotationMatrix::from_config(config)` per row, triggering a full O(d³) SVD
+(~750 ms at d=1536) on every vector. `RotationCache` exists but is not wired
+into the batch path. Python avoids this via `@functools.lru_cache` on
+`_cached_build` — the SVD runs once per `(seed, dim)` pair.
+
+Created branch `fix/rotation-cache-compress-path` with:
+
+- [[plans/rust/rotation-cache-compress-path|Fix plan]] documenting root cause,
+  code locations, fix approach, and acceptance criteria
+- `experiments/rust-python-performance-comparison/` containing
+  `bench_python_reference.py`, `REPORT.md`, `AGENTS.md`, and `CLAUDE.md`
+- Updated [[index]] and this log
+- Updated `experiments/AGENTS.md` layout section
+
+No Python reference changes are proposed. The fix is Rust-only and confined to
+`batch.rs` + an internal helper in `service.rs`.
+

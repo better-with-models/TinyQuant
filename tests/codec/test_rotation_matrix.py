@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import numpy as np
+import numpy.typing as npt
 import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
-
-from tinyquant_cpu.codec.codec_config import CodecConfig
-from tinyquant_cpu.codec.rotation_matrix import RotationMatrix
+from tinyquant_py_reference.codec.codec_config import CodecConfig
+from tinyquant_py_reference.codec.rotation_matrix import RotationMatrix
 
 # ---------------------------------------------------------------------------
 # Factory construction
@@ -87,7 +87,7 @@ class TestApplyAndInverse:
     """Tests for apply and apply_inverse methods."""
 
     def test_apply_changes_vector(
-        self, config_4bit: CodecConfig, sample_vector: np.ndarray
+        self, config_4bit: CodecConfig, sample_vector: npt.NDArray[np.float32]
     ) -> None:
         """apply(v) != v for non-trivial v."""
         rotation = RotationMatrix.from_config(config_4bit)
@@ -95,7 +95,7 @@ class TestApplyAndInverse:
         assert not np.allclose(rotated, sample_vector)
 
     def test_apply_inverse_recovers_original(
-        self, config_4bit: CodecConfig, sample_vector: np.ndarray
+        self, config_4bit: CodecConfig, sample_vector: npt.NDArray[np.float32]
     ) -> None:
         """apply_inverse(apply(v)) approximately equals v."""
         rotation = RotationMatrix.from_config(config_4bit)
@@ -104,7 +104,7 @@ class TestApplyAndInverse:
         np.testing.assert_allclose(recovered, sample_vector, atol=1e-5)
 
     def test_apply_preserves_norm(
-        self, config_4bit: CodecConfig, sample_vector: np.ndarray
+        self, config_4bit: CodecConfig, sample_vector: npt.NDArray[np.float32]
     ) -> None:
         """Orthogonal transform preserves vector norm."""
         rotation = RotationMatrix.from_config(config_4bit)
@@ -121,6 +121,21 @@ class TestApplyAndInverse:
         wrong = np.ones(32, dtype=np.float32)
         with pytest.raises(ValueError, match="dimension"):
             rotation.apply(wrong)
+
+    def test_apply_inverse_dimension_mismatch_raises(
+        self, config_4bit: CodecConfig
+    ) -> None:
+        """Wrong-length input to apply_inverse raises ValueError."""
+        rotation = RotationMatrix.from_config(config_4bit)
+        wrong = np.ones(32, dtype=np.float32)
+        with pytest.raises(ValueError, match="dimension"):
+            rotation.apply_inverse(wrong)
+
+    def test_post_init_shape_mismatch_raises(self) -> None:
+        """Constructing RotationMatrix with a wrong-shape matrix raises ValueError."""
+        bad_matrix = np.eye(4, dtype=np.float64)
+        with pytest.raises(ValueError, match="matrix shape must be"):
+            RotationMatrix(matrix=bad_matrix, seed=0, dimension=8)
 
 
 # ---------------------------------------------------------------------------
@@ -141,10 +156,12 @@ class TestHypothesis:
                 max_value=100,
                 allow_nan=False,
                 allow_infinity=False,
+                allow_subnormal=False,
+                width=32,
             ),
         ),
     )
-    def test_round_trip_preserves_vector(self, vector: np.ndarray) -> None:
+    def test_round_trip_preserves_vector(self, vector: npt.NDArray[np.float32]) -> None:
         """For any valid vector, apply_inverse(apply(v)) approximately equals v."""
         config = CodecConfig(bit_width=4, seed=42, dimension=64)
         rotation = RotationMatrix.from_config(config)

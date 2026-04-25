@@ -33,57 +33,25 @@ jobs:
       runner: ${{ steps.pick.outputs.runner }}
     steps:
       - id: pick
+        # TEMP: self-hosted docker-runners offline; force GitHub-hosted until restored.
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" && \
-                "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
-            echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
-          else
-            echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
-          fi
+          echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
       - run: echo "Selected runner=${{ steps.pick.outputs.runner }}"
 
-  probe-self-hosted:
-    name: Probe Self-Hosted Runner
-    # Only run on non-fork triggers (push to main, or internal PR).
-    # Job-level `if:` cannot read outputs from other jobs, so the fork
-    # condition is re-evaluated here directly rather than from choose-runner.
-    if: >-
-      !(github.event_name == 'pull_request' &&
-        github.event.pull_request.head.repo.fork == true)
-    runs-on: ["self-hosted", "docker-runner"]
-    needs: [choose-runner]
-    timeout-minutes: 2
-    continue-on-error: true
-    outputs:
-      ok: ${{ steps.probe.outputs.ok }}
-    steps:
-      - id: probe
-        run: echo 'ok=true' >> "$GITHUB_OUTPUT"
+  # TEMP: probe-self-hosted removed while docker-runners are offline.
+  # Transitive skip propagation from `if: false` poisoned all downstream jobs.
+  # Restore alongside the full runner-selection policy once runners come back.
 
   effective-runner:
     name: Effective Runner
     runs-on: ubuntu-latest
-    needs: [choose-runner, probe-self-hosted]
-    if: always()
+    needs: [choose-runner]
     outputs:
       runner: ${{ steps.resolve.outputs.runner }}
     steps:
       - id: resolve
         run: |
-          CHOSE_SELF_HOSTED="${{ needs.choose-runner.outputs.runner }}"
-          PROBE_OK="${{ needs.probe-self-hosted.outputs.ok }}"
-
-          # PROBE_RESULT is always "success" when continue-on-error: true, whether or
-          # not the runner was reachable. PROBE_OK is the only reliable availability signal.
-          if [[ "$CHOSE_SELF_HOSTED" == '["self-hosted","docker-runner"]' && \
-                "$PROBE_OK" == "true" ]]; then
-            echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
-          else
-            echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
-            if [[ "$CHOSE_SELF_HOSTED" == '["self-hosted","docker-runner"]' ]]; then
-              echo "⚠ Self-hosted runner unavailable — falling back to ubuntu-latest. Local runner offload not active." >> "$GITHUB_STEP_SUMMARY"
-            fi
-          fi
+          echo 'runner=["ubuntu-latest"]' >> "$GITHUB_OUTPUT"
 
   lint:
     name: Lint & Format
@@ -108,9 +76,11 @@ jobs:
 
       - name: Check bare suppressions
         run: |
-          # Fail if any # noqa or # type: ignore lacks an explanation
-          ! grep -rn '# noqa$' src/ tests/ || exit 1
-          ! grep -rn '# type: ignore$' src/ tests/ || exit 1
+          # Fail if any # noqa or # type: ignore lacks an explanation.
+          # Phase 23: src/ no longer exists; the pure-Python reference
+          # lives under tests/reference/.
+          ! grep -rn '# noqa$' tests/ || exit 1
+          ! grep -rn '# type: ignore$' tests/ || exit 1
 
   markdown-lint:
     name: Markdown Lint
@@ -147,7 +117,9 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
 
       - uses: actions/cache@v5
         with:
@@ -178,16 +150,17 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.codec.${{ matrix.python-version }}
-        run: python -m pytest tests/codec/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.codec.${{ matrix.python-version }} -m pytest tests/codec/ -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-codec-${{ matrix.python-version }}
           path: .coverage.codec.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-corpus:
@@ -210,16 +183,17 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.corpus.${{ matrix.python-version }}
-        run: python -m pytest tests/corpus/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.corpus.${{ matrix.python-version }} -m pytest tests/corpus/ -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-corpus-${{ matrix.python-version }}
           path: .coverage.corpus.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-backend:
@@ -242,16 +216,17 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.backend.${{ matrix.python-version }}
-        run: python -m pytest tests/backend/ tests/test_smoke.py -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.backend.${{ matrix.python-version }} -m pytest tests/backend/ tests/test_smoke.py -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-backend-${{ matrix.python-version }}
           path: .coverage.backend.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-architecture:
@@ -274,16 +249,17 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.arch.${{ matrix.python-version }}
-        run: python -m pytest tests/architecture/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.arch.${{ matrix.python-version }} -m pytest tests/architecture/ -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-architecture-${{ matrix.python-version }}
           path: .coverage.arch.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-integration-local:
@@ -306,16 +282,17 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.intloc.${{ matrix.python-version }}
-        run: python -m pytest tests/integration/ --ignore=tests/integration/test_pgvector.py -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.intloc.${{ matrix.python-version }} -m pytest tests/integration/ --ignore=tests/integration/test_pgvector.py -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-intloc-${{ matrix.python-version }}
           path: .coverage.intloc.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-integration-pgvector:
@@ -354,16 +331,17 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev,pgvector]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.* "psycopg[binary]>=3.1"
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.intpg.${{ matrix.python-version }}
-        run: python -m pytest tests/integration/test_pgvector.py -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.intpg.${{ matrix.python-version }} -m pytest tests/integration/test_pgvector.py -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-intpg-${{ matrix.python-version }}
           path: .coverage.intpg.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   test-e2e:
@@ -386,22 +364,77 @@ jobs:
           key: pip-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
           restore-keys: pip-${{ matrix.python-version }}-
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* ruff==0.5.* mypy==1.10.*
       - name: Run tests
-        env:
-          COVERAGE_FILE: .coverage.e2e.${{ matrix.python-version }}
-        run: python -m pytest tests/e2e/ -x --tb=short --cov=tinyquant_cpu --cov-report=
+        run: python -m coverage run --data-file=.coverage.e2e.${{ matrix.python-version }} -m pytest tests/e2e/ -x --tb=short
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v5
         with:
           name: coverage-raw-e2e-${{ matrix.python-version }}
           path: .coverage.e2e.${{ matrix.python-version }}
+          include-hidden-files: true
+          retention-days: 1
+
+  # Phase 28.7: cross-impl parity tests need the Rust extension installed
+  # so the canonical-rotation bridge in
+  # `tests/reference/tinyquant_py_reference/codec/rotation_matrix.py`
+  # actually executes. Run them under coverage so the bridge codepath
+  # contributes to the codec subpackage gate.
+  test-parity:
+    name: "Test parity (Python ${{ matrix.python-version }})"
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, test-codec]
+    timeout-minutes: 25
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+          key: parity-coverage-${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* maturin
+      - name: Create venv (maturin >=1.13 requires one)
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      - name: Reinstall test deps inside venv
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* coverage==7.* maturin
+      - name: Build and install tinyquant_rs (maturin develop)
+        working-directory: rust/crates/tinyquant-py
+        run: maturin develop
+      - name: Install tinyquant_cpu (Python reference shim)
+        run: pip install -e .
+      - name: Run parity tests under coverage
+        run: python -m coverage run --data-file=.coverage.parity.${{ matrix.python-version }} -m pytest tests/parity/ -x --tb=short
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-raw-parity-${{ matrix.python-version }}
+          path: .coverage.parity.${{ matrix.python-version }}
+          include-hidden-files: true
           retention-days: 1
 
   coverage-combine:
     name: Coverage Combine & Gate
     runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
-    needs: [effective-runner, test-e2e]
+    needs: [effective-runner, test-e2e, test-parity]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
@@ -423,9 +456,9 @@ jobs:
       - name: Generate XML report
         run: python -m coverage xml
       - name: Coverage gate — codec
-        run: python -m coverage report --include="*/tinyquant_cpu/codec/*" --fail-under=94
+        run: python -m coverage report --include="*/tinyquant_py_reference/codec/*" --fail-under=94
       - name: Coverage gate — corpus
-        run: python -m coverage report --include="*/tinyquant_cpu/corpus/*" --fail-under=90
+        run: python -m coverage report --include="*/tinyquant_py_reference/corpus/*" --fail-under=90
       - name: Upload coverage report
         uses: actions/upload-artifact@v5
         with:
@@ -433,32 +466,61 @@ jobs:
           path: coverage.xml
           retention-days: 14
 
-  build-artifact:
-    name: Build Package
-    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+  # Phase 23 dead-wheel guard.
+  # Replaces the former `build-artifact` job: Phase 23 intentionally
+  # produces NO wheel (the pure-Python reference lives under tests/
+  # and is not a shipped artifact). Phase 24 will reintroduce a real
+  # wheel build backed by the Rust core; this guard keeps the leakage
+  # check in place across that transition.
+  build-package-does-not-leak-reference:
+    name: Wheel leakage guard
     needs: [effective-runner, coverage-combine]
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install build tools
-        run: pip install build
+      - name: Install build tooling
+        run: python -m pip install --upgrade build==1.* hatchling
 
-      - name: Build wheel and sdist
-        run: python -m build
+      # Phase 23 contract: no reference-implementation files may be
+      # shipped in any wheel built from this tree. With hatchling's
+      # `packages = []` + `bypass-selection = true`, recent hatchling
+      # versions build an empty metadata-only wheel rather than erroring
+      # out; older versions fail the build entirely. Either behavior is
+      # acceptable under Phase 23 — the hard contract is strictly that
+      # nothing from `tests/reference/` or `tinyquant_py_reference/`
+      # makes it into the archive. This guard is therefore phrased as a
+      # leakage check that is meaningful through Phase 24 (when the
+      # fat wheel legitimately starts carrying Rust-backed code but
+      # still must never ship the pure-Python reference).
+      - name: Build wheel (Phase 23 expects empty-or-failed build)
+        id: build
+        continue-on-error: true
+        run: python -m build --wheel --outdir dist/
 
-      - name: Verify distributions
+      - name: Inspect any wheel that was produced for reference leakage
+        if: steps.build.outcome == 'success'
         run: |
-          pip install twine
-          twine check dist/*
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: dist
-          path: dist/
-          retention-days: 30
+          set -euo pipefail
+          shopt -s nullglob
+          produced=0
+          for whl in dist/*.whl; do
+            produced=1
+            echo "=== Inspecting $whl ==="
+            # `unzip -l` prints the wheel manifest. A leaked reference
+            # would show as `tests/reference/...` or
+            # `tinyquant_py_reference/...` inside the archive.
+            if unzip -l "$whl" | grep -E '(^|/)(tests/reference|tinyquant_py_reference)(/|$)'; then
+              echo "LEAK: wheel $whl contains reference-implementation files."
+              exit 1
+            fi
+          done
+          if [ "$produced" = "0" ]; then
+            echo "No wheel produced — Phase 23 hard-fail contract held."
+          else
+            echo "Wheel produced but contains no reference-implementation files — Phase 23 leakage contract held."
+          fi

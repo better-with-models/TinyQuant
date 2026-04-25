@@ -431,6 +431,45 @@ human review.
   `assert_eq!(f32, f32)` on computed values.
 - No `sleep`, `Instant::now`, or wall-clock-dependent assertions.
 
+## Reference as oracle
+
+> [!info] Since Phase 23
+> The pure-Python implementation lives under
+> `tests/reference/tinyquant_py_reference/`, not under `src/`. It is a
+> test-only differential oracle for the Rust core and the Phase 24
+> fat wheel — it is never installed by end users. See
+> [[entities/python-reference-implementation|Python Reference Implementation]]
+> and [[plans/rust/phase-23-python-reference-demotion|Phase 23]].
+
+Every parity gate in the Rust port anchors to this reference:
+
+- **Fixture generation.** `scripts/generate_rust_fixtures.py` imports
+  `tinyquant_py_reference` to emit `config_hashes.json`, the codebook
+  fixtures, the quantize fixtures, and the residual fixtures consumed
+  by the Rust tests under `rust/crates/tinyquant-core/tests/fixtures/`.
+  Re-running the generator after a Python-side change is the
+  authoritative way to refresh Rust fixtures; there is no independent
+  Rust source of truth.
+- **Cross-language parity (pyo3).** The `tests/parity/` suite —
+  introduced in Phase 23 alongside the rename — runs under
+  `pytest -m parity`. It exposes a session-scoped `ref` fixture
+  (always the reference) and an `rs` fixture (the Rust-backed
+  `tinyquant_cpu` fat wheel once Phase 24 installs it). Self-parity
+  tests are live in Phase 23; cross-impl tests skip with message
+  `Rust-backed tinyquant_cpu not installed` until Phase 24 flips the
+  fixture on.
+- **Behavior freeze.** The reference's public surface is pinned to the
+  `v0.1.1` PyPI behavior. Any byte-level or numerics-level change is
+  a contract break against the Rust core and is coordinated across
+  both implementations in lockstep.
+
+The reference is **not** measured as part of the Rust coverage gates.
+It has its own coverage floor — `--cov=tinyquant_py_reference
+--cov-fail-under=90` — enforced by the Python CI chunks, and its
+source is explicitly excluded from any wheel built from this tree via
+`[tool.hatch.build.targets.wheel].packages = []` and the
+`build-package-does-not-leak-reference` CI guard.
+
 ## Test ordering and isolation
 
 - Tests within a file run in parallel by default.
@@ -439,9 +478,87 @@ human review.
   cross-test state leakage.
 - No `#[should_panic]` — all errors go through `Result`.
 
+## GPU testing strategy (Phase 27+)
+
+GPU tests follow the same taxonomy as the CPU tests but with additional
+physical constraints (no adapter in standard CI). See also R25 in
+[[design/rust/risks-and-mitigations|Risks and Mitigations]].
+
+### Layer 1 — Compile-only shader validation
+
+Runs on every PR touching `crates/tinyquant-gpu-wgpu/**`. No device
+required. Validates that all WGSL shaders parse and type-check under
+naga, and that the Rust crate compiles without error.
+
+```yaml
+# rust-ci.yml (Phase 27 addition)
+gpu-compile-check:
+  runs-on: ubuntu-22.04
+  steps:
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        toolchain: "1.87.0"
+    - name: compile check
+      run: cargo check -p tinyquant-gpu-wgpu --features validate-shaders
+```
+
+### Layer 2 — Software-renderer differential tests
+
+Uses wgpu's `GL` backend backed by Mesa `llvmpipe` (available on
+standard Linux CI without a physical GPU) to run the actual WGSL
+kernels against CPU reference output.
+
+```rust
+// tinyquant-gpu-wgpu/tests/differential.rs
+#[test]
+fn rotate_kernel_matches_cpu_reference() {
+    // BackendPreference::Software maps to Backends::GL + force_fallback_adapter=true
+    // (llvmpipe / ANGLE); never selects a physical GPU.
+    let backend = tokio::runtime::Runtime::new().unwrap()
+        .block_on(WgpuBackend::new_with_preference(BackendPreference::Software));
+    // … run rotate kernel, compare to CPU RotationMatrix::apply_into
+    // assert element-wise error < 1e-4 f32
+}
+```
+
+Tolerance: element-wise `|gpu - cpu| < 1e-4` (f32 accumulation
+differences are expected between GPU and CPU GEMM implementations).
+
+### Layer 3 — Physical GPU smoke tests (self-hosted, advisory)
+
+End-to-end tests that run `compress_batch` / `decompress_batch_into`
+/ `cosine_topk` on real GPU hardware. These tests are marked
+`#[ignore]` in standard CI and run on a self-hosted runner with a
+discrete GPU. They block Phase 27 release but not individual PRs.
+
+```rust
+#[test]
+#[ignore = "requires physical GPU; run with `cargo test -- --ignored`"]
+fn compress_batch_gpu_matches_cpu_result() {
+    // Acquire real wgpu adapter, run 1024-vector batch,
+    // compare to tinyquant-core CPU output within 1e-4
+}
+```
+
+### Benchmark tracking
+
+Two metrics are tracked separately in `baselines/gpu-main.json` (not
+yet wired into the `bench-budget` gate — see R25):
+
+| Metric | What it measures |
+|---|---|
+| `transfer_latency_ms` | Host→device upload time for a 10k-vector batch |
+| `kernel_only_ms` | GPU kernel time excluding transfer |
+
+Separating transfer from compute allows us to determine whether the
+GPU is memory-bound (transfer dominates) or compute-bound (kernel
+dominates) as batch sizes grow. The breakeven batch size vs CPU is
+derived from these two numbers.
+
 ## See also
 
 - [[design/architecture/test-driven-development|Test-Driven Development]]
 - [[design/rust/numerical-semantics|Numerical Semantics]]
 - [[design/rust/error-model|Error Model]]
+- [[design/rust/gpu-acceleration|GPU Acceleration Design]]
 - [[design/rust/ci-cd|CI/CD]]

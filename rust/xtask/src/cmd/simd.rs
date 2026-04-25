@@ -13,6 +13,7 @@ const SIMD_CI_JOBS: &[&str] = &[
     "simd-avx2-windows",
 ];
 
+/// Dispatch `cargo xtask simd <subcommand>`. Only `audit` is implemented; any other value exits 1.
 pub fn run(sub: Option<&str>) {
     if let Some("audit") = sub {
         audit();

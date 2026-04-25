@@ -18,10 +18,20 @@ source-count: 6
 
 ## What it is
 
-TinyQuant is intended to be a clean-room library that compresses
-high-dimensional embedding vectors to low-bit representations while preserving
-useful similarity scores. The target implementation is a Python and NumPy
-package with a future compiled-core path.
+TinyQuant is a clean-room library that compresses high-dimensional
+embedding vectors to low-bit representations while preserving useful
+similarity scores.
+
+As of Phase 23, the shipping implementation is the Rust workspace
+under `rust/`. The original pure-Python + NumPy package has been
+demoted to a test-only **reference implementation** under
+`tests/reference/tinyquant_py_reference/` — see
+[[python-reference-implementation]]. The reference is frozen at the
+`v0.1.1` public-surface behavior and its only consumers after Phase 23
+are the parity tests under `tests/parity/` and the Rust fixture
+generator. The last pure-Python PyPI release remains
+`tinyquant-cpu==0.1.1`; Phase 24 reclaims that name with a Rust-backed
+fat wheel at `0.2.0+`.
 
 ## What it is not
 
@@ -72,6 +82,8 @@ research line represented by [[QJL]], [[PolarQuant]], and especially
 
 ## See also
 
+- [[python-reference-implementation]]
+- [[plans/rust/phase-23-python-reference-demotion|Phase 23: Python Reference Demotion]]
 - [[tinyquant-library-research]]
 - [[tinyquant-better-router-integration]]
 - [[sources/vector-quantization-paper-synthesis|vector-quantization-paper-synthesis]]

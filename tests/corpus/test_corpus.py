@@ -5,21 +5,20 @@ from __future__ import annotations
 import numpy as np
 import pytest
 from numpy.typing import NDArray
-
-from tinyquant_cpu.codec._errors import (
+from tinyquant_py_reference.codec._errors import (
     DimensionMismatchError,
     DuplicateVectorError,
 )
-from tinyquant_cpu.codec.codebook import Codebook
-from tinyquant_cpu.codec.codec_config import CodecConfig
-from tinyquant_cpu.corpus.compression_policy import CompressionPolicy
-from tinyquant_cpu.corpus.corpus import Corpus
-from tinyquant_cpu.corpus.events import (
+from tinyquant_py_reference.codec.codebook import Codebook
+from tinyquant_py_reference.codec.codec_config import CodecConfig
+from tinyquant_py_reference.corpus.compression_policy import CompressionPolicy
+from tinyquant_py_reference.corpus.corpus import Corpus
+from tinyquant_py_reference.corpus.events import (
     CorpusCreated,
     CorpusDecompressed,
     VectorsInserted,
 )
-from tinyquant_cpu.corpus.vector_entry import VectorEntry
+from tinyquant_py_reference.corpus.vector_entry import VectorEntry
 
 # ===========================================================================
 # Creation tests

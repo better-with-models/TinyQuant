@@ -28,7 +28,7 @@ use alloc::vec;
 use faer::Mat;
 use libm::fabs;
 
-use crate::codec::codec_config::CodecConfig;
+use crate::codec::codec_config::{CodecConfig, MAX_DIMENSION};
 use crate::codec::gaussian::ChaChaGaussianStream;
 use crate::errors::CodecError;
 
@@ -54,14 +54,20 @@ impl RotationMatrix {
     ///
     /// # Panics
     ///
-    /// Panics if `dimension == 0`. In the normal flow, dimensions reach
-    /// this function only via a validated [`CodecConfig`], so this cannot
-    /// be triggered by safe public APIs of the crate.
+    /// Panics if `dimension == 0` or `dimension > MAX_DIMENSION`. In the
+    /// normal flow, dimensions reach this function only via a validated
+    /// [`CodecConfig`] or the `from_seed_and_dim` `PyO3` wrapper, both of
+    /// which return errors instead of panicking. The asserts here are
+    /// defence-in-depth against a future caller bypassing those gates.
     #[allow(clippy::indexing_slicing)] // bounds are statically derived from `dim`
     pub fn build(seed: u64, dimension: u32) -> Self {
         assert!(
             dimension > 0,
             "RotationMatrix::build requires dimension > 0"
+        );
+        assert!(
+            dimension <= MAX_DIMENSION,
+            "RotationMatrix::build requires dimension <= {MAX_DIMENSION}, got {dimension}",
         );
         let dim = dimension as usize;
 
@@ -74,6 +80,17 @@ impl RotationMatrix {
 
         // Step 2: load into faer (column-major internal storage) and QR.
         // We pass a closure that reads from our row-major buffer.
+        //
+        // SIMD divergence (R19) is handled by the AVX2 feature cap in
+        // rust/.cargo/config.toml, which empirically produces a bit-exact
+        // QR output across both x86_64 (AVX2) and aarch64 (NEON) runners
+        // — see commit e04ce5c. A `Parallelism::None` guard around `qr()`
+        // was considered as additional defence-in-depth but rejected
+        // because faer 0.19's `set_global_parallelism` mutates a
+        // process-wide atomic with no per-call alternative, and forcing
+        // serial reduction changes the output bit pattern on multi-core
+        // Linux runners — invalidating the frozen `seed_42_dim_*` fixtures
+        // that the cross-architecture parity tests rely on.
         let a = Mat::<f64>::from_fn(dim, dim, |i, j| data[i * dim + j]);
         let qr = a.qr();
         let q = qr.compute_q();

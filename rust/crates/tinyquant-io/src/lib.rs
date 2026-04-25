@@ -26,6 +26,8 @@
 pub mod codec_file;
 pub mod compressed_vector;
 pub mod errors;
+#[cfg(feature = "rayon")]
+pub mod parallelism;
 pub mod zero_copy;
 
 #[cfg(feature = "mmap")]

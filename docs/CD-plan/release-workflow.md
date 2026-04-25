@@ -18,6 +18,21 @@ category: ci-cd
 > release pipeline that publishes `tinyquant-cpu` to PyPI via OIDC trusted
 > publishing, with TestPyPI as a staging stop.
 
+> [!warning] No Phase 23 release
+> Phase 23 ([[plans/rust/phase-23-python-reference-demotion|plan]]) is
+> a **pure refactor**. It does not cut a tag, does not invoke this
+> workflow, and publishes nothing. The version string in
+> `pyproject.toml` stays at `0.1.1` (the published PyPI artifact of
+> record). The pure-Python reference is demoted to a test-only oracle
+> under `tests/reference/tinyquant_py_reference/`; the wheel that
+> would be shipped under the `tinyquant-cpu` name is intentionally
+> not producible from the post-Phase-23 tree (hatchling emits an
+> empty metadata-only wheel with `bypass-selection = true`; the
+> `build-package-does-not-leak-reference` CI guard catches any wheel
+> that gets through and contains reference paths). The next tag this
+> workflow will see is the Phase 24 `v0.2.0-rc.1` for the Rust-backed
+> fat wheel.
+
 ## Workflow file
 
 ```text

@@ -1,16 +1,68 @@
 [package]
-name         = "tinyquant-cli"
-description  = "Standalone `tinyquant` CLI binary."
+name                   = "tinyquant-cli"
+description            = "CLI front-end for the TinyQuant codec and corpus tooling."
 version.workspace      = true
 edition.workspace      = true
 rust-version.workspace = true
 license.workspace      = true
 repository.workspace   = true
+readme                 = "README.md"
+default-run            = "tinyquant"
+build                  = "build.rs"
 
 [[bin]]
 name = "tinyquant"
 path = "src/main.rs"
 
 [dependencies]
-tinyquant-core = { workspace = true }
-tinyquant-io   = { workspace = true }
+tinyquant-core       = { workspace = true, features = ["std", "simd"] }
+tinyquant-io         = { workspace = true, features = ["simd", "mmap"] }
+tinyquant-bruteforce = { workspace = true, features = ["simd", "std"] }
+
+anyhow             = "1"
+# clap >= 4.6 pulls clap_builder with edition2024; pin to 4.5 for MSRV 1.81.
+clap               = { version = "=4.5.21", features = ["derive", "wrap_help", "env"] }
+clap_complete      = "=4.5.40"
+clap_mangen        = "=0.2.24"
+# comfy-table >= 7.2 needs edition2024; pin to 7.1 for MSRV 1.81.
+comfy-table        = { version = "=7.1.4", default-features = false }
+csv                = "1.3"
+indicatif          = { version = "0.17", optional = true }
+num_cpus           = "1"
+npyz               = "0.8"
+rayon              = { workspace = true }
+serde              = { version = "1", features = ["derive"] }
+serde_json         = { workspace = true }
+tracing            = "0.1"
+tracing-subscriber = { version = "0.3", default-features = false, features = ["env-filter", "fmt", "std"] }
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+jemallocator = { version = "0.5", optional = true }
+
+[dev-dependencies]
+# MSRV-pinned: the 2.x line moved to edition2024 in 2.2.0; last 2021-edition
+# release is 2.0.17. See docs/design/rust/phase-22-implementation-notes.md
+# §Part C Deviation 2.
+assert_cmd  = "=2.0.17"
+bytemuck    = { workspace = true }
+predicates  = "=3.1.4"
+rand        = { workspace = true, features = ["std", "std_rng"] }
+rand_chacha = { workspace = true, features = ["std"] }
+tempfile    = "=3.14.0"
+
+[features]
+# Phase 22.C §CLI feature flag matrix. Note: the `rayon` feature here
+# is a CLI-local knob — it toggles whether the CLI drives the batch
+# pipeline through a rayon pool (`codec_compress::run`). We intentionally
+# do NOT forward `tinyquant-io/rayon` because `tinyquant-io`'s rayon
+# helper uses a lint pattern that trips the workspace `-D warnings`
+# gate under clippy 1.81. The CLI uses its own `Parallelism::Custom`
+# driver, so the helper is not needed. See
+# docs/design/rust/phase-22-implementation-notes.md §Part C Deviation 1.
+default      = ["jemalloc", "rayon", "simd", "mmap", "progress"]
+jemalloc     = ["dep:jemallocator"]
+rayon        = []
+simd         = ["tinyquant-core/simd", "tinyquant-io/simd", "tinyquant-bruteforce/simd"]
+mmap         = ["tinyquant-io/mmap"]
+progress     = ["dep:indicatif"]
+tracing-json = ["tracing-subscriber/json"]

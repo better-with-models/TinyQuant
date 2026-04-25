@@ -1,0 +1,19 @@
+{
+  "name": "@tinyquant/core-native",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Internal napi-rs build config for the tinyquant-js crate. Consumed only by `napi build` at the crate level; the public npm package lives at javascript/@tinyquant/core.",
+  "napi": {
+    "name": "tinyquant",
+    "triples": {
+      "defaults": false,
+      "additional": [
+        "x86_64-unknown-linux-gnu",
+        "aarch64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "aarch64-apple-darwin",
+        "x86_64-pc-windows-msvc"
+      ]
+    }
+  }
+}

@@ -6,8 +6,7 @@ import dataclasses
 
 import numpy as np
 import pytest
-
-from tinyquant_cpu.codec.compressed_vector import CompressedVector
+from tinyquant_py_reference.codec.compressed_vector import CompressedVector
 
 # ---------------------------------------------------------------------------
 # Construction and validation

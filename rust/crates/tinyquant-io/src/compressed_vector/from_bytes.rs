@@ -25,7 +25,12 @@ pub fn from_bytes(data: &[u8]) -> Result<CompressedVector, IoError> {
     }
 
     let dim = dimension as usize;
-    let packed_len = (dim * bit_width as usize + 7) / 8;
+    let bw = bit_width as usize;
+    let packed_len = dim
+        .checked_mul(bw)
+        .and_then(|n| n.checked_add(7))
+        .map(|n| n / 8)
+        .ok_or(IoError::InvalidHeader)?;
     let payload_start = HEADER_SIZE;
     let flag_offset = payload_start + packed_len;
 

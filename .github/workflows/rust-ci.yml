@@ -19,6 +19,13 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-D warnings"
+  # Force MSRV 1.81 for cargo invocations workflow-wide. Without this,
+  # cargo from `working-directory: rust` silently switches to the version
+  # pinned in `rust/rust-toolchain.toml` (1.87, required by
+  # tinyquant-gpu-wgpu) and trips pedantic lints + cfg checks that
+  # post-date the 1.81 MSRV. Jobs that legitimately need 1.87 (gpu-wgpu)
+  # override this at the job level.
+  RUSTUP_TOOLCHAIN: "1.81.0"
 
 # Runner selection policy
 # -----------------------
@@ -36,13 +43,9 @@ jobs:
       runner: ${{ steps.pick.outputs.runner }}
     steps:
       - id: pick
+        # TEMP: self-hosted docker-runners offline; force GitHub-hosted until restored.
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" && \
-                "${{ github.event.pull_request.head.repo.fork }}" == "true" ]]; then
-            echo 'runner=["ubuntu-22.04"]' >> "$GITHUB_OUTPUT"
-          else
-            echo 'runner=["self-hosted","docker-runner"]' >> "$GITHUB_OUTPUT"
-          fi
+          echo 'runner=["ubuntu-22.04"]' >> "$GITHUB_OUTPUT"
       - run: echo "Selected runner=${{ steps.pick.outputs.runner }}"
 
   fmt:
@@ -55,7 +58,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: true
+          lfs: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -76,7 +79,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: true
+          lfs: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -90,7 +93,9 @@ jobs:
         # which transitively requires getrandom 0.4 (edition2024, Rust > 1.81).
         # The live-db / test-containers features are tested separately in
         # environments with Docker and a live PostgreSQL server.
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        # tinyquant-gpu-wgpu requires rust-version = "1.87" and is excluded from
+        # the 1.81 MSRV gate. It is linted separately in the gpu-compile job.
+        run: cargo clippy --workspace --exclude tinyquant-gpu-wgpu --all-targets -- -D warnings
 
   test:
     name: Test
@@ -123,10 +128,24 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust -> target
+      - name: Verify tinyquant-core has no GPU dependencies
+        # GAP-GPU-001: tinyquant-core must never pull in GPU crates.
+        # Anchored to full crate names to avoid false positives from
+        # crate names that merely contain the letters "gpu".
+        run: |
+          OUTPUT=$(cargo tree -p tinyquant-core --no-default-features 2>&1)
+          if echo "$OUTPUT" | grep -qE '\bwgpu\b|\bcust\b|\btinyquant-gpu\b'; then
+            echo "FAIL: GPU dependency found in tinyquant-core dep tree:"
+            echo "$OUTPUT" | grep -E '\bwgpu\b|\bcust\b|\btinyquant-gpu\b'
+            exit 1
+          fi
+          echo "PASS: tinyquant-core dep tree is GPU-free"
       - name: test
         # --all-features omitted: tinyquant-pgvector's live-db feature activates
         # postgres 0.19 which requires getrandom 0.4 (edition2024, Rust > 1.81).
-        run: cargo test --workspace
+        # tinyquant-gpu-wgpu requires rust-version = "1.87" and is tested in the
+        # gpu-compile job.
+        run: cargo test --workspace --exclude tinyquant-gpu-wgpu
       - name: test (bruteforce)
         run: cargo test -p tinyquant-bruteforce
 
@@ -140,7 +159,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: true
+          lfs: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -159,7 +178,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -179,7 +198,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -199,7 +218,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -219,7 +238,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - name: fixture-drift
@@ -233,7 +252,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -255,7 +274,7 @@ jobs:
     env:
       RUSTFLAGS: "-C target-feature=+avx2,+fma -D warnings"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -277,7 +296,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -299,7 +318,7 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -321,7 +340,7 @@ jobs:
     env:
       RUSTFLAGS: "-C target-feature=+avx2,+fma -D warnings"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           lfs: true
       - uses: dtolnay/rust-toolchain@stable
@@ -341,9 +360,9 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          lfs: true
+          lfs: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: nightly
@@ -372,9 +391,9 @@ jobs:
       run:
         working-directory: rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          lfs: true
+          lfs: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.81.0"
@@ -383,3 +402,161 @@ jobs:
           workspaces: rust -> target
       - name: cargo xtask simd audit
         run: cargo run -p xtask -- simd audit
+
+  # NOTE: Phase 26 promoted the five PR-speed calibration gates from
+  # `#[ignore]` to always-on. They run inside `cargo test --workspace` in the
+  # `test` job above (LFS fixtures are fetched by `git lfs pull`).
+  # Full-corpus gates (openai_10k_d1536) remain `#[ignore]` and are intended
+  # for a separate `rust-ci/calibration` job to be added in Phase 28.
+
+  # ── Phase 21: Benchmark budget gate ──────────────────────────────────────────
+  #
+  # Validates the committed `baselines/main.json` matches the schema.
+  # The full `--check-against main` run is advisory on PRs (it needs a
+  # stable CI runner to produce reliable medians — R21.8).
+  #
+  # Triggers: PRs and main pushes touching Rust bench or core sources.
+  bench-budget:
+    name: Benchmark budget validation
+    runs-on: ${{ fromJSON(needs.choose-runner.outputs.runner) }}
+    needs: [choose-runner, test]
+    continue-on-error: ${{ github.event_name == 'pull_request' }}
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: Validate baseline schema
+        run: cargo run -p xtask -- bench --validate
+      - name: Validate calibration results schema
+        run: cargo run -p xtask -- calibration --validate
+      - name: CI parity check (docs vs rust-ci.yml)
+        run: cargo run -p xtask -- docs check-ci-parity
+      - name: Check benchmark budget against baseline
+        if: github.ref == 'refs/heads/main'
+        working-directory: rust
+        run: |
+          if [ -f crates/tinyquant-bench/baselines/main.json ]; then
+            cargo run -p xtask -- bench --check-against main
+          else
+            echo "No committed baseline found; skipping budget check."
+            echo "Run 'cargo xtask bench --capture-baseline main' on a CI runner to establish one."
+          fi
+
+  gpu-compile:
+    name: GPU crate — compile + shader validation
+    runs-on: ubuntu-22.04
+    # Override the workflow-level RUSTUP_TOOLCHAIN=1.81.0 default. The GPU
+    # crate's rust-version is 1.87, so build it under the toolchain that
+    # rust-toolchain.toml pins.
+    env:
+      RUSTUP_TOOLCHAIN: "1.87.0"
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.87.0"
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+      - name: build GPU crate
+        run: cargo build -p tinyquant-gpu-wgpu
+      - name: shader validation (adapter-less)
+        run: cargo test -p tinyquant-gpu-wgpu --test context_probe all_shaders_compile_without_device
+      - name: clippy GPU crate
+        # --no-deps: pre-existing tinyquant-core lints fail at 1.87 clippy;
+        # those are tracked separately in the 1.81 clippy job.
+        run: cargo clippy --no-deps -p tinyquant-gpu-wgpu -- -D warnings
+
+  gpu-feature-gate:
+    name: build + test (tinyquant-core gpu-wgpu feature)
+    runs-on: ubuntu-22.04
+    # This job is independent of the runner-selection matrix because it always
+    # runs on a fixed GitHub-hosted image (needs mesa software renderer).
+    env:
+      RUSTUP_TOOLCHAIN: "1.87.0"
+      # Force wgpu to use the OpenGL software renderer available in mesa.
+      WGPU_BACKEND: "gl"
+      MESA_NO_ERROR: "1"
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: true
+      - name: Pull LFS objects
+        run: git lfs pull
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.87.0"
+          components: clippy
+      - name: install mesa EGL (software renderer)
+        run: sudo apt-get update -q && sudo apt-get install -y libegl1-mesa-dev libgl1-mesa-dri
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+          key: gpu-feature-gate-1.87
+      - name: build tinyquant-core with gpu-wgpu feature
+        run: cargo build -p tinyquant-core --features gpu-wgpu
+      - name: test tinyquant-core with gpu-wgpu feature (software renderer)
+        run: cargo test -p tinyquant-core --features gpu-wgpu
+      - name: clippy tinyquant-core with gpu-wgpu feature
+        run: cargo clippy --no-deps -p tinyquant-core --features gpu-wgpu -- -D warnings
+      - name: clippy tinyquant-core without gpu-wgpu feature
+        run: cargo clippy --no-deps -p tinyquant-core -- -D warnings
+      - name: verify no_std still compiles without gpu-wgpu
+        run: |
+          rustup target add thumbv7em-none-eabihf
+          cargo build -p tinyquant-core --no-default-features --target thumbv7em-none-eabihf
+
+  python-pyo3-parity:
+    name: Python PyO3 parity (tinyquant_rs vs tinyquant_cpu)
+    runs-on: ubuntu-22.04
+    needs: [clippy]
+    # Independent of runner selection — always use GitHub-hosted.
+    defaults:
+      run:
+        working-directory: .
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          lfs: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+          key: python-pyo3-1.81
+      - name: Create venv (maturin >=1.13 requires one)
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      - name: Install maturin and build deps
+        run: pip install maturin numpy pytest
+      - name: Build and install tinyquant_rs (maturin develop)
+        working-directory: rust/crates/tinyquant-py
+        run: maturin develop
+      - name: Install tinyquant_cpu (Python reference)
+        run: pip install -e .
+      - name: Run parity tests
+        run: pytest rust/crates/tinyquant-py/tests/python/test_parity.py -v

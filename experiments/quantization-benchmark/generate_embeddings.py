@@ -13,6 +13,7 @@ import time
 from pathlib import Path
 
 import numpy as np
+import numpy.typing as npt
 
 # ---------------------------------------------------------------------------
 # Corpus: diverse passages spanning multiple domains
@@ -371,7 +372,7 @@ PASSAGES = [
 ]
 
 
-def fetch_embeddings(passages: list[str], api_key: str) -> np.ndarray:
+def fetch_embeddings(passages: list[str], api_key: str) -> npt.NDArray[np.float32]:
     """Fetch embeddings from OpenAI text-embedding-3-small."""
     # Use urllib to avoid adding requests as a dependency
     import urllib.request

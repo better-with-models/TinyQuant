@@ -11,10 +11,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
-
-from tinyquant_cpu.codec.codebook import Codebook
-from tinyquant_cpu.codec.codec import Codec
-from tinyquant_cpu.codec.codec_config import CodecConfig
+from tinyquant_py_reference.codec.codebook import Codebook
+from tinyquant_py_reference.codec.codec import Codec
+from tinyquant_py_reference.codec.codec_config import CodecConfig
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

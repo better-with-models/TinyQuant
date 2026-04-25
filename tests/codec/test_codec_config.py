@@ -7,8 +7,7 @@ import dataclasses
 import pytest
 from hypothesis import given
 from hypothesis import strategies as st
-
-from tinyquant_cpu.codec.codec_config import SUPPORTED_BIT_WIDTHS, CodecConfig
+from tinyquant_py_reference.codec.codec_config import SUPPORTED_BIT_WIDTHS, CodecConfig
 
 # ---------------------------------------------------------------------------
 # Construction and validation

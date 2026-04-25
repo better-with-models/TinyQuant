@@ -12,6 +12,7 @@ tinyquant-core = { workspace = true }
 thiserror      = { workspace = true }
 memmap2        = { workspace = true, optional = true }
 dhat           = { version = "=0.3.2", optional = true }
+rayon          = { workspace = true, optional = true }
 
 [dev-dependencies]
 rand_chacha = { workspace = true }
@@ -24,3 +25,4 @@ simd      = ["tinyquant-core/simd"]
 mmap      = ["dep:memmap2"]
 mmap-lock = []
 dhat-heap = ["dep:dhat"]
+rayon     = ["dep:rayon"]

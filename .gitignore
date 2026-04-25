@@ -27,6 +27,15 @@ htmlcov/
 .hypothesis/
 
 # --------------------------------------------------------------------------
+# JavaScript / npm (javascript/@tinyquant/*)
+# --------------------------------------------------------------------------
+node_modules/
+dist-tests/
+dist-cjs/
+src-cjs-staging/
+*.tsbuildinfo
+
+# --------------------------------------------------------------------------
 # Type checking & linting caches
 # --------------------------------------------------------------------------
 .mypy_cache/
@@ -70,3 +79,8 @@ docs/.obsidian/graph.json
 docs/.obsidian/hotkeys.json
 docs/.obsidian/workspace.json
 docs/.obsidian
+.pre-commit-cache
+.obsidian
+experiments/results/
+experiments/rust-python-performance-comparison/results/
+experiments/rust-python-performance-comparison/rust_runner/target/

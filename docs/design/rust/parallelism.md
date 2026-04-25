@@ -176,6 +176,45 @@ A future optimization (phase-16) switches to faer's internal
 parallelism for batch sizes above a threshold where row-splitting is
 suboptimal.
 
+## Bringing your own rayon pool
+
+TinyQuant never builds or owns a `rayon::ThreadPool`. Every parallel
+entry point (`compress_batch`, `decompress_batch_into`,
+`compress_batch_packed`) is driven by the `Parallelism::Custom`
+closure, and `tinyquant-io::rayon_parallelism()` simply calls
+`(0..n).into_par_iter()` on whatever pool is current at the call
+site. This means downstream consumers that already have a
+`rayon::ThreadPool` (better-router Rust agents, other rayon-using
+services) should install their pool **once** and wrap batch calls in
+a single `pool.install(...)` scope:
+
+```rust
+use rayon::ThreadPoolBuilder;
+use tinyquant_io::rayon_parallelism;
+
+let pool = ThreadPoolBuilder::new()
+    .num_threads(num_cpus::get_physical())
+    .thread_name(|i| format!("better-router-rayon-{i}"))
+    .build()?;
+
+let cvs = pool.install(|| {
+    codec.compress_batch(
+        &vectors, rows, cols, &cfg, &cb, rayon_parallelism(),
+    )
+})?;
+```
+
+This closes **R8** (rayon pool contention) from
+[[design/rust/risks-and-mitigations|risks-and-mitigations.md]]: the
+consumer's pool serves both its own workloads and TinyQuant's batch
+paths, so nothing in the codec can fight with the host process over
+CPU affinity or worker counts.
+
+If no pool is installed, `rayon_parallelism()` falls back to the
+global rayon pool (logical-core count), which is fine for ad-hoc
+scripts, benchmarks, and the standalone CLI — but production
+services that already embed `rayon` should not rely on that fallback.
+
 ## Thread pool configuration defaults
 
 | Context | Default threads |
@@ -267,6 +306,66 @@ meeting the goal.
 
 No `unsafe impl Sync for X` anywhere outside the `SyncPtr` newtype in
 the parallel batch path.
+
+## GPU execution tier (Phase 27+)
+
+GPU offload is a **third execution tier** above `Parallelism::Serial`
+and `Parallelism::Custom(rayon)`. It is *not* an extension of the
+`Parallelism` enum — it is a separate dispatch interface (`ComputeBackend`
+trait) that lives in `tinyquant-gpu-wgpu` and `tinyquant-gpu-cuda`,
+both of which depend on `tinyquant-core` but are never imported by it.
+
+### Relationship between `Parallelism` and `ComputeBackend`
+
+| Concern | `Parallelism` | `ComputeBackend` |
+|---|---|---|
+| Where defined | `tinyquant-core` | `tinyquant-gpu-wgpu` |
+| Direction | CPU thread fan-out | Host→device transfer + kernel launch |
+| Granularity | Per-row within a batch | Entire batch (whole tensor) |
+| `no_std` compatible | Yes | No (GPU crates require `std`) |
+| Default | `Serial` (CPU) | Not wired — opt-in by application |
+
+### Threshold gating
+
+GPU dispatch is only efficient above a minimum batch size (the
+host↔device transfer overhead must be amortized). `WgpuBackend`
+exposes:
+
+```rust
+impl WgpuBackend {
+    /// Minimum row count above which GPU dispatch is faster than CPU.
+    /// Below this threshold, callers should fall back to the CPU path.
+    pub const BATCH_THRESHOLD: usize = 512;
+
+    /// Associated function — no adapter check; use `is_available()` separately
+    /// before dispatching to the GPU path.
+    pub fn should_use_gpu(rows: usize) -> bool {
+        rows >= Self::BATCH_THRESHOLD
+    }
+}
+```
+
+A typical dispatch pattern:
+
+```rust
+if backend.is_available() && WgpuBackend::should_use_gpu(rows) {
+    backend.compress_batch(input, rows, cols, prepared)?
+} else {
+    codec.compress_batch_cpu(input, rows, cols, parallelism)?
+}
+```
+
+The threshold is advisory; callers are free to override it (e.g., a
+server with dedicated GPU capacity might lower it to 128).
+
+### Fallback guarantee
+
+`tinyquant-core` is always available as the CPU fallback. The GPU
+crates declare `ComputeBackend::is_available() -> bool`; if this
+returns `false` (no adapter found, driver unavailable, or the `cuda`
+feature is disabled), the application falls back to `Parallelism::Custom`
+on the CPU rayon pool. No GPU dependency ever bleeds into the core or
+IO crates.
 
 ## Cancellation and interruption
 

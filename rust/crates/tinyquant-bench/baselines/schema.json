@@ -1,0 +1,63 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TinyQuant Benchmark Baseline",
+  "description": "Schema for tinyquant-bench/baselines/*.json committed benchmark baselines.",
+  "type": "object",
+  "required": ["schema_version", "captured_at", "git_commit", "host", "bench_groups"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Version of this schema. Increment when fields are added."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp when the baseline was captured."
+    },
+    "git_commit": {
+      "type": "string",
+      "minLength": 7,
+      "description": "Short git SHA of the commit the baseline was captured on."
+    },
+    "host": {
+      "type": "object",
+      "required": ["os", "arch", "rustc"],
+      "additionalProperties": false,
+      "properties": {
+        "os": { "type": "string" },
+        "arch": { "type": "string" },
+        "cpu_model": { "type": "string" },
+        "rustc": { "type": "string" }
+      }
+    },
+    "bench_groups": {
+      "type": "object",
+      "description": "Map of bench group name to measurements.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["median_ns", "budget_pct"],
+        "additionalProperties": false,
+        "properties": {
+          "median_ns": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Baseline median in nanoseconds."
+          },
+          "p99_ns": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Baseline 99th-percentile in nanoseconds (optional)."
+          },
+          "budget_pct": {
+            "type": "number",
+            "minimum": 100,
+            "maximum": 200,
+            "description": "Allowed regression as a percentage of baseline (110 = 10% slack)."
+          }
+        }
+      }
+    }
+  }
+}

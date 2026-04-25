@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "tinyquant-cpu"
-version = "0.1.1"
+version = "1.1.0"
 description = "CPU-only vector quantization codec for embedding storage compression"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -26,7 +26,7 @@ dependencies = [
 Homepage = "https://github.com/better-with-models/TinyQuant"
 Repository = "https://github.com/better-with-models/TinyQuant"
 Issues = "https://github.com/better-with-models/TinyQuant/issues"
-Changelog = "https://github.com/better-with-models/TinyQuant/blob/main/CHANGELOG.md"
+Changelog = "https://github.com/better-with-models/TinyQuant/blob/main/src/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [
@@ -63,8 +63,12 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "TCH", "ANN401", "S608"]
+"rust/crates/tinyquant-py/tests/**" = ["S101", "TCH", "ANN401", "S608"]
 # The sentence corpus is inherently long-form; line-wrap would mangle it.
 "experiments/quantization-benchmark/generate_embeddings.py" = ["E501"]
+# Benchmark scripts invoke trusted internal binaries (rustc, cargo) via
+# shutil.which-resolved paths; S603 (untrusted subprocess input) does not apply.
+"experiments/rust-python-performance-comparison/run_benchmark.py" = ["S603"]
 
 [tool.mypy]
 python_version = "3.12"
@@ -72,9 +76,26 @@ strict = true
 warn_return_any = true
 warn_unreachable = true
 no_implicit_reexport = true
+# Match pytest's import roots so repo-wide type checks can resolve the
+# frozen reference package and the Phase 24.1 dev shim.
+mypy_path = "$MYPY_CONFIG_FILE_DIR/tests/reference,$MYPY_CONFIG_FILE_DIR/src"
+explicit_package_bases = true
+# Exclude generated or transient build outputs and experiment scripts from
+# repo-wide type checks. Experiments are ad-hoc benchmarks that share
+# filenames (run_benchmark.py) across sibling directories, which mypy's
+# explicit_package_bases mode cannot resolve without namespace collisions.
+exclude = '(^|/)(rust/target|\.worktrees|node_modules|\.venv|experiments)(/|$)'
 
 [[tool.mypy.overrides]]
 module = "psycopg.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "hypothesis.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "testcontainers.*"
 ignore_missing_imports = true
 
 # matplotlib is only used by experiments/quantization-benchmark/generate_plots.py
@@ -84,23 +105,113 @@ ignore_missing_imports = true
 module = "matplotlib.*"
 ignore_missing_imports = true
 
+# Phase 24.1 fat-wheel shim templates live flat under
+# scripts/packaging/templates/ and reference import paths
+# (e.g. `tinyquant_cpu._selector`) that only resolve once the Phase
+# 24.2 assembler has stamped them into the wheel tree. Until then
+# mypy would report the imports as unresolved — suppress for this
+# directory only.
+[[tool.mypy.overrides]]
+module = "templates.*"
+ignore_missing_imports = true
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = "scripts.packaging.templates.*"
+ignore_missing_imports = true
+ignore_errors = true
+
+# The Phase 22.A PyO3 extension is a compiled .pyd with no stubs; the
+# dev-mode shim under src/tinyquant_cpu/ re-exports from it. mypy
+# cannot inspect the C extension so treat its imports as opaque. The
+# same applies to `tinyquant_cpu` and `tinyquant_cpu._core` — the fat
+# wheel installs a compiled `.pyd` that mypy cannot introspect, and the
+# Type Check CI job intentionally does not build the wheel (kept as a
+# parity-job dependency only). The Phase 28.7 canonical-rotation bridge
+# in `tests/reference/tinyquant_py_reference/codec/rotation_matrix.py`
+# imports `tinyquant_cpu._core` at runtime; the parity conftest's
+# autouse fixture handles ImportError silently when the wheel is absent.
+[[tool.mypy.overrides]]
+module = "tinyquant_rs"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tinyquant_rs.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tinyquant_cpu"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tinyquant_cpu.*"
+ignore_missing_imports = true
+
+# Phase 24.3 dry-run harness reads the python-fatwheel.yml workflow.
+# PyYAML ships no upstream stubs by default; types-PyYAML is a separate
+# package we don't pin yet. Treat as opaque so mypy stays green.
+[[tool.mypy.overrides]]
+module = "yaml"
+ignore_missing_imports = true
+
+# Explicitly tell hatchling there are no package sources. Phase 24.1
+# introduces a dev-mode shim at `src/tinyquant_cpu/` so the in-repo
+# test suite can import it without first assembling the fat wheel, but
+# the wheel built from this pyproject must remain empty — the fat
+# wheel is assembled separately in Phase 24.2 from
+# `scripts/packaging/templates/`.
+#
+# `bypass-selection = true` keeps hatchling from hard-failing when
+# `packages = []`, and the `exclude` list keeps it from falling back
+# to packing the entire worktree once the `src/tinyquant_cpu/` dev
+# shim is present (hatchling 1.29 auto-detects any `src/<name>/`
+# matching the project name).
+[tool.hatch.build.targets.wheel]
+packages = []
+bypass-selection = true
+# Force-exclude everything. `include = []` pairs with `packages = []`
+# to produce the empty metadata-only wheel that Phase 23 expects.
+# The single `*` exclude catches every root-relative path and every
+# nested file — without it hatchling 1.29 falls through to
+# packing the entire worktree once `src/tinyquant_cpu/` exists (the
+# dev-mode shim Phase 24.1 introduces for in-repo tests).
+exclude = ["**"]
+
+# Keep sdists buildable for local archival, but exclude the reference.
+[tool.hatch.build.targets.sdist]
+exclude = [
+    "tests/reference/",
+    "tests/parity/",
+    "rust/",
+    "experiments/",
+    "scripts/",
+    "docs/",
+]
+
 [tool.coverage.run]
-parallel = true
-source = ["tinyquant_cpu"]
+source = ["tinyquant_py_reference"]
 omit = [
-    "src/tinyquant_cpu/tools/*",
+    "tests/reference/tinyquant_py_reference/tools/*",
 ]
 
 [tool.coverage.paths]
 source = [
-    "src/tinyquant_cpu",
-    "*/src/tinyquant_cpu",
-    "*/site-packages/tinyquant_cpu",
+    "tests/reference/tinyquant_py_reference",
+    "*/tests/reference/tinyquant_py_reference",
 ]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# pythonpath is how pytest adds tests/reference and the Phase 24.1
+# dev-mode shim at src/ to sys.path at collection time.
+# --import-mode=importlib is preserved so that tests/parity and
+# tests/reference do not share a module cache. The `src` entry makes
+# the shim under src/tinyquant_cpu/ importable without installing it —
+# the fat wheel (Phase 24.2) ships its own copy assembled from
+# scripts/packaging/templates/.
+pythonpath = ["tests/reference", "src"]
 addopts = "--import-mode=importlib -x --tb=short"
 markers = [
     "pgvector: requires PostgreSQL with pgvector (PGVECTOR_TEST_DSN)",
+    "parity: cross-implementation parity between Python reference and Rust",
 ]

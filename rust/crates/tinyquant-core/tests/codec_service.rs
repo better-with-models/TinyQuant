@@ -1,5 +1,22 @@
+//! Integration tests for the stateless `Codec` service.
+//!
+//! Exercises compress/decompress round-trips against the shared fixture
+//! corpus shared with the Python reference implementation.
+
 use std::{fs, path::Path};
 use tinyquant_core::codec::{Codebook, Codec, CodecConfig};
+
+fn fixture_vector(dim: usize, seed: u32) -> Vec<f32> {
+    let mut s = seed;
+    (0..dim)
+        .map(|_| {
+            s ^= s << 13;
+            s ^= s >> 17;
+            s ^= s << 5;
+            (s as f32) / u32::MAX as f32
+        })
+        .collect()
+}
 
 fn load_f32(rel: &str) -> Vec<f32> {
     let p = Path::new(env!("CARGO_MANIFEST_DIR")).join(rel);
@@ -8,6 +25,70 @@ fn load_f32(rel: &str) -> Vec<f32> {
         .chunks_exact(4)
         .map(|c| f32::from_le_bytes([c[0], c[1], c[2], c[3]]))
         .collect()
+}
+
+// ── Residual quality gate ─────────────────────────────────────────────────────
+
+/// GAP-DECOMP-004: `residual_enabled=true` must produce lower MSE than
+/// `residual_enabled=false` on the same input vectors for ≥ 95% of vectors.
+///
+/// Uses a dim=64 synthetic fixture; runs in < 100 ms.
+#[test]
+#[allow(clippy::cast_precision_loss)]
+fn residual_on_has_lower_mse_than_residual_off() {
+    let dim: usize = 64;
+    let seed = 42_u64;
+    let n_vectors = 100_usize;
+
+    let config_on = CodecConfig::new(4, seed, dim as u32, true).unwrap();
+    let config_off = CodecConfig::new(4, seed, dim as u32, false).unwrap();
+
+    let training: Vec<f32> = (0..256 * dim).map(|i| (i as f32 * 0.001).sin()).collect();
+
+    let codebook_on = Codebook::train(&training, &config_on).unwrap();
+    let codebook_off = Codebook::train(&training, &config_off).unwrap();
+
+    let mut better_count = 0_usize;
+    for i in 0..n_vectors {
+        let v = fixture_vector(dim, i as u32);
+
+        let cv_on = Codec::new().compress(&v, &config_on, &codebook_on).unwrap();
+        let cv_off = Codec::new()
+            .compress(&v, &config_off, &codebook_off)
+            .unwrap();
+
+        let mut out_on = vec![0f32; dim];
+        let mut out_off = vec![0f32; dim];
+        Codec::new()
+            .decompress_into(&cv_on, &config_on, &codebook_on, &mut out_on)
+            .unwrap();
+        Codec::new()
+            .decompress_into(&cv_off, &config_off, &codebook_off, &mut out_off)
+            .unwrap();
+
+        let mse_on: f32 = v
+            .iter()
+            .zip(&out_on)
+            .map(|(o, r)| (o - r).powi(2))
+            .sum::<f32>()
+            / dim as f32;
+        let mse_off: f32 = v
+            .iter()
+            .zip(&out_off)
+            .map(|(o, r)| (o - r).powi(2))
+            .sum::<f32>()
+            / dim as f32;
+
+        if mse_on < mse_off {
+            better_count += 1;
+        }
+    }
+
+    assert!(
+        better_count >= n_vectors * 95 / 100,
+        "residual_on must have lower MSE than residual_off for ≥ 95% of vectors; \
+         got {better_count}/{n_vectors}"
+    );
 }
 
 // ── Round-trip ────────────────────────────────────────────────────────────────

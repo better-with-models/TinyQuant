@@ -43,6 +43,11 @@ category: design
 | R19 | `faer` parallel kernels produce cross-platform-nondeterministic output on "Rust-canonical" fixtures | **High** | **High** (breaks bit-exact fixture parity across CI and dev machines) | codec lead |
 | R20 | Design docs in `docs/design/rust/` drift from the actual YAML / Rust source until a later phase trips over the gap | Medium | Medium | docs maintainer |
 | R21 | CI workflows that have never been successfully observed get trusted as healthy, hiding latent failures | Medium | Medium | CI lead |
+| R22 | Calibration thresholds were authored as aspirational plan targets, not measurements — ratios in particular are structurally unreachable until a real residual encoder ships | **High** | **Medium** (gate is regression-canary only until Phase 26) | codec lead |
+| R23 | `wgpu` MSRV (1.87) conflicts with workspace MSRV (1.81) — GPU crates cannot be in the same `cargo +1.81.0 check` sweep | Medium | Low (isolated) | crates lead |
+| R24 | GPU backend distribution complexity — wgpu Metal/Vulkan/D3D12 driver requirements differ per OS; users on headless servers get no GPU | Medium | Medium | release lead |
+| R25 | GPU differential tests require a physical adapter; CI runners have no GPU | **High** | Medium (compile-only CI is the workaround) | testing lead |
+| R26 | `PreparedCodec` ownership model conflicts with the stateless `Codec` design — who owns the GPU buffer lifecycle | Medium | High | codec lead |
 
 ## Detailed mitigations
 
@@ -445,6 +450,33 @@ the lessons-learned docs PR. Final Phase 14 resolution
 in [[design/rust/phase-14-implementation-notes|Phase 14
 Implementation Notes]] §L4.
 
+**Mitigation status (open).** The AVX2 feature cap in
+`rust/.cargo/config.toml` (commit `e04ce5c`) reduced cross-runner
+divergence enough to keep the bit-exact `seed_42_dim_768` test green
+between 2026-04-21 and 2026-04-23. Between 2026-04-23 and 2026-04-25
+the GitHub-hosted runner pool started producing bit-different output on
+every Linux x86_64 / aarch64 / macOS / Windows host (~529k of ~590k
+f64 words differ) even though host-CPU SIMD dispatch is pinned at
+AVX2 — without any change to fixture, build path, or toolchain on
+develop. Phase 28.7 re-`#[ignore]`d the bit-exact assertion (see the
+inline comment in `rust/crates/tinyquant-core/tests/rotation_fixture_parity.rs`)
+and rely on the orthogonality companion test for semantic correctness.
+
+A `Parallelism::None` save/restore around `a.qr()` was prototyped under
+Phase 28.7 but reverted: faer 0.19's `set_global_parallelism` mutates a
+process-wide atomic with no per-call alternative, and forcing serial
+reduction changes the output on multi-core Linux runners — invalidating
+the frozen fixtures.
+
+To close R19, both of:
+
+1. faer 0.20+ exposing a per-call `Parallelism` so we can force serial
+   Householder reduction without process-global mutation, and
+2. a fixture regenerated under a known scalar/non-SIMD QR path that
+   every runner can reproduce,
+
+plus a `RAYON_NUM_THREADS` matrix test as a regression gate.
+
 ### R20 — Design-doc drift from actual YAML / Rust source
 
 **Problem.** Design docs in `docs/design/rust/` can claim a
@@ -515,6 +547,155 @@ contributing root causes (LFS hydration missing, cross-platform
 `faer` QR divergence at `dim=768`) are tracked under R19 and R20
 above, and the remediation commits are `13e888d` and `40f9b87` on
 the Phase 14 PR.
+
+### R22 — Calibration thresholds authored as aspirational targets
+
+**Problem.** The `Threshold` constants in
+`rust/crates/tinyquant-bench/tests/calibration.rs` (Phase 21) were
+written against a plan-doc target table
+(`docs/plans/rust/phase-21-rayon-batch-benches.md` §Calibration
+thresholds) rather than measurements of the actual codec. On the
+first end-to-end exercise of the `rust-calibration.yml` workflow
+(2026-04-14) all five `pr_speed_*` tests failed with bit-identical
+numbers on Windows-MSVC and Linux-glibc. The failures split into
+two structurally different gaps:
+
+- **Gap A** — residual-on compression ratios land at `4 / (bw/8 +
+  2)` (1.33-1.78×) because the codec currently ships raw `f16`
+  residuals. The plan-doc targets (4/7/14×) require a residual
+  encoder that exists in neither the Rust codec nor the Python
+  reference oracle.
+- **Gap B** — residual-off Pearson ρ at `bw=2` lands at 0.51 and
+  `bw=4` at 0.957 on the `openai_1k_d768` fixture. The Python
+  reference produces ρ within 0.022 of those numbers, so Gap B is
+  an inherent scalar-quantizer ceiling for the given fixture
+  distribution, not a Rust regression.
+
+**Mitigation (interim, 2026-04-14).**
+
+1. **Honest thresholds landed** on
+   `calibration-fix/honest-thresholds`: rho/recall floored to
+   measured values minus a small margin; residual-on ratio floors
+   set to 1.50-1.70 (with `TODO(phase-26)` comments to raise them
+   once a real residual encoder ships); residual-off ratios kept
+   at measured `(bw=4 → 7.5, bw=2 → 15.0)` so a structural
+   regression still fails the gate.
+2. **Plan doc (`phase-21-rayon-batch-benches.md` §Calibration
+   thresholds)** updated to match the honest table.
+3. **Investigation record.** Full measurement table, hypothesis
+   posteriors, and Python-reference cross-check recorded in
+   `docs/plans/rust/calibration-threshold-investigation.md` §7
+   and §12.
+
+**Exit (Phase 26).** The correct long-term fix is a residual
+compression step (scalar-quantized residual + per-vector scale, or
+entropy-coded residual). Once that lands, residual-on ratio floors
+raise back toward 4/7/14× and residual-on ρ promotes from `≥0.99`
+to `=1.000`. Tracked in investigation plan §5 B2.
+
+**Concrete incident.** Discovered 2026-04-14 during first dispatch
+of the `rust-calibration.yml` workflow after `c8482fc` on
+`phase-21-rayon-batch`. The workflow had never successfully run
+before (R21 class of problem; the calibration gates used to be a
+matrix job inside `rust-ci.yml` that was gated behind on-demand
+triggers and also never ran). Remediation branch:
+`calibration-fix/honest-thresholds`.
+
+### R23 — `wgpu` MSRV mismatch
+
+**Problem.** `wgpu` 22 requires Rust ≥ 1.87; the workspace is pinned
+to 1.81. Placing `wgpu` in a workspace-level dep means `cargo +1.81.0
+check --workspace` fails even for consumers that never touch the GPU
+crate.
+
+**Mitigation.**
+
+1. Declare `package.rust-version = "1.87"` inside each GPU crate's own
+   `Cargo.toml` (the per-package field, not the workspace field).
+2. Exclude GPU crates from the workspace MSRV gate:
+   ```bash
+   cargo +1.81.0 check --workspace \
+     --exclude tinyquant-gpu-wgpu \
+     --exclude tinyquant-gpu-cuda
+   ```
+3. A separate CI job (`gpu-compile-check`) runs on the toolchain that
+   satisfies the GPU MSRV:
+   ```bash
+   cargo +1.87.0 check -p tinyquant-gpu-wgpu
+   ```
+4. `wgpu` is **not** added to `[workspace.dependencies]`; each GPU
+   crate pins it independently so the workspace dependency resolver
+   never forces it on the whole tree.
+
+### R24 — GPU backend distribution
+
+**Problem.** wgpu uses Metal on macOS, Vulkan or D3D12 on
+Windows/Linux. Container images (GHCR, ECS, GKE) typically have no
+GPU driver or Vulkan ICD installed. Users who `cargo add
+tinyquant-gpu-wgpu` on a headless machine will compile successfully
+but see `is_available() == false` at runtime.
+
+**Mitigation.**
+
+1. Document clearly in the crate README: GPU acceleration is opt-in
+   and falls back gracefully to CPU.
+2. `WgpuBackend::new()` returns `Ok(backend)` even if no adapter is
+   found; `backend.is_available()` differentiates the two cases.
+   No panics, no `unwrap`.
+3. Ship a `--gpu` flag in `tinyquant-cli` that prints adapter info
+   (`tinyquant info --gpu`) so operators can diagnose availability.
+4. The wgpu `dx12` and `metal` backends require no extra user action
+   (OS-bundled). The `vulkan` backend on Linux requires the
+   `vulkan-icd-loader` package; document this in the crate README.
+   The `tinyquant-gpu-wgpu` `Cargo.toml` explicitly enables the `vulkan`
+   wgpu feature (`wgpu = { version = "22", features = ["wgsl", "vulkan"] }`)
+   since Vulkan is not always included in wgpu 22's default feature set.
+
+### R25 — GPU tests require physical adapter
+
+**Problem.** GitHub Actions `ubuntu-22.04` and `windows-2022` runners
+have no GPU. Differential tests (GPU vs CPU same output) and
+performance benchmarks cannot run in standard CI.
+
+**Mitigation.**
+
+1. **Compile-only CI** (`gpu-compile-check`) validates shader syntax
+   and Rust compilation without a device. Runs on every PR touching
+   `crates/tinyquant-gpu-wgpu/`.
+2. **Shader unit tests** use `BackendPreference::Software` (maps to
+   `wgpu::Backends::GL` + `force_fallback_adapter = true` via Mesa's
+   `llvmpipe`) where available on Linux. These are slower (~10× vs native
+   GPU) but do not require a physical device.
+3. **Differential tests** are marked `#[ignore]` in standard CI and
+   promoted to a self-hosted runner job once one is available.
+4. **No GPU benchmark** is wired into the `bench-budget` gate until a
+   stable runner with a GPU is procured (R21-class concern — until
+   then, GPU benchmarks are advisory only).
+
+### R26 — `PreparedCodec` ownership and GPU buffer lifecycle
+
+**Problem.** The existing `Codec` type is a ZST (zero-size type) with
+no state. `PreparedCodec` (Phase 26) caches the rotation matrix and
+codebook so they do not need to be recomputed per-batch. The GPU
+backend additionally needs to upload those tensors to device VRAM as
+`wgpu::Buffer` objects. But `wgpu::Buffer` is not `Send + Sync` in all
+contexts, and the `PreparedCodec` struct lives in `tinyquant-core`
+which cannot depend on wgpu.
+
+**Mitigation.**
+
+1. `PreparedCodec` (in `tinyquant-core`) includes a `gpu_state:
+   Option<Box<dyn core::any::Any + Send + Sync>>` field — an opaque
+   type-erased slot. The GPU crate fills this slot on first use via
+   `ComputeBackend::prepare_for_device(&mut PreparedCodec)`.
+2. The `Box<dyn Any + Send + Sync>` bound is intentionally broad; the
+   downcast happens inside `tinyquant-gpu-wgpu`, not in core.
+3. `PreparedCodec` is owned by the application, not the codec. The
+   application decides lifetime; the GPU crate borrows it per-call.
+4. A clippy lint inside `tinyquant-gpu-wgpu` warns if
+   `compress_batch` is called with a `PreparedCodec` whose `gpu_state`
+   is `None` (device upload not done yet), guiding callers to call
+   `prepare_for_device` first.
 
 ## Open questions tracked elsewhere
 

@@ -23,8 +23,8 @@ pub const MAGIC_TENTATIVE: &[u8; 4] = b"TQCX";
 pub const FORMAT_VERSION: u8 = 0x01;
 /// Size of the fixed 24-byte header.
 pub const FIXED_HEADER_SIZE: usize = 24;
-const MAX_CONFIG_HASH_LEN: usize = 256;
-const MAX_METADATA_LEN: usize = 16 * 1024 * 1024; // 16 MiB
+pub const MAX_CONFIG_HASH_LEN: usize = 256;
+pub const MAX_METADATA_LEN: usize = 16 * 1024 * 1024; // 16 MiB
 
 const SUPPORTED_BIT_WIDTHS: &[u8] = &[2, 4, 8];
 
@@ -316,7 +316,7 @@ fn decode_variable_prefix(
         .to_vec();
     pos = meta_end;
 
-    let body_offset = ((pos + 7) / 8) * 8;
+    let body_offset = pos.next_multiple_of(8);
 
     Ok((config_hash, metadata, body_offset))
 }

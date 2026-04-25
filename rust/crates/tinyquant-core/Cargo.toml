@@ -15,6 +15,22 @@ simd    = ["std"]
 # stub-delegates to scalar). Keeping the feature gate wired now lets
 # downstream crates opt-in without churning Cargo metadata later.
 avx512  = ["simd"]
+# Optional GPU acceleration via wgpu/WGSL.
+# Enabling this feature raises the effective MSRV from 1.81 to 1.87
+# (wgpu's requirement) and switches the crate from no_std to std.
+#
+# NOTE: tinyquant-gpu-wgpu cannot be an optional dependency of tinyquant-core
+# because tinyquant-gpu-wgpu itself depends on tinyquant-core, creating a
+# Cargo cyclic dependency (Cargo rejects this unconditionally). Instead, this
+# feature enables:
+#   - The `GpuComputeBackend` trait and `GPU_BATCH_THRESHOLD` const defined
+#     locally in tinyquant-core (no external dep needed — these only reference
+#     types already in this crate).
+#   - `Codec::compress_batch_gpu_with`, which accepts any `B: GpuComputeBackend`.
+# Users who want WgpuBackend still add `tinyquant-gpu-wgpu` separately;
+# that crate will implement `tinyquant_core::GpuComputeBackend` for `WgpuBackend`
+# in a future patch (Phase 28.5b).
+gpu-wgpu = ["std"]
 
 [dependencies]
 # Phase 12: error enums (no_std-capable via thiserror v2 + default-features = false)
@@ -35,6 +51,8 @@ serde_json = { workspace = true }
 bytemuck   = { workspace = true }
 # Phase 20: SIMD parity tests need std rand (dev-only, not in the no_std build).
 rand       = { workspace = true, features = ["std", "std_rng"] }
+# Phase 21: batch determinism tests exercise local rayon pools.
+rayon      = { workspace = true }
 
 [[example]]
 name              = "dump_rotation_fixture"

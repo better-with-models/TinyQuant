@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 from numpy.typing import NDArray
-
-from tinyquant_cpu.backend.brute_force import BruteForceBackend
-from tinyquant_cpu.corpus.corpus import Corpus
+from tinyquant_py_reference.backend.brute_force import BruteForceBackend
+from tinyquant_py_reference.corpus.corpus import Corpus
 
 
 class TestCorpusBackendIntegration:

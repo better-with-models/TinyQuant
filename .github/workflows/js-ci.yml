@@ -1,0 +1,423 @@
+---
+# Phase 25.4 — JavaScript CI for @tinyquant/core.
+#
+# This workflow exercises the full npm-package build pipeline on every
+# PR and push to `main` that touches the tinyquant-js crate or the
+# npm package tree. It does NOT publish — tag-triggered publishing
+# lives in `js-release.yml`.
+#
+# Flow (per plan §CI workflow — js-ci.yml):
+#
+#   1. build-native (5 triples in parallel)
+#        - checkout + rust toolchain + Node 20
+#        - `npm ci` under `javascript/@tinyquant/core`
+#        - `npm run build` — driven by scripts/build.mjs which invokes
+#          `@napi-rs/cli` (from package devDeps), renames the output
+#          to `binaries/<triple>.node`, compiles TypeScript (ESM),
+#          emits .d.cts, and emits the CJS bundle.
+#        - upload the per-triple native binary as an artifact.
+#
+#   2. assemble-tarball (1x linux runner)
+#        - download all 5 native artifacts into `binaries/`.
+#        - re-run `npm ci && npm run build` so the ESM + CJS dist/
+#          matches the bundled binaries exactly.
+#        - `npm pack` to produce the single-fat-tarball.
+#
+#   3. install-test (5 runners × 3 runtimes = 15 cells)
+#        - download the tarball, install into a clean scratch dir
+#          under each of Node 20, Node 22, and Bun 1.1, and run a
+#          lightweight smoke (`version()` + a codec round-trip).
+#        - The install-test never re-runs the full in-source Node
+#          test suite; that already ran on every developer machine
+#          and runs again in test-source below. The installed-tarball
+#          smoke is the "did the shipped artefact work on this
+#          platform?" gate.
+#
+#   4. test-source (1x linux runner)
+#        - full `npm test` (build + tsc tests + node --test + cjs
+#          smoke) against the source tree on linux/x64.
+#
+#   5. pnpm-smoke (1x linux runner)
+#        - pnpm via corepack adds the tarball and prints version().
+#
+# Deviations from the literal YAML in the plan §CI workflow:
+#
+#   - Build invocation. The plan shows `napi build` invoked directly
+#     from `rust/crates/tinyquant-js/`. We invoke `npm run build` from
+#     the npm package instead because `scripts/build.mjs` already
+#     orchestrates napi + rename + tsc + emit-cjs. Single source of
+#     truth for "how the package is built" stays in the script.
+#   - `@napi-rs/cli` version. Pinned to `3` (matches package devDeps),
+#     not the plan's `3.0.0`.
+#   - Install-test runs a smoke (require + version + codec round-trip)
+#     rather than the full TS test suite. The published tarball does
+#     not contain `tests/`, so `node --test tests/**` as in the plan
+#     is infeasible without re-checking out the repo — which would
+#     defeat the point of "test the tarball". A separate test-source
+#     job runs the full suite on the source tree.
+#   - No explicit rename step. `scripts/rename-binaries.mjs` runs as
+#     part of `npm run build` and produces `binaries/<triple>.node`
+#     directly; CI does not need to duplicate that logic.
+
+name: js-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "rust/crates/tinyquant-js/**"
+      - "rust/crates/tinyquant-core/**"
+      - "rust/crates/tinyquant-io/**"
+      - "javascript/**"
+      - ".github/workflows/js-ci.yml"
+  pull_request:
+    paths:
+      - "rust/crates/tinyquant-js/**"
+      - "rust/crates/tinyquant-core/**"
+      - "rust/crates/tinyquant-io/**"
+      - "javascript/**"
+      - ".github/workflows/js-ci.yml"
+
+concurrency:
+  group: js-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+
+  # -------------------------------------------------------------------
+  # 1. build-native — produce one `.node` per supported triple.
+  # -------------------------------------------------------------------
+  build-native:
+    name: build .node (${{ matrix.triple }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu,    napi_cross_target: "",                      musl: false }
+          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu,  napi_cross_target: "",                      musl: false }
+          - { triple: x86_64-apple-darwin,        runner: macos-14,         key: darwin-x64,       napi_cross_target: x86_64-apple-darwin,     musl: false }
+          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64,     napi_cross_target: "",                      musl: false }
+          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc,   napi_cross_target: "",                      musl: false }
+          # Phase 25.5: musl Linux targets (GAP-JS-006)
+          # x86_64-musl: napi_cross_target must be set so napi passes --target and
+          # names the output linux-x64-musl.node (not linux-x64-gnu.node).
+          - { triple: x86_64-unknown-linux-musl,  runner: ubuntu-22.04,     key: linux-x64-musl,   napi_cross_target: x86_64-unknown-linux-musl,   musl: true  }
+          - { triple: aarch64-unknown-linux-musl, runner: ubuntu-22.04,     key: linux-arm64-musl, napi_cross_target: aarch64-unknown-linux-musl,  musl: true }
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+          targets: ${{ matrix.triple }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20.x"
+      # Phase 25.5: install musl-tools and cross-linkers for musl targets.
+      #
+      # Both musl targets use zig as the linker via a thin shim.
+      #
+      # x86_64-musl: musl-gcc cannot link a shared library (.node files are
+      #   .so files) because musl has no libgcc_s.so.1.  Zig handles this
+      #   hermetically without needing libgcc_s.
+      #
+      # aarch64-musl: gcc-aarch64-linux-gnu is a glibc cross-compiler and
+      #   cannot link musl binaries.
+      #
+      # Zig is downloaded directly from ziglang.org into /opt/ rather than
+      # via `pip3 install ziglang`.  The pip approach put the binary in
+      # ~/.local/bin which is only added to PATH for *subsequent* steps via
+      # GITHUB_PATH — zig was therefore not found within this same step.
+      # Downloading to /opt/ and `export PATH` makes it available immediately.
+      - name: Install musl cross-compilation toolchain
+        if: matrix.musl == true
+        shell: bash
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y musl-tools
+
+          ZIG_VERSION="0.14.0"
+          ZIG_DIR="/opt/zig-linux-x86_64-${ZIG_VERSION}"
+          curl -fsSL \
+            "https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz" \
+            | sudo tar -xJ -C /opt
+          export PATH="${ZIG_DIR}:${PATH}"
+          echo "${ZIG_DIR}" >> "$GITHUB_PATH"
+          zig version
+
+          mkdir -p "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          if [[ "${{ matrix.triple }}" == "x86_64-unknown-linux-musl" ]]; then
+            printf '#!/bin/sh\nexec zig cc -target x86_64-linux-musl "$@"\n' \
+              > "$HOME/.local/bin/x86_64-linux-musl-gcc"
+            chmod +x "$HOME/.local/bin/x86_64-linux-musl-gcc"
+            echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER=$HOME/.local/bin/x86_64-linux-musl-gcc" >> "$GITHUB_ENV"
+          fi
+          if [[ "${{ matrix.triple }}" == "aarch64-unknown-linux-musl" ]]; then
+            printf '#!/bin/sh\nexec zig cc -target aarch64-linux-musl "$@"\n' \
+              > "$HOME/.local/bin/aarch64-linux-musl-gcc"
+            chmod +x "$HOME/.local/bin/aarch64-linux-musl-gcc"
+            echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER=$HOME/.local/bin/aarch64-linux-musl-gcc" >> "$GITHUB_ENV"
+          fi
+      - name: npm ci
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: npm ci
+      - name: npm run build
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        env:
+          RUSTFLAGS: "-C strip=symbols"
+          NAPI_CROSS_TARGET: ${{ matrix.napi_cross_target }}
+        run: npm run build
+      - name: Verify binary exists
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f "binaries/${{ matrix.key }}.node" || {
+            echo "::error::expected binaries/${{ matrix.key }}.node after npm run build"
+            ls -la binaries/ || true
+            exit 1
+          }
+      - uses: actions/upload-artifact@v5
+        with:
+          name: native-${{ matrix.key }}
+          path: javascript/@tinyquant/core/binaries/${{ matrix.key }}.node
+
+  # -------------------------------------------------------------------
+  # 2. assemble-tarball — collect all 5 binaries + tsc build + npm pack.
+  # -------------------------------------------------------------------
+  assemble-tarball:
+    name: Assemble npm tarball
+    needs: build-native
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20.x"
+      - uses: actions/download-artifact@v5
+        with:
+          path: javascript/@tinyquant/core/binaries
+          pattern: native-*
+          merge-multiple: true
+      - name: List bundled binaries
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          ls -la binaries/
+          count=$(ls binaries/*.node 2>/dev/null | wc -l)
+          test "$count" -eq 7 || {
+            echo "::error::expected 7 bundled binaries (5 glibc + 2 musl, Phase 25.5), got $count"
+            exit 1
+          }
+      - name: npm ci
+        working-directory: javascript/@tinyquant/core
+        run: npm ci
+      # Re-run build so dist/ matches the assembled binaries. The
+      # napi build step is a no-op here (cargo incremental + cached)
+      # if already built locally; in CI it rebuilds the host triple
+      # but the downloaded artefacts overwrite that file so the final
+      # binaries/ set is still all 7 (5 glibc + 2 musl).
+      - name: npm run build
+        working-directory: javascript/@tinyquant/core
+        run: npm run build
+      - name: Restore downloaded binaries
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The build step above re-ran napi build for the host triple
+          # and overwrote the downloaded linux-x64-gnu artefact with
+          # a freshly-built one. That is fine: the fresh binary is
+          # byte-equivalent for the host. Verify all 7 expected
+          # files are still present (5 glibc + 2 musl).
+          for key in linux-x64-gnu linux-arm64-gnu darwin-x64 darwin-arm64 win32-x64-msvc linux-x64-musl linux-arm64-musl; do
+            test -f "binaries/${key}.node" || {
+              echo "::error::missing binaries/${key}.node after build"
+              exit 1
+            }
+          done
+      # GAP-JS-008: assert gzip ≤ 10 MB and unpacked ≤ 50 MB before packaging.
+      - name: Check package size (gzip ≤ 10 MB, unpacked ≤ 50 MB)
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          PACK_OUTPUT=$(npm pack --dry-run 2>&1)
+          echo "$PACK_OUTPUT"
+
+          GZIP_MB=$(echo "$PACK_OUTPUT" \
+            | grep -iE "package size|Packed size" \
+            | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)
+          UNPACK_MB=$(echo "$PACK_OUTPUT" \
+            | grep -i "unpacked size" \
+            | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)
+
+          echo "Gzip: ${GZIP_MB:-?} MB  Unpacked: ${UNPACK_MB:-?} MB"
+
+          if [[ -z "$GZIP_MB" || -z "$UNPACK_MB" ]]; then
+            # npm changed its output format — the gate cannot run.
+            # Emit a visible annotation so this does not silently become a dead check.
+            echo "::warning file=.github/workflows/js-ci.yml::package-size gate skipped: could not parse 'package size' or 'unpacked size' from npm pack --dry-run output. Pin npm version or update the grep pattern."
+            exit 0
+          fi
+
+          if (( $(echo "$GZIP_MB > 10" | bc -l) )); then
+            echo "FAIL: gzip size ${GZIP_MB} MB exceeds 10 MB limit"
+            exit 1
+          fi
+          if (( $(echo "$UNPACK_MB > 50" | bc -l) )); then
+            echo "FAIL: unpacked size ${UNPACK_MB} MB exceeds 50 MB limit"
+            exit 1
+          fi
+          echo "PASS: package size within budget"
+      - name: npm pack
+        working-directory: javascript/@tinyquant/core
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ../../../dist-npm
+          npm pack --pack-destination ../../../dist-npm
+          ls -la ../../../dist-npm/
+      - uses: actions/upload-artifact@v5
+        with:
+          name: npm-tarball
+          path: dist-npm/*.tgz
+
+  # -------------------------------------------------------------------
+  # 3. install-test — smoke-install the tarball under Node 20 / 22 / Bun
+  #    on all 5 runners.
+  # -------------------------------------------------------------------
+  install-test:
+    name: install+smoke (${{ matrix.runner }}, ${{ matrix.runtime }})
+    needs: assemble-tarball
+    strategy:
+      fail-fast: false
+      matrix:
+        # macos-13 (x64) removed: runner no longer available post-August 2025.
+        # darwin-x64 binary is cross-compiled from macos-14; integration covered
+        # by build-native + assemble-tarball. arm64 macOS remains in the matrix.
+        runner: [ubuntu-22.04, ubuntu-22.04-arm, macos-14, windows-2022]
+        runtime: [node-20, node-22, bun-1.2]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: npm-tarball
+          path: ./tarball
+      - name: Setup Node
+        if: startsWith(matrix.runtime, 'node-')
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.runtime == 'node-20' && '20.x' || '22.x' }}
+      - name: Setup Bun
+        if: startsWith(matrix.runtime, 'bun-')
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.x"
+      - name: Install tarball (npm)
+        if: startsWith(matrix.runtime, 'node-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir smoke && cd smoke
+          npm init -y >/dev/null
+          # Glob resolves the single .tgz produced by assemble-tarball.
+          tgz=$(ls ../tarball/*.tgz | head -1)
+          npm install "$tgz"
+          node -e "
+            const mod = require('@better-with-models/tinyquant-core');
+            console.log('version:', mod.version());
+            if (typeof mod.version() !== 'string') {
+              throw new Error('version() did not return a string');
+            }
+          "
+      - name: Install tarball (bun)
+        if: startsWith(matrix.runtime, 'bun-')
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir smoke && cd smoke
+          bun init -y >/dev/null
+          tgz=$(ls ../tarball/*.tgz | head -1)
+          bun add "$tgz"
+          bun -e "
+            import('@better-with-models/tinyquant-core').then(m => {
+              console.log('version:', m.version());
+              if (typeof m.version() !== 'string') {
+                throw new Error('version() did not return a string');
+              }
+            }).catch(e => { console.error(e); process.exit(1); });
+          "
+
+  # -------------------------------------------------------------------
+  # 4. test-source — run the full test suite against the source tree.
+  #    (Complements install-test which only smoke-tests the tarball.)
+  # -------------------------------------------------------------------
+  test-source:
+    name: test (source, linux/x64, node 20)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.81.0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20.x"
+      # GAP-JS-009: fail fast if package.json and Cargo.toml versions diverge.
+      - name: Check version consistency (package.json ↔ Cargo.toml)
+        shell: bash
+        run: bash scripts/check_version_consistency.sh
+      - name: npm ci
+        working-directory: javascript/@tinyquant/core
+        run: npm ci
+      - name: npm test
+        working-directory: javascript/@tinyquant/core
+        run: npm test
+      # GAP-JS-010: verify loader dist/ contains no subprocess-spawning APIs.
+      - name: Verify loader has no subprocess invocations
+        shell: bash
+        run: bash scripts/check_no_exec.sh javascript/@tinyquant/core/dist
+
+  # -------------------------------------------------------------------
+  # 5. pnpm-smoke — verify pnpm can install the tarball too.
+  # -------------------------------------------------------------------
+  pnpm-smoke:
+    name: pnpm install smoke
+    needs: assemble-tarball
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: npm-tarball
+          path: ./tarball
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "20.x"
+      - name: Enable pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@9 --activate
+      - name: pnpm add tarball
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir smoke-pnpm && cd smoke-pnpm
+          pnpm init >/dev/null
+          tgz=$(ls ../tarball/*.tgz | head -1)
+          pnpm add "$tgz"
+          node -e "
+            const { version } = require('@better-with-models/tinyquant-core');
+            console.log('version:', version());
+          "

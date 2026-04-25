@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "outDir": "./dist-cjs",
+    "rootDir": "./src-cjs-staging",
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": true
+  },
+  "include": ["src-cjs-staging/**/*.ts"],
+  "exclude": ["node_modules", "dist", "dist-cjs", "tests", "src"]
+}

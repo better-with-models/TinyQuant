@@ -1,0 +1,367 @@
+---
+# Phase 24.3 — Python fat-wheel assembly, test, and publish pipeline.
+#
+# ## Dry-run behavior
+#
+# This workflow is tag-triggered on `py-v*` and manually triggerable via
+# `workflow_dispatch`. The publish step is guarded by a dedicated
+# `release-gate` job that mirrors the Phase 22.D pattern from
+# `rust-release.yml`:
+#
+#   if: needs.release-gate.outputs.should_publish == 'true'
+#       && inputs.dry_run != true
+#
+# The gate's shell step evaluates `github.ref_name` against the POSIX
+# extended regex `^py-v[0-9]+\.[0-9]+\.[0-9]+$` so that pre-release
+# (`-rc.1`, `-alpha`) and build-metadata (`+build.42`) tags exercise
+# fetch / assemble / install-test without touching PyPI. Any
+# `workflow_dispatch` run sets `should_publish=false` unconditionally
+# so operators can rehearse the pipeline against `main`.
+#
+# The `dry_run` input defaults to `true` so a human-triggered run NEVER
+# publishes by accident. Only a clean release tag such as `py-v0.2.0`
+# pushed directly AND `inputs.dry_run != true` (i.e. not manually
+# invoked) reaches the upload step.
+#
+# The `if:` block on the `publish` job MUST stay byte-identical to the
+# contract expression above. `cargo xtask check-publish-guards` parses
+# this workflow alongside `rust-release.yml` and fails CI on drift.
+#
+# ## Dry-run input fabrication
+#
+# When `inputs.dry_run == true` and the upstream
+# `rust-v<version>` release does not exist yet (e.g. a manual
+# dispatch against `main`), the `fetch-inputs` job fabricates five
+# minimal dummy per-arch wheels inline so downstream jobs can
+# exercise against them. Real tag-push runs always use `gh release
+# download` against the corresponding `rust-v` tag produced by
+# `rust-release.yml` in Phase 22.
+
+name: python-fatwheel
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to assemble (must match tag, e.g. 0.2.0)."
+        required: true
+        type: string
+      dry_run:
+        description: "Skip the PyPI upload step (default: true)."
+        type: boolean
+        default: true
+  push:
+    tags:
+      - "py-v*"
+
+permissions:
+  contents: read
+  id-token: write   # for PyPI OIDC trusted publishing
+
+concurrency:
+  group: python-fatwheel-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+
+  # -------------------------------------------------------------------
+  # Release gate: decide whether this run is allowed to publish.
+  #
+  # Same shape as `rust-release.yml`'s `release-gate` job — the only
+  # difference is the tag prefix regex (`py-v` vs `rust-v`). The
+  # `publish` job below consumes `needs.release-gate.outputs.should_publish`
+  # in a byte-identical guard expression, enforced by
+  # `cargo xtask check-publish-guards`.
+  # -------------------------------------------------------------------
+  release-gate:
+    name: Release gate
+    runs-on: ubuntu-22.04
+    outputs:
+      should_publish: ${{ steps.evaluate.outputs.should_publish }}
+    steps:
+      - id: evaluate
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF: ${{ github.ref }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          # `workflow_dispatch` never publishes — the gate short-circuits.
+          # Otherwise require a tag ref AND a clean semver tag body
+          # (no `-pre…`, no `+build…`).
+          if [[ "${EVENT_NAME}" == "workflow_dispatch" ]]; then
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          elif [[ "${REF}" == refs/tags/py-v* ]] \
+               && [[ "${REF_NAME}" =~ ^py-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "should_publish=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "event=${EVENT_NAME} ref=${REF} ref_name=${REF_NAME} -> should_publish computed"
+
+  # -------------------------------------------------------------------
+  # Workflow lint — runs action-validator against this file.
+  #
+  # Falls back to a no-op if `npx` is unavailable on the runner (Linux
+  # GitHub-hosted runners ship Node by default, so this should always
+  # succeed). `actionlint` is an acceptable substitute but not every
+  # runner ships it preinstalled; we prefer the npm-published validator
+  # which only needs the pre-installed Node toolchain.
+  # -------------------------------------------------------------------
+  lint-workflow:
+    name: Lint workflow YAML
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - name: action-validator
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v npx >/dev/null 2>&1; then
+            npx --yes @action-validator/cli \
+              .github/workflows/python-fatwheel.yml
+          else
+            echo "npx not available — skipping action-validator"
+          fi
+
+  # -------------------------------------------------------------------
+  # 1. Fetch the 5 per-arch wheels published by rust-release.yml.
+  # -------------------------------------------------------------------
+  fetch-inputs:
+    needs: [release-gate, lint-workflow]
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - id: resolve
+        name: Resolve version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "version=${GITHUB_REF_NAME#py-v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          fi
+      # On tag pushes, fetch the real per-arch wheels from the matching
+      # rust-release.yml artefact. On dry-run (workflow_dispatch) runs
+      # the upstream release may not exist; fabricate dummy wheels so
+      # downstream jobs can still exercise end-to-end. The fabricator
+      # lives in `scripts/packaging/fabricate_dummy_wheels.py` and
+      # mirrors `tests/packaging/test_assemble_fat_wheel.py::_make_dummy_arch_wheel`.
+      # This step must NEVER run on a real push event — if the upstream
+      # `actions/download-artifact` step finishes with zero wheels we
+      # want a hard CI failure, not silent fallback to dummy data.
+      - name: Download per-arch wheels from prior release
+        if: github.event_name == 'push'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/input
+          gh release download "rust-v${{ steps.resolve.outputs.version }}" \
+              --repo "${{ github.repository }}" \
+              --dir dist/input \
+              --pattern 'tinyquant_rs-*.whl'
+      - name: Fabricate dummy per-arch wheels (dry-run only)
+        if: github.event_name != 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/input
+          # Skip when real wheels were already fetched above.
+          if ls dist/input/tinyquant_rs-*.whl >/dev/null 2>&1; then
+            echo "real wheels present; skipping fabrication"; exit 0
+          fi
+          python scripts/packaging/fabricate_dummy_wheels.py \
+            dist/input "${{ steps.resolve.outputs.version }}"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: input-wheels
+          path: dist/input/
+
+  # -------------------------------------------------------------------
+  # 2. Assemble the fat wheel (single Linux runner).
+  # -------------------------------------------------------------------
+  assemble:
+    needs: fetch-inputs
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+        with:
+          # Need full history so `git log -1 --format=%ct` can resolve
+          # the tagged commit's ctime for SOURCE_DATE_EPOCH.
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: input-wheels
+          path: dist/input/
+      - name: Install assembler deps
+        run: python -m pip install --upgrade pip twine wheel
+      # Byte-reproducibility: derive SOURCE_DATE_EPOCH from the tagged
+      # commit's committer-timestamp for tag-push runs so the fat
+      # wheel's zip entries (and any derived manifest) are stable
+      # across re-runs. On dry-run / dispatch use a fixed epoch so
+      # synthetic invocations are also deterministic.
+      - name: Resolve SOURCE_DATE_EPOCH
+        id: sde
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            sde=$(git log -1 --format=%ct "${{ github.sha }}")
+          else
+            # 2026-04-13T00:00:00Z — matches the assembler's fixed mtime.
+            sde=1776038400
+          fi
+          echo "sde=$sde" >> "$GITHUB_OUTPUT"
+      - name: Assemble
+        shell: bash
+        env:
+          SOURCE_DATE_EPOCH: ${{ steps.sde.outputs.sde }}
+        run: |
+          set -euo pipefail
+          python scripts/packaging/assemble_fat_wheel.py \
+            --input-dir dist/input \
+            --version "${{ needs.fetch-inputs.outputs.version }}" \
+            --output  "dist/tinyquant_cpu-${{ needs.fetch-inputs.outputs.version }}-py3-none-any.whl"
+      - name: Size gate (< 50 MB)
+        shell: bash
+        run: |
+          set -euo pipefail
+          size=$(stat -c '%s' dist/tinyquant_cpu-*.whl)
+          echo "fat wheel size: $size bytes"
+          test "$size" -lt 52428800 || { echo "fat wheel exceeds 50 MB"; exit 1; }
+      - name: Binary-count gate (exactly 5)
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=$(python -m zipfile -l dist/tinyquant_cpu-*.whl \
+                  | grep -cE '_core\.(abi3\.so|pyd)$')
+          echo "bundled binaries: $count"
+          test "$count" -eq 5 || { echo "expected 5 binaries, got $count"; exit 1; }
+      - name: twine check
+        run: twine check dist/tinyquant_cpu-*.whl
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: fat-wheel
+          path: dist/tinyquant_cpu-*.whl
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
+        with:
+          name: fat-wheel-manifest
+          path: dist/tinyquant_cpu-*.manifest.json
+
+  # -------------------------------------------------------------------
+  # 3. Install-and-test on all 5 Tier-1 runners.
+  # -------------------------------------------------------------------
+  install-test:
+    needs: assemble
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - { os: ubuntu-22.04,     key: linux_x86_64_gnu  }
+          - { os: ubuntu-22.04-arm, key: linux_aarch64_gnu }
+          - { os: macos-13,         key: macos_x86_64      }
+          - { os: macos-14,         key: macos_arm64       }
+          - { os: windows-2022,     key: win_amd64         }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5  # v4.3.1
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: fat-wheel
+          path: dist/
+      - name: Install fat wheel into fresh venv
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv .venv
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          pip install --upgrade pip
+          pip install dist/tinyquant_cpu-*-py3-none-any.whl numpy pytest hypothesis
+      - name: Smoke import + key detection
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          python -c "
+          import tinyquant_cpu
+          from tinyquant_cpu._selector import detect_platform_key
+          assert detect_platform_key() == '${{ matrix.key }}', detect_platform_key()
+          print('ok:', tinyquant_cpu.__version__)
+          "
+      - name: Run parity suite against reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            source .venv/Scripts/activate
+          else
+            source .venv/bin/activate
+          fi
+          pip install -e .[dev]   # pulls in tinyquant_py_reference
+          pytest tests/parity/test_cross_impl.py -v
+
+  # -------------------------------------------------------------------
+  # 4. Publish to PyPI via OIDC (guarded).
+  #
+  # The `if:` expression MUST stay byte-identical to the contract
+  # enforced by `cargo xtask check-publish-guards`:
+  #
+  #     needs.release-gate.outputs.should_publish == 'true'
+  #     && inputs.dry_run != true
+  # -------------------------------------------------------------------
+  publish:
+    needs: [install-test, release-gate]
+    runs-on: ubuntu-22.04
+    if: >-
+      needs.release-gate.outputs.should_publish == 'true'
+      && inputs.dry_run != true
+    environment:
+      name: pypi
+      url: https://pypi.org/project/tinyquant-cpu/
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          name: fat-wheel
+          path: dist/
+      - name: Verify version > 0.1.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          wheel=$(ls dist/tinyquant_cpu-*.whl | head -n1)
+          ver=$(basename "$wheel" | sed 's/tinyquant_cpu-\([^-]*\).*/\1/')
+          python - "$ver" <<'PY'
+          import sys
+          from packaging.version import Version
+          v = Version(sys.argv[1])
+          assert v > Version("0.1.1"), f"fat wheel version {v} must be > 0.1.1"
+          print("version gate ok:", v)
+          PY
+      # Second belt-and-braces guard: the job-level `if:` already
+      # blocks dry-run, but re-assert here so a misconfigured
+      # downstream edit to the guard still cannot reach PyPI.
+      - name: Publish to PyPI
+        if: inputs.dry_run != true
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b  # release/v1
+        with:
+          skip-existing: false
+          packages-dir: dist/

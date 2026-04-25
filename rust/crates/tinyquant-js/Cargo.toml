@@ -1,0 +1,34 @@
+[package]
+name         = "tinyquant-js"
+description  = "napi-rs N-API bindings for TinyQuant (published as @tinyquant/core)."
+version.workspace      = true
+edition.workspace      = true
+rust-version.workspace = true
+license.workspace      = true
+repository.workspace   = true
+publish                = false
+
+# Phase 25.1 scaffolding note:
+# This crate currently exports only `version()` as a façade over the workspace
+# Cargo.toml so that the wheel + loader plumbing can be validated end-to-end
+# before the codec / corpus / backend value-object surface lands in Phase 25.2
+# (and pulls in `tinyquant-core` as a dependency). See
+# `docs/plans/rust/phase-25-typescript-npm-package.md` §Steps for the TDD order.
+
+[lib]
+name       = "tinyquant_js"
+crate-type = ["cdylib"]
+
+[dependencies]
+napi        = { version = "2", default-features = false, features = ["napi8"] }
+napi-derive = "2"
+tinyquant-core = { workspace = true, features = ["std"] }
+tinyquant-bruteforce = { workspace = true }
+serde_json = "1"
+
+[features]
+default = ["simd"]
+simd    = ["tinyquant-core/simd", "tinyquant-bruteforce/simd"]
+
+[build-dependencies]
+napi-build = "2"

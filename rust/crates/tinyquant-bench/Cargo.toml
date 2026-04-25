@@ -22,8 +22,25 @@ name              = "simd_kernels"
 harness           = false
 required-features = ["simd"]
 
+[[bench]]
+name    = "batch_parallel"
+harness = false
+
+[[bench]]
+name    = "compress"
+harness = false
+
+[dependencies]
+# Phase 21: calibration fixture SHA-256 verification
+sha2       = { workspace = true }
+hex        = { workspace = true }
+serde_json = { workspace = true }
+# Phase 21: calibration module shared between lib + tests + benches
+tinyquant-core = { workspace = true }
+
 [dev-dependencies]
 criterion            = { workspace = true }
-tinyquant-core       = { workspace = true }
 tinyquant-io         = { workspace = true }
 tinyquant-bruteforce = { workspace = true }
+rayon                = { workspace = true }
+rand_chacha          = { workspace = true }

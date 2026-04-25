@@ -8,6 +8,19 @@
 //! * `lint`     — Run clippy with `-D warnings`
 //! * `test`     — Run all workspace tests
 //! * `fixtures` — Regenerate test fixtures (see subcommands below)
+//! * `bench`    — Benchmark budget commands (see subcommands below)
+//! * `bench-budget` — Phase 22.D alias for `bench --check-against main`
+//! * `check-matrix-sync` — Phase 22.D: diff the CLI smoke matrix in the
+//!   plan doc against `rust-release.yml`, and assert that all four
+//!   `publish-*` jobs in `rust-release.yml` share a byte-identical
+//!   `if:` guard expression (Phase 22.D code-quality follow-up M3)
+//! * `check-publish-guards` — Phase 24.3: run BOTH publish-guard drift
+//!   checks — the four-way equality on `rust-release.yml` and the
+//!   single-job contract check on `python-fatwheel.yml`. Reuses the
+//!   same string-level extractor as `check-matrix-sync`'s guard step
+//!   but exposes a dedicated verb so the fat-wheel workflow can call
+//!   it without also running the CLI smoke matrix check.
+//! * `docs`     — Documentation checks (see subcommands below)
 //! * `help`     — Print usage
 //!
 //! Fixture subcommands:
@@ -40,10 +53,34 @@
 //! * `fixtures refresh-corpus-file` — Run the `gen_corpus_fixture` example to
 //!   regenerate `golden_100.tqcv` and `golden_100_indices.bin` in
 //!   `crates/tinyquant-io/tests/fixtures/codec_file/`.
+//! * `fixtures refresh-calibration` — Run `gen_openai_sample.py` to refresh the
+//!   calibration fixture binaries and `manifest.json` (advisory; humans only).
 //! * `fixtures refresh-all`      — Run all of the above in sequence.
+//!
+//! Bench subcommands:
+//!
+//! * `bench --capture-baseline <name>` — Run criterion and save a baseline JSON.
+//! * `bench --check-against <name>`    — Compare current run against a baseline.
+//! * `bench --validate`                — Assert `baselines/main.json` matches schema.
+//! * `bench --diff <from> <to>`        — Compare two named baselines and print deltas.
+//!
+//! Calibration subcommands:
+//!
+//! * `calibration --validate`         — Assert `baselines/calibration-results.json` matches schema.
+//! * `calibration --capture-results`  — Run `pr_speed` tests locally (--release), write JSON.
+//!
+//! Docs subcommands:
+//!
+//! * `docs check-ci-parity` — Assert job names in the design doc appear in
+//!   `rust-ci.yml` (Phase 14 Lesson L3 gate).
 #![deny(warnings, clippy::all, clippy::pedantic)]
 
 mod cmd {
+    pub mod bench;
+    pub mod calibration;
+    pub mod guard_sync;
+    pub mod guard_sync_python;
+    pub mod matrix_sync;
     pub mod simd;
 }
 
@@ -80,6 +117,36 @@ fn main() {
         ),
         Some("fixtures") => fixtures(args.get(2).map(String::as_str)),
         Some("simd") => cmd::simd::run(args.get(2).map(String::as_str)),
+        Some("bench") => cmd::bench::run(&args[2..]),
+        Some("calibration") => cmd::calibration::run(&args[2..]),
+        // Phase 22.D: `bench-budget` is a convenience alias that runs the
+        // budget check against the canonical `main` baseline. It exists so
+        // the release workflow can call a single verb without having to
+        // encode the flag incantation in YAML.
+        Some("bench-budget") => cmd::bench::run(&["--check-against".to_owned(), "main".to_owned()]),
+        Some("check-matrix-sync") => {
+            // Both checks share a single CLI verb so the release workflow
+            // only needs one step. Run them in sequence — matrix first
+            // (docs ↔ release.yml), publish-guards second — and bail on
+            // the first failure so the cause is obvious in CI logs.
+            // Phase 24.3 extension: also enforce the python-fatwheel
+            // single-job contract so a matrix-sync run catches drift in
+            // either release workflow.
+            cmd::matrix_sync::run();
+            cmd::guard_sync::run();
+            cmd::guard_sync_python::run();
+        }
+        Some("check-publish-guards") => {
+            // Phase 24.3: dedicated verb for the two publish-guard
+            // checks (rust-release.yml four-way equality +
+            // python-fatwheel.yml contract equality). Distinct from
+            // `check-matrix-sync` so the fat-wheel workflow can gate on
+            // the guards without also re-running the CLI smoke matrix
+            // parser.
+            cmd::guard_sync::run();
+            cmd::guard_sync_python::run();
+        }
+        Some("docs") => docs(args.get(2).map(String::as_str)),
         Some("help") | None => print_help(),
         Some(t) => {
             eprintln!("unknown task: {t}");
@@ -98,6 +165,7 @@ fn fixtures(sub: Option<&str>) {
         Some("refresh-codec") => refresh_codec(),
         Some("refresh-serialization") => refresh_serialization(),
         Some("refresh-corpus-file") => refresh_corpus_file(),
+        Some("refresh-calibration") => refresh_calibration(),
         Some("refresh-all") => {
             refresh_hashes();
             refresh_rotation();
@@ -107,12 +175,13 @@ fn fixtures(sub: Option<&str>) {
             refresh_codec();
             refresh_serialization();
             refresh_corpus_file();
+            refresh_calibration();
         }
         _ => {
             eprintln!(
                 "usage: cargo xtask fixtures <refresh-hashes|refresh-rotation|\
                  refresh-codebook|refresh-quantize|refresh-residual|refresh-codec|\
-                 refresh-serialization|refresh-corpus-file|refresh-all>"
+                 refresh-serialization|refresh-corpus-file|refresh-calibration|refresh-all>"
             );
             process::exit(1);
         }
@@ -363,6 +432,83 @@ fn refresh_serialization() {
     }
 }
 
+fn refresh_calibration() {
+    let repo_root = repo_root();
+    println!(
+        "xtask fixtures: running gen_openai_sample.py from {}",
+        repo_root.display()
+    );
+    let status = Command::new("python")
+        .args([
+            "scripts/calibration/gen_openai_sample.py",
+            "--seed",
+            "42",
+            "--out",
+            "rust/crates/tinyquant-bench/fixtures/calibration",
+        ])
+        .current_dir(&repo_root)
+        .status()
+        .unwrap_or_else(|e| {
+            eprintln!("failed to spawn python: {e}");
+            process::exit(1);
+        });
+    if !status.success() {
+        process::exit(status.code().unwrap_or(1));
+    }
+}
+
+fn docs(sub: Option<&str>) {
+    if sub == Some("check-ci-parity") {
+        docs_check_ci_parity();
+    } else {
+        eprintln!("usage: cargo xtask docs <check-ci-parity>");
+        process::exit(1);
+    }
+}
+
+// Job names from the Phase 21 plan that must exist in the workflow.
+// `calibration` is intentionally omitted while the codec ↔ threshold
+// reconciliation is investigated locally — see the matching note in
+// `.github/workflows/rust-ci.yml`.
+const REQUIRED_CI_JOBS: &[&str] = &["bench-budget"];
+
+/// Assert that CI job names mentioned in the design doc appear in `rust-ci.yml`.
+///
+/// Implements Phase 14 Lesson L3: prevents CI/design-doc drift.
+fn docs_check_ci_parity() {
+    let repo_root = repo_root();
+    let ci_path = repo_root.join(".github/workflows/rust-ci.yml");
+    let ci_text = std::fs::read_to_string(&ci_path).unwrap_or_else(|e| {
+        eprintln!(
+            "docs check-ci-parity: cannot read {}: {e}",
+            ci_path.display()
+        );
+        process::exit(1);
+    });
+
+    let mut missing = Vec::new();
+    for job in REQUIRED_CI_JOBS {
+        if !ci_text.contains(&format!("{job}:")) {
+            missing.push(*job);
+        }
+    }
+    if missing.is_empty() {
+        println!(
+            "docs check-ci-parity: all required job names present in {} ✓",
+            ci_path.display()
+        );
+    } else {
+        eprintln!(
+            "docs check-ci-parity: the following job names are missing from {}:",
+            ci_path.display()
+        );
+        for job in &missing {
+            eprintln!("  - {job}");
+        }
+        process::exit(1);
+    }
+}
+
 fn repo_root() -> PathBuf {
     // xtask is invoked from `rust/`; the repository root is the parent.
     let cwd = std::env::current_dir().unwrap_or_else(|e| {
@@ -399,8 +545,23 @@ fn print_help() {
     println!(
         "  fixtures  Regenerate test fixtures (refresh-hashes | refresh-rotation | \
          refresh-codebook | refresh-quantize | refresh-residual | refresh-codec | \
-         refresh-serialization | refresh-corpus-file | refresh-all)"
+         refresh-serialization | refresh-corpus-file | refresh-calibration | refresh-all)"
     );
+    println!(
+        "  bench         Benchmark budget (--capture-baseline | --check-against | --diff | --validate)"
+    );
+    println!("  bench-budget        Alias for `bench --check-against main` (Phase 22.D)");
+    println!("  calibration   Calibration results (--validate | --capture-results)");
+    println!(
+        "  check-matrix-sync   Diff CLI smoke matrix in plan vs rust-release.yml + assert \
+         publish-* guards byte-identical (Phase 22.D) + python-fatwheel publish contract \
+         (Phase 24.3)"
+    );
+    println!(
+        "  check-publish-guards  Run only the publish-guard drift checks \
+         (rust-release.yml four-way + python-fatwheel.yml contract) — Phase 24.3"
+    );
+    println!("  docs      Documentation checks (check-ci-parity)");
     println!("  simd      SIMD framework tasks (audit)");
     println!("  help      Print this message (default)");
 }

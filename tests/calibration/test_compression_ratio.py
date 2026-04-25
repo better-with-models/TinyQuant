@@ -11,18 +11,16 @@ import struct
 from typing import TYPE_CHECKING
 
 import numpy as np
-
-from tinyquant_cpu.codec.codec import Codec
-from tinyquant_cpu.codec.codec_config import CodecConfig
-from tinyquant_cpu.codec.compressed_vector import (
+from tinyquant_py_reference.codec.codec import Codec
+from tinyquant_py_reference.codec.codec_config import CodecConfig
+from tinyquant_py_reference.codec.compressed_vector import (
     _HEADER_FORMAT,
     _HEADER_SIZE,
 )
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
-
-    from tinyquant_cpu.codec.codebook import Codebook
+    from tinyquant_py_reference.codec.codebook import Codebook
 
 
 def test_4bit_compression_ratio(
