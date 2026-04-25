@@ -123,13 +123,28 @@ ignore_errors = true
 
 # The Phase 22.A PyO3 extension is a compiled .pyd with no stubs; the
 # dev-mode shim under src/tinyquant_cpu/ re-exports from it. mypy
-# cannot inspect the C extension so treat its imports as opaque.
+# cannot inspect the C extension so treat its imports as opaque. The
+# same applies to `tinyquant_cpu` and `tinyquant_cpu._core` — the fat
+# wheel installs a compiled `.pyd` that mypy cannot introspect, and the
+# Type Check CI job intentionally does not build the wheel (kept as a
+# parity-job dependency only). The Phase 28.7 canonical-rotation bridge
+# in `tests/reference/tinyquant_py_reference/codec/rotation_matrix.py`
+# imports `tinyquant_cpu._core` at runtime; the parity conftest's
+# autouse fixture handles ImportError silently when the wheel is absent.
 [[tool.mypy.overrides]]
 module = "tinyquant_rs"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = "tinyquant_rs.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tinyquant_cpu"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tinyquant_cpu.*"
 ignore_missing_imports = true
 
 # Phase 24.3 dry-run harness reads the python-fatwheel.yml workflow.
