@@ -100,6 +100,14 @@ jobs:
     name: Supply-chain gate (cargo-vet + cargo-audit)
     runs-on: ubuntu-22.04
     needs: gate
+    # cargo-vet 0.10+ requires rustc 1.82, cargo-audit 0.22+ requires rustc 1.85.
+    # These are auditor tools that don't ship in the published artifact, so
+    # bumping their toolchain doesn't affect MSRV. Use 1.87 (already required
+    # by tinyquant-gpu-wgpu). RUSTUP_TOOLCHAIN env var overrides
+    # `rust/rust-toolchain.toml` (which pins MSRV 1.81 for the rest of the
+    # workspace).
+    env:
+      RUSTUP_TOOLCHAIN: "1.87.0"
     defaults:
       run:
         working-directory: rust
@@ -110,7 +118,7 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
       - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
         with:
-          toolchain: 1.81.0
+          toolchain: 1.87.0
       - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32  # v2.9.1
         with:
           workspaces: rust -> target
