@@ -12,7 +12,7 @@ use pyo3::types::PyBytes;
 use tinyquant_core::codec::{
     compress as core_compress, decompress as core_decompress, Codebook as CoreCodebook,
     Codec as CoreCodec, CodecConfig as CoreCodecConfig, CompressedVector as CoreCompressedVector,
-    RotationMatrix as CoreRotationMatrix,
+    RotationMatrix as CoreRotationMatrix, MAX_DIMENSION,
 };
 use tinyquant_io::{from_bytes as io_from_bytes, to_bytes as io_to_bytes};
 
@@ -157,6 +157,46 @@ impl PyRotationMatrix {
         Self {
             inner: CoreRotationMatrix::from_config(&config.inner),
         }
+    }
+
+    /// Build a rotation matrix directly from `(seed, dimension)`, bypassing `CodecConfig`.
+    ///
+    /// Rotation generation depends only on `(seed, dimension)`; `bit_width` is
+    /// irrelevant. This constructor is used by the Python canonical bridge
+    /// (`_install_canonical_rotation`) to avoid embedding a spurious `bit_width`
+    /// in the call.
+    #[classmethod]
+    fn from_seed_and_dim(
+        _cls: &Bound<'_, pyo3::types::PyType>,
+        seed: u64,
+        dimension: u32,
+    ) -> PyResult<Self> {
+        if dimension == 0 {
+            return Err(PyValueError::new_err("dimension must be > 0"));
+        }
+        if dimension > MAX_DIMENSION {
+            return Err(PyValueError::new_err(format!(
+                "dimension must be <= {MAX_DIMENSION}, got {dimension}",
+            )));
+        }
+        Ok(Self {
+            inner: CoreRotationMatrix::build(seed, dimension),
+        })
+    }
+
+    /// Return the raw row-major `f64` bytes of the rotation matrix.
+    ///
+    /// Values are little-endian IEEE-754 doubles. Length is `dimension * dimension * 8`.
+    /// Used by the Python canonical bridge to reconstruct a bit-identical matrix
+    /// in the Python reference without re-running QR.
+    fn matrix_f64_bytes<'py>(&self, py: Python<'py>) -> Bound<'py, PyBytes> {
+        let bytes: Vec<u8> = self
+            .inner
+            .matrix()
+            .iter()
+            .flat_map(|f| f.to_le_bytes())
+            .collect();
+        PyBytes::new_bound(py, &bytes)
     }
 
     #[getter]

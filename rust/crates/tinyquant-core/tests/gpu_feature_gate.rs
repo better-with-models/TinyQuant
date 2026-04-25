@@ -18,13 +18,13 @@
 //! (which is still behind `#[cfg(feature = "gpu-wgpu")]`) are individually
 //! gated.
 
+#[cfg(feature = "gpu-wgpu")]
+use tinyquant_core::codec::{Codebook, CodecConfig};
 use tinyquant_core::{
     codec::{Codec, Parallelism, PreparedCodec},
     errors::CodecError,
     GpuComputeBackend, GPU_BATCH_THRESHOLD,
 };
-#[cfg(feature = "gpu-wgpu")]
-use tinyquant_core::codec::{Codebook, CodecConfig};
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -83,10 +83,7 @@ impl MockCpuBackend {
 impl GpuComputeBackend for MockCpuBackend {
     type Error = CodecError;
 
-    fn prepare_for_device(
-        &mut self,
-        _prepared: &mut PreparedCodec,
-    ) -> Result<(), Self::Error> {
+    fn prepare_for_device(&mut self, _prepared: &mut PreparedCodec) -> Result<(), Self::Error> {
         self.prepare_calls += 1;
         Ok(())
     }
@@ -121,7 +118,10 @@ impl GpuComputeBackend for MockCpuBackend {
 /// constant are accessible from `tinyquant_core` when `gpu-wgpu` is enabled.
 #[test]
 fn gpu_types_accessible_via_tinyquant_core() {
-    assert!(GPU_BATCH_THRESHOLD > 0);
+    // Compile-time assertion — `assert!(const > 0)` is folded by clippy as
+    // `assertions_on_constants`. A `const _: ()` block exercises the same
+    // invariant at compile time without tripping the lint.
+    const _: () = assert!(GPU_BATCH_THRESHOLD > 0);
     // Instantiate the trait bound to confirm the type is reachable.
     let _backend: &dyn GpuComputeBackend<Error = CodecError> = &MockCpuBackend::new();
 }
@@ -146,10 +146,7 @@ fn gpu_batch_threshold_is_512() {
 fn codec_error_gpu_unavailable_variant_is_accessible() {
     let err = CodecError::GpuUnavailable("no adapter found".into());
     let msg = err.to_string();
-    assert!(
-        msg.contains("GPU unavailable"),
-        "unexpected message: {msg}"
-    );
+    assert!(msg.contains("GPU unavailable"), "unexpected message: {msg}");
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +198,14 @@ fn compress_batch_gpu_with_below_threshold_uses_cpu_path() {
     let mut backend = MockCpuBackend::new();
 
     let cpu_result = Codec::new()
-        .compress_batch_with(&vectors, rows, cols, &config, &codebook, Parallelism::Serial)
+        .compress_batch_with(
+            &vectors,
+            rows,
+            cols,
+            &config,
+            &codebook,
+            Parallelism::Serial,
+        )
         .unwrap();
 
     let gpu_path_result = Codec::new()
@@ -261,7 +265,11 @@ fn compress_batch_gpu_with_above_threshold_calls_backend() {
         )
         .unwrap();
 
-    assert_eq!(result.len(), rows, "must return one CompressedVector per row");
+    assert_eq!(
+        result.len(),
+        rows,
+        "must return one CompressedVector per row"
+    );
     assert_eq!(
         backend.prepare_calls, 1,
         "prepare_for_device must be called exactly once for above-threshold rows"

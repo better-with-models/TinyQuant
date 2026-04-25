@@ -1,8 +1,13 @@
-"""Cross-implementation parity scaffold.
+"""Cross-implementation parity tests.
 
 Phase 23 deliverable: structure exists, runs green against the
 reference alone (trivial self-parity), and Phase 24 flips the
 ``rs`` fixture on to make every test meaningful.
+
+Phase 28.7: ``_canonical_rotation_mode`` autouse fixture (conftest)
+activates the Rust ChaCha20 + faer QR pipeline in the Python reference,
+enabling bit-identical rotation matrices and full cross-impl round-trip
+parity.
 """
 
 from __future__ import annotations
@@ -64,14 +69,21 @@ class TestRotationParity:
         cfg_triplet: tuple[int, int, int],
         vector: npt.NDArray[np.float32],
     ) -> None:
-        """Python-reference and Rust rotation agree within 1e-6 on the same vector."""
+        """Canonical mode: Python and Rust rotation outputs agree within 1e-6.
+
+        Requires the ``_canonical_rotation_mode`` autouse fixture (conftest)
+        to have overridden ``RotationMatrix._cached_build`` with the Rust
+        ChaCha20 + faer QR pipeline. Both impls then produce bit-identical
+        matrices for the same ``(seed, dimension)`` pair.
+        """
         bw, seed, dim = cfg_triplet
         py_cfg = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         rs_cfg = rs.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
         py_rot = ref.codec.RotationMatrix.from_config(py_cfg)
         rs_rot = rs.codec.RotationMatrix.from_config(rs_cfg)
         np.testing.assert_allclose(
-            py_rot.apply(vector), rs_rot.apply(vector), atol=1e-6
+            py_rot.apply(vector), rs_rot.apply(vector), atol=1e-6,
+            err_msg="Python and Rust rotation outputs differ in canonical mode",
         )
 
 
@@ -101,14 +113,18 @@ class TestCompressRoundTrip:
         cfg_triplet: tuple[int, int, int],
         batch: npt.NDArray[np.float32],
     ) -> None:
-        """Compress with reference, decompress with Rust and vice versa."""
+        """Canonical mode: py-compress → rs-decompress matches py-decompress within 1e-3.
+
+        With canonical rotation active (``_canonical_rotation_mode`` autouse
+        fixture), both impls rotate in the same ChaCha20 basis so the Rust
+        inverse rotation recovers the same approximation as the Python path.
+        """
         bw, seed, dim = cfg_triplet
         py_cfg = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
-        py_cb = ref.codec.Codebook.train(batch, py_cfg)
-        py_codec = ref.codec.Codec()
-
         rs_cfg = rs.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)
+        py_cb = ref.codec.Codebook.train(batch, py_cfg)
         rs_cb = rs.codec.Codebook(entries=py_cb.entries, bit_width=bw)
+        py_codec = ref.codec.Codec()
         rs_codec = rs.codec.Codec()
 
         for row in batch[:8]:
@@ -118,6 +134,7 @@ class TestCompressRoundTrip:
                 py_codec.decompress(py_cv, py_cfg, py_cb),
                 rs_codec.decompress(rs_cv, rs_cfg, rs_cb),
                 atol=1e-3,
+                err_msg="Cross-impl decompression diverges in canonical mode",
             )
 
 

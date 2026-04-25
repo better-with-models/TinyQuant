@@ -51,8 +51,14 @@ fn c_abi_compress_decompress_round_trip() {
 
         // Step 2: train codebook
         let mut codebook: *mut CodebookHandle = core::ptr::null_mut();
-        let kind =
-            tq_codebook_train(training.as_ptr(), ROWS, DIM, config, &mut codebook, &mut err);
+        let kind = tq_codebook_train(
+            training.as_ptr(),
+            ROWS,
+            DIM,
+            config,
+            &mut codebook,
+            &mut err,
+        );
         tq_error_free(&mut err);
         assert_eq!(kind, TinyQuantErrorKind::Ok, "codebook_train failed");
         assert!(!codebook.is_null());
@@ -82,8 +88,7 @@ fn c_abi_compress_decompress_round_trip() {
 
         // Step 6: decompress and assert reconstruction quality
         let mut output = vec![0f32; DIM];
-        let kind =
-            tq_codec_decompress(config, codebook, cv2, output.as_mut_ptr(), DIM, &mut err);
+        let kind = tq_codec_decompress(config, codebook, cv2, output.as_mut_ptr(), DIM, &mut err);
         tq_error_free(&mut err);
         assert_eq!(kind, TinyQuantErrorKind::Ok, "decompress failed");
 

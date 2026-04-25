@@ -19,6 +19,13 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: "-D warnings"
+  # Force MSRV 1.81 for cargo invocations workflow-wide. Without this,
+  # cargo from `working-directory: rust` silently switches to the version
+  # pinned in `rust/rust-toolchain.toml` (1.87, required by
+  # tinyquant-gpu-wgpu) and trips pedantic lints + cfg checks that
+  # post-date the 1.81 MSRV. Jobs that legitimately need 1.87 (gpu-wgpu)
+  # override this at the job level.
+  RUSTUP_TOOLCHAIN: "1.81.0"
 
 # Runner selection policy
 # -----------------------
@@ -447,8 +454,9 @@ jobs:
   gpu-compile:
     name: GPU crate — compile + shader validation
     runs-on: ubuntu-22.04
-    # RUSTUP_TOOLCHAIN overrides rust-toolchain.toml (which pins 1.81) so that
-    # cargo uses the 1.87 toolchain installed by dtolnay/rust-toolchain below.
+    # Override the workflow-level RUSTUP_TOOLCHAIN=1.81.0 default. The GPU
+    # crate's rust-version is 1.87, so build it under the toolchain that
+    # rust-toolchain.toml pins.
     env:
       RUSTUP_TOOLCHAIN: "1.87.0"
     defaults:
@@ -490,7 +498,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          lfs: false
+          lfs: true
+      - name: Pull LFS objects
+        run: git lfs pull
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: "1.87.0"
@@ -536,6 +546,11 @@ jobs:
         with:
           workspaces: rust -> target
           key: python-pyo3-1.81
+      - name: Create venv (maturin >=1.13 requires one)
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
       - name: Install maturin and build deps
         run: pip install maturin numpy pytest
       - name: Build and install tinyquant_rs (maturin develop)

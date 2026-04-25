@@ -108,7 +108,10 @@ fn residual_codec_round_trips_successfully() {
     let cv_res = Codec::new()
         .compress(&v, &config_res, &codebook_res)
         .expect("residual compress must succeed");
-    assert!(cv_res.has_residual(), "CompressedVector must carry residual bytes");
+    assert!(
+        cv_res.has_residual(),
+        "CompressedVector must carry residual bytes"
+    );
 
     let out_res = Codec::new()
         .decompress(&cv_res, &config_res, &codebook_res)
@@ -168,7 +171,7 @@ fn compress_prepared_is_deterministic_across_calls() {
 
 /// `compress_prepared` and `decompress_prepared_into` work with `residual_enabled=true`.
 #[test]
-fn residual_codec_round_trips_successfully() {
+fn compress_prepared_residual_round_trips_successfully() {
     let config = CodecConfig::new(4, 42, 64, true).unwrap(); // residual_enabled=true
     let codebook = fixture_codebook(&config);
     let prepared = PreparedCodec::new(config.clone(), codebook.clone()).unwrap();

@@ -32,7 +32,7 @@ pub mod service;
 pub mod simd_api;
 
 pub use codebook::Codebook;
-pub use codec_config::{CodecConfig, SUPPORTED_BIT_WIDTHS};
+pub use codec_config::{CodecConfig, MAX_DIMENSION, SUPPORTED_BIT_WIDTHS};
 pub use compressed_vector::CompressedVector;
 pub use parallelism::Parallelism;
 pub use prepared::PreparedCodec;

@@ -450,6 +450,33 @@ the lessons-learned docs PR. Final Phase 14 resolution
 in [[design/rust/phase-14-implementation-notes|Phase 14
 Implementation Notes]] §L4.
 
+**Mitigation status (open).** The AVX2 feature cap in
+`rust/.cargo/config.toml` (commit `e04ce5c`) reduced cross-runner
+divergence enough to keep the bit-exact `seed_42_dim_768` test green
+between 2026-04-21 and 2026-04-23. Between 2026-04-23 and 2026-04-25
+the GitHub-hosted runner pool started producing bit-different output on
+every Linux x86_64 / aarch64 / macOS / Windows host (~529k of ~590k
+f64 words differ) even though host-CPU SIMD dispatch is pinned at
+AVX2 — without any change to fixture, build path, or toolchain on
+develop. Phase 28.7 re-`#[ignore]`d the bit-exact assertion (see the
+inline comment in `rust/crates/tinyquant-core/tests/rotation_fixture_parity.rs`)
+and rely on the orthogonality companion test for semantic correctness.
+
+A `Parallelism::None` save/restore around `a.qr()` was prototyped under
+Phase 28.7 but reverted: faer 0.19's `set_global_parallelism` mutates a
+process-wide atomic with no per-call alternative, and forcing serial
+reduction changes the output on multi-core Linux runners — invalidating
+the frozen fixtures.
+
+To close R19, both of:
+
+1. faer 0.20+ exposing a per-call `Parallelism` so we can force serial
+   Householder reduction without process-global mutation, and
+2. a fixture regenerated under a known scalar/non-SIMD QR path that
+   every runner can reproduce,
+
+plus a `RAYON_NUM_THREADS` matrix test as a regression gate.
+
 ### R20 — Design-doc drift from actual YAML / Rust source
 
 **Problem.** Design docs in `docs/design/rust/` can claim a

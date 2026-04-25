@@ -99,10 +99,7 @@ impl<T> Drop for PartialInit<T> {
     fn drop(&mut self) {
         for i in 0..self.data.len() {
             // Bounds-checked: i < self.data.len() by the loop.
-            let initialized = self
-                .flags
-                .get(i)
-                .is_some_and(|f| f.load(Ordering::Acquire));
+            let initialized = self.flags.get(i).is_some_and(|f| f.load(Ordering::Acquire));
             if initialized {
                 // SAFETY: flag true means the caller wrote a valid T at slot i.
                 // assume_init_drop calls T::drop without freeing the slot's memory.

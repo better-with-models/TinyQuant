@@ -36,10 +36,7 @@ impl From<TinyQuantGpuError> for CodecError {
 impl GpuComputeBackend for WgpuBackend {
     type Error = TinyQuantGpuError;
 
-    fn prepare_for_device(
-        &mut self,
-        prepared: &mut PreparedCodec,
-    ) -> Result<(), Self::Error> {
+    fn prepare_for_device(&mut self, prepared: &mut PreparedCodec) -> Result<(), Self::Error> {
         ComputeBackend::prepare_for_device(self, prepared)
     }
 
