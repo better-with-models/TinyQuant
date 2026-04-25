@@ -12,6 +12,10 @@ on:
     paths:
       - "rust/**"
       - ".github/workflows/rust-ci.yml"
+  # Allow rust-release.yml to invoke this workflow as a reusable gate
+  # (it does `uses: ./.github/workflows/rust-ci.yml` from the `gate` job
+  # that re-runs every per-PR check on the tagged commit).
+  workflow_call:
 
 permissions:
   contents: read
