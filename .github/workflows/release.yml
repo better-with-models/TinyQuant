@@ -14,13 +14,29 @@ concurrency:
 
 # Runner selection policy
 # -----------------------
-# Release jobs always run on self-hosted docker-runner: only org members can
-# push tags, so there is no untrusted-contributor scenario here.
+# Release jobs run on GitHub-hosted ubuntu-22.04. The original posture
+# was self-hosted `docker-runner`, but no such runner is currently
+# registered against the repo (Settings → Actions → Runners shows zero
+# self-hosted), so v1.1.0 publishes were stuck queued forever. Switching
+# to GitHub-hosted is safe because:
+#
+#   - PyPI publishing uses pypa/gh-action-pypi-publish with OIDC
+#     trusted publishing — there is no `PYPI_API_TOKEN` secret to leak
+#     through the runner.
+#   - The `pypi` and `testpypi` jobs each scope `environment:` to the
+#     matching GitHub deployment environment, which carries its own
+#     reviewer-approval gate before any publish step runs.
+#   - Only org members can push `v*` tags (branch/tag protection on
+#     main + rule that only releases/* and main can be tagged), so the
+#     trigger surface itself is restricted.
+#
+# Re-evaluate when the docker-runner is brought back online: if it
+# returns, swap these back to `docker-runner` for defense-in-depth.
 
 jobs:
   verify-tag:
     name: Verify Tag
-    runs-on: docker-runner
+    runs-on: ubuntu-22.04
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
@@ -38,7 +54,7 @@ jobs:
 
   calibration-tests:
     name: Calibration Tests
-    runs-on: docker-runner
+    runs-on: ubuntu-22.04
     needs: [verify-tag]
     timeout-minutes: 30
     steps:
@@ -65,7 +81,7 @@ jobs:
 
   build:
     name: Build Distributions
-    runs-on: docker-runner
+    runs-on: ubuntu-22.04
     needs: [calibration-tests]
     timeout-minutes: 5
     steps:
@@ -95,7 +111,7 @@ jobs:
 
   publish-testpypi:
     name: Publish to TestPyPI
-    runs-on: docker-runner
+    runs-on: ubuntu-22.04
     needs: [build]
     environment: testpypi
     permissions:
@@ -136,7 +152,7 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    runs-on: docker-runner
+    runs-on: ubuntu-22.04
     needs: [publish-testpypi]
     environment: pypi
     permissions:
@@ -154,7 +170,7 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    runs-on: docker-runner
+    runs-on: ubuntu-22.04
     needs: [verify-tag, build]
     permissions:
       contents: write
