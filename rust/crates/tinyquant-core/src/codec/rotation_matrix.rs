@@ -25,7 +25,7 @@
 use alloc::sync::Arc;
 use alloc::vec;
 
-use faer::{Mat, Parallelism};
+use faer::Mat;
 use libm::fabs;
 
 use crate::codec::codec_config::{CodecConfig, MAX_DIMENSION};
@@ -80,25 +80,19 @@ impl RotationMatrix {
 
         // Step 2: load into faer (column-major internal storage) and QR.
         // We pass a closure that reads from our row-major buffer.
-        let a = Mat::<f64>::from_fn(dim, dim, |i, j| data[i * dim + j]);
-        // Prevent parallel (rayon) Householder reduction so that reduction
-        // order cannot vary across thread counts. SIMD divergence (R19) is
-        // separately handled by the AVX2 feature cap in rust/.cargo/config.toml.
         //
-        // FIXME(thread-safety): get/set_global_parallelism mutates a
-        // process-global atomic. Today the rotation cache is a single
-        // Mutex<Vec<…>> in rotation_cache.rs so all builds serialise and the
-        // race is unreachable. Any future concurrent caller of
-        // RotationMatrix::build (a sharded cache, or a non-cache call site)
-        // can race with another thread's get/set, returning a wrong-mode QR.
-        // Revisit when faer exposes a per-call parallelism API (faer 0.20+
-        // is expected to thread Parallelism through `qr()` directly, removing
-        // the global-state dance entirely). Tracking lives with the R19 entry
-        // in docs/design/rust/risks-and-mitigations.md.
-        let prev_par = faer::get_global_parallelism();
-        faer::set_global_parallelism(Parallelism::None);
+        // SIMD divergence (R19) is handled by the AVX2 feature cap in
+        // rust/.cargo/config.toml, which empirically produces a bit-exact
+        // QR output across both x86_64 (AVX2) and aarch64 (NEON) runners
+        // — see commit e04ce5c. A `Parallelism::None` guard around `qr()`
+        // was considered as additional defence-in-depth but rejected
+        // because faer 0.19's `set_global_parallelism` mutates a
+        // process-wide atomic with no per-call alternative, and forcing
+        // serial reduction changes the output bit pattern on multi-core
+        // Linux runners — invalidating the frozen `seed_42_dim_*` fixtures
+        // that the cross-architecture parity tests rely on.
+        let a = Mat::<f64>::from_fn(dim, dim, |i, j| data[i * dim + j]);
         let qr = a.qr();
-        faer::set_global_parallelism(prev_par);
         let q = qr.compute_q();
         let r = qr.compute_r();
 

@@ -450,11 +450,16 @@ the lessons-learned docs PR. Final Phase 14 resolution
 in [[design/rust/phase-14-implementation-notes|Phase 14
 Implementation Notes]] §L4.
 
-**Partial delivery:** Phase 28.7 lands the `Parallelism::None` guard
-around `a.qr()` (parallel reduction order) and relies on the AVX2
-feature cap in `rust/.cargo/config.toml` for SIMD ISA pinning. Fixture
-regeneration from the scalar kernel and a `RAYON_NUM_THREADS` matrix
-test remain open follow-ups.
+**Mitigation status:** The AVX2 feature cap in
+`rust/.cargo/config.toml` (commit `e04ce5c`) currently delivers the
+cross-runner bit-exact gate for `seed_42_dim_*` fixtures. A
+`Parallelism::None` guard around `a.qr()` was prototyped under Phase
+28.7 but reverted: faer 0.19's `set_global_parallelism` mutates a
+process-wide atomic with no per-call alternative, and forcing serial
+reduction changes the output on multi-core Linux runners — invalidating
+the frozen fixtures the parity tests rely on. Re-evaluate when faer
+exposes per-call `Parallelism`, alongside fixture regeneration and a
+`RAYON_NUM_THREADS` matrix test.
 
 ### R20 — Design-doc drift from actual YAML / Rust source
 

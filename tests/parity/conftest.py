@@ -92,10 +92,10 @@ def cfg_triplet(request: pytest.FixtureRequest) -> tuple[int, int, int]:
     """(bit_width, seed, dimension) tuples covering every bit-width.
 
     Dim ≥ 384 cases (512, 768) exceed the faer parallel-kernel dispatch
-    threshold and exercise the Parallelism::None guard added as the R19
-    mitigation. The dim=768 case matches the production fixture point
-    (ROTATION_GOLD_SET) and the bit-exact Rust test
-    `cargo test -p tinyquant-core rotation_fixture_parity` (see
+    threshold and provide cross-impl rotation-parity coverage at
+    production-relevant dimensions. The dim=768 case matches the
+    production fixture point (ROTATION_GOLD_SET) and the bit-exact Rust
+    test `cargo test -p tinyquant-core rotation_fixture_parity` (see
     rotation_fixture_parity.rs::seed_42_dim_768_matches_frozen_snapshot_bit_for_bit).
     """
     return cast(tuple[int, int, int], request.param)
