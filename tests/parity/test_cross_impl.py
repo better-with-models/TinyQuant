@@ -82,7 +82,9 @@ class TestRotationParity:
         py_rot = ref.codec.RotationMatrix.from_config(py_cfg)
         rs_rot = rs.codec.RotationMatrix.from_config(rs_cfg)
         np.testing.assert_allclose(
-            py_rot.apply(vector), rs_rot.apply(vector), atol=1e-6,
+            py_rot.apply(vector),
+            rs_rot.apply(vector),
+            atol=1e-6,
             err_msg="Python and Rust rotation outputs differ in canonical mode",
         )
 
