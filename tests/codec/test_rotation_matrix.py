@@ -122,6 +122,21 @@ class TestApplyAndInverse:
         with pytest.raises(ValueError, match="dimension"):
             rotation.apply(wrong)
 
+    def test_apply_inverse_dimension_mismatch_raises(
+        self, config_4bit: CodecConfig
+    ) -> None:
+        """Wrong-length input to apply_inverse raises ValueError."""
+        rotation = RotationMatrix.from_config(config_4bit)
+        wrong = np.ones(32, dtype=np.float32)
+        with pytest.raises(ValueError, match="dimension"):
+            rotation.apply_inverse(wrong)
+
+    def test_post_init_shape_mismatch_raises(self) -> None:
+        """Constructing RotationMatrix with a wrong-shape matrix raises ValueError."""
+        bad_matrix = np.eye(4, dtype=np.float64)
+        with pytest.raises(ValueError, match="matrix shape must be"):
+            RotationMatrix(matrix=bad_matrix, seed=0, dimension=8)
+
 
 # ---------------------------------------------------------------------------
 # Property-based (hypothesis)
