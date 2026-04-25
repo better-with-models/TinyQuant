@@ -26,10 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `atol=1e-6`; `test_cross_impl_round_trip` asserts py-compress →
   rs-decompress matches py-decompress within `atol=1e-3`. Coverage
   expanded to dimensions 64, 128, 256, 512, 768.
-
-### Added
-
-- `MAX_DIMENSION = 16_384` cap in `tinyquant-core` plus new
+- New `MAX_DIMENSION = 16_384` cap in `tinyquant-core` plus
   `CodecError::DimensionTooLarge` variant; validated at
   `CodecConfig::new` and the `from_seed_and_dim` PyO3 boundary,
   asserted in `RotationMatrix::build` as last-line defence. Bounds
@@ -38,13 +35,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   `RotationMatrix._cached_build.__wrapped__.__name__ ==
   "_canonical_build"` after install so a future regression to silent
   legacy fallback fails the session.
-
-### Changed
-
 - `seed_42_dim_768_matches_frozen_snapshot_bit_for_bit` re-`#[ignore]`d
   pending an R19-closure follow-up (per-call faer Parallelism + scalar
   QR fixture regen). The orthogonality companion test continues to
-  guard the actual semantic invariant. See `docs/design/rust/risks-and-mitigations.md` §R19.
+  guard the actual semantic invariant. See
+  `docs/design/rust/risks-and-mitigations.md` §R19.
 
 ### Calibration
 

@@ -39,9 +39,9 @@ def rs() -> Iterator[Any]:
     """The Rust-backed implementation. Phase 24 wires this up."""
     try:
         import tinyquant_cpu as rs_pkg
-        import tinyquant_cpu.backend  # noqa: F401
-        import tinyquant_cpu.codec  # noqa: F401
-        import tinyquant_cpu.corpus  # noqa: F401
+        import tinyquant_cpu.backend
+        import tinyquant_cpu.codec
+        import tinyquant_cpu.corpus
     except ImportError:
         pytest.skip(
             "Rust-backed tinyquant_cpu not installed; "
@@ -63,12 +63,12 @@ def _canonical_rotation_mode() -> None:
     absent so legacy-mode tests are unaffected.
     """
     try:
-        import tinyquant_cpu  # noqa: F401, PLC0415
-
         from tinyquant_py_reference.codec.rotation_matrix import (
             RotationMatrix,
             _install_canonical_rotation,
         )
+
+        import tinyquant_cpu  # noqa: F401
 
         _install_canonical_rotation()
         # Loud-failure guard: a future regression that silently leaves
