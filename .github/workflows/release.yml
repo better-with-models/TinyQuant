@@ -42,15 +42,23 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: Extract and verify version
+        # `src/tinyquant_cpu/__init__.py` and the production fat-wheel
+        # shim at `scripts/packaging/templates/__init__.py` both pull
+        # `__version__` from the compiled Rust extension at runtime
+        # (`__version__: str = _core.__version__`) — there is no static
+        # string to grep for. The authoritative version is `pyproject.toml`,
+        # which the maturin build flows through to `_core.__version__`
+        # via `Cargo.toml workspace.package.version`. Cross-language
+        # consistency is gated separately by
+        # `scripts/check_version_consistency.sh` (Cargo workspace ↔
+        # package.json).
         run: |
           set -exo pipefail
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           PKG_VERSION=$(sed -n 's/^version = "\([^"]*\)".*/\1/p' pyproject.toml | head -n1)
-          INIT_VERSION=$(sed -n 's/^__version__ = "\([^"]*\)".*/\1/p' src/tinyquant_cpu/__init__.py | head -n1)
-          echo "Resolved: tag=[$TAG_VERSION] pkg=[$PKG_VERSION] init=[$INIT_VERSION]"
+          echo "Resolved: tag=[$TAG_VERSION] pyproject=[$PKG_VERSION]"
           test -n "$TAG_VERSION" || { echo "::error::empty TAG_VERSION"; exit 1; }
           test "$TAG_VERSION" = "$PKG_VERSION" || { echo "::error::Tag v$TAG_VERSION != pyproject $PKG_VERSION"; exit 1; }
-          test "$TAG_VERSION" = "$INIT_VERSION" || { echo "::error::Tag v$TAG_VERSION != __init__ $INIT_VERSION"; exit 1; }
 
   calibration-tests:
     name: Calibration Tests
