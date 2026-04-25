@@ -78,7 +78,9 @@ For Node/Bun/TypeScript:
 npm install @tinyquant/core
 ```
 
-**Requirements:** Python 3.12+, NumPy 2.x, Rust 1.87+ MSRV for the Rust crate.
+**Requirements:** Python 3.12+, NumPy 2.x. Workspace MSRV is Rust **1.81**;
+the optional `tinyquant-gpu-wgpu` crate requires Rust **1.87** and is built
+in a separate CI lane.
 
 ---
 
@@ -262,7 +264,7 @@ implementation:
 | `rust/crates/tinyquant-bench/` | Criterion benchmarks + calibration quality gates |
 | `tests/reference/tinyquant_py_reference/` | Pure-Python frozen oracle — differential test reference |
 | `tests/parity/` | Cross-implementation parity suite (`pytest -m parity`) |
-| `tests/` | Python unit, integration, E2E, calibration, and architecture suites (252 tests) |
+| `tests/` | Python unit, integration, E2E, calibration, and architecture suites (289 tests) |
 | `experiments/` | Benchmarks and empirical evaluations |
 | `docs/` | Obsidian wiki with design docs, research, and SDLC plans |
 
@@ -290,9 +292,10 @@ cargo clippy --workspace -- -D warnings
 cargo test --workspace
 ```
 
-The Python test suite includes 252 tests covering unit, integration,
-end-to-end, calibration, and architecture-enforcement scenarios.
-Coverage is held above 90% by CI. Live PostgreSQL + pgvector tests run
+The Python test suite includes **289** tests covering unit, integration,
+end-to-end, calibration, parity (cross-impl Python ↔ Rust), and
+architecture-enforcement scenarios. Coverage is held above 90% by CI
+(94% for the codec subpackage). Live PostgreSQL + pgvector tests run
 against a Docker container in CI via `testcontainers`.
 
 ---

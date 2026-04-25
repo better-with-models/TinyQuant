@@ -39,9 +39,9 @@ def rs() -> Iterator[Any]:
     """The Rust-backed implementation. Phase 24 wires this up."""
     try:
         import tinyquant_cpu as rs_pkg
-        import tinyquant_cpu.backend  # noqa: F401
-        import tinyquant_cpu.codec  # noqa: F401
-        import tinyquant_cpu.corpus  # noqa: F401
+        import tinyquant_cpu.backend
+        import tinyquant_cpu.codec
+        import tinyquant_cpu.corpus
     except ImportError:
         pytest.skip(
             "Rust-backed tinyquant_cpu not installed; "
@@ -63,12 +63,12 @@ def _canonical_rotation_mode() -> None:
     absent so legacy-mode tests are unaffected.
     """
     try:
-        import tinyquant_cpu  # noqa: F401, PLC0415
-
         from tinyquant_py_reference.codec.rotation_matrix import (
             RotationMatrix,
             _install_canonical_rotation,
         )
+
+        import tinyquant_cpu  # noqa: F401
 
         _install_canonical_rotation()
         # Loud-failure guard: a future regression that silently leaves
@@ -82,6 +82,17 @@ def _canonical_rotation_mode() -> None:
             "parity tests would silently run in legacy mode"
         )
     except ImportError:
+        # Intentional silent fallback: when tinyquant_cpu (the Rust
+        # extension) is not installed in this environment, the parity
+        # suite's `rs` fixture will already pytest.skip every cross-impl
+        # test. The remaining reference-only tests run unaffected
+        # against the legacy NumPy PCG64 + LAPACK QR path. Suppressing
+        # this ImportError keeps the conftest a no-op in that
+        # configuration; any non-ImportError failure (broken-but-
+        # installed package, missing _install_canonical_rotation symbol
+        # after a refactor, AssertionError from the loud-failure guard
+        # above) is intentionally allowed to propagate so silent
+        # canonical-mode regressions surface loudly.
         pass
 
 

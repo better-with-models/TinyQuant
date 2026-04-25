@@ -135,7 +135,7 @@ def _install_canonical_rotation() -> None:
     Call once at session start from the parity test conftest when the ``rs``
     fixture is live.
     """
-    import tinyquant_cpu._core as _core  # noqa: PLC0415
+    import tinyquant_cpu._core as _core
 
     @staticmethod  # type: ignore[misc]
     @functools.lru_cache(maxsize=8)

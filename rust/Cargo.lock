@@ -2795,7 +2795,7 @@ dependencies = [
 
 [[package]]
 name = "tinyquant-bench"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "criterion",
  "hex",
@@ -2810,7 +2810,7 @@ dependencies = [
 
 [[package]]
 name = "tinyquant-bruteforce"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "indexmap",
  "rand 0.8.5",
@@ -2821,7 +2821,7 @@ dependencies = [
 
 [[package]]
 name = "tinyquant-cli"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2851,7 +2851,7 @@ dependencies = [
 
 [[package]]
 name = "tinyquant-core"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "bytemuck",
  "faer",
@@ -2869,14 +2869,14 @@ dependencies = [
 
 [[package]]
 name = "tinyquant-fuzz"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "tinyquant-core",
 ]
 
 [[package]]
 name = "tinyquant-gpu-wgpu"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "bytemuck",
  "criterion",
@@ -2890,7 +2890,7 @@ dependencies = [
 
 [[package]]
 name = "tinyquant-io"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "dhat",
  "memmap2",
@@ -2904,7 +2904,7 @@ dependencies = [
 
 [[package]]
 name = "tinyquant-js"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "napi",
  "napi-build",
@@ -2916,7 +2916,7 @@ dependencies = [
 
 [[package]]
 name = "tinyquant-pgvector"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "once_cell",
  "postgres",
@@ -2926,7 +2926,7 @@ dependencies = [
 
 [[package]]
 name = "tinyquant-py"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "numpy",
  "pyo3",
@@ -2937,7 +2937,7 @@ dependencies = [
 
 [[package]]
 name = "tinyquant-sys"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "bindgen",
  "cbindgen",
@@ -3630,7 +3630,7 @@ checksum = "3ae8337f8a065cfc972643663ea4279e04e7256de865aa66fe25cec5fb912d3f"
 
 [[package]]
 name = "xtask"
-version = "1.0.0"
+version = "1.1.0"
 dependencies = [
  "serde_json",
 ]

@@ -82,7 +82,9 @@ class TestRotationParity:
         py_rot = ref.codec.RotationMatrix.from_config(py_cfg)
         rs_rot = rs.codec.RotationMatrix.from_config(rs_cfg)
         np.testing.assert_allclose(
-            py_rot.apply(vector), rs_rot.apply(vector), atol=1e-6,
+            py_rot.apply(vector),
+            rs_rot.apply(vector),
+            atol=1e-6,
             err_msg="Python and Rust rotation outputs differ in canonical mode",
         )
 
@@ -113,11 +115,12 @@ class TestCompressRoundTrip:
         cfg_triplet: tuple[int, int, int],
         batch: npt.NDArray[np.float32],
     ) -> None:
-        """Canonical mode: py-compress → rs-decompress matches py-decompress within 1e-3.
+        """Canonical mode: py-compress → rs-decompress within 1e-3.
 
-        With canonical rotation active (``_canonical_rotation_mode`` autouse
-        fixture), both impls rotate in the same ChaCha20 basis so the Rust
-        inverse rotation recovers the same approximation as the Python path.
+        Matches py-decompress within atol=1e-3 when canonical rotation is
+        active (``_canonical_rotation_mode`` autouse fixture): both impls
+        rotate in the same ChaCha20 basis so the Rust inverse rotation
+        recovers the same approximation as the Python path.
         """
         bw, seed, dim = cfg_triplet
         py_cfg = ref.codec.CodecConfig(bit_width=bw, seed=seed, dimension=dim)

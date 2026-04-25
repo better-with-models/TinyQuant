@@ -108,7 +108,8 @@ pure-Python fallback.
 > [!TIP]
 > The `[pgvector]` extra pulls in `psycopg[binary]>=3.1` for talking to a
 > live PostgreSQL database. Python **3.12+** is required; the Rust workspace
-> MSRV is **1.87**.
+> MSRV is **1.81**, with the optional `tinyquant-gpu-wgpu` crate carved out
+> at **1.87** in its own CI lane.
 
 ---
 
@@ -458,9 +459,10 @@ cargo clippy --workspace -- -D warnings
 cargo test --workspace
 ```
 
-The Python test suite includes **252 tests** covering unit, integration,
-end-to-end, calibration, and architecture-enforcement scenarios.
-Coverage is held above **90%** by CI. Live PostgreSQL + pgvector tests run
+The Python test suite includes **289 tests** covering unit, integration,
+end-to-end, calibration, parity (cross-impl Python ↔ Rust), and
+architecture-enforcement scenarios. Coverage is held above **90%** by CI
+(**94%** for the codec subpackage). Live PostgreSQL + pgvector tests run
 against a Docker container in CI via `testcontainers`.
 
 > [!TIP]

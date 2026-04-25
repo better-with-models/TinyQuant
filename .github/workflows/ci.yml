@@ -377,10 +377,64 @@ jobs:
           include-hidden-files: true
           retention-days: 1
 
+  # Phase 28.7: cross-impl parity tests need the Rust extension installed
+  # so the canonical-rotation bridge in
+  # `tests/reference/tinyquant_py_reference/codec/rotation_matrix.py`
+  # actually executes. Run them under coverage so the bridge codepath
+  # contributes to the codec subpackage gate.
+  test-parity:
+    name: "Test parity (Python ${{ matrix.python-version }})"
+    runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
+    needs: [effective-runner, test-codec]
+    timeout-minutes: 25
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.81.0"
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust -> target
+          key: parity-coverage-${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* maturin
+      - name: Create venv (maturin >=1.13 requires one)
+        run: |
+          python -m venv .venv
+          echo "VIRTUAL_ENV=$PWD/.venv" >> "$GITHUB_ENV"
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+      - name: Reinstall test deps inside venv
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install numpy==1.26.* pytest==8.* pytest-cov==5.* hypothesis==6.* coverage==7.* maturin
+      - name: Build and install tinyquant_rs (maturin develop)
+        working-directory: rust/crates/tinyquant-py
+        run: maturin develop
+      - name: Install tinyquant_cpu (Python reference shim)
+        run: pip install -e .
+      - name: Run parity tests under coverage
+        run: python -m coverage run --data-file=.coverage.parity.${{ matrix.python-version }} -m pytest tests/parity/ -x --tb=short
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: coverage-raw-parity-${{ matrix.python-version }}
+          path: .coverage.parity.${{ matrix.python-version }}
+          include-hidden-files: true
+          retention-days: 1
+
   coverage-combine:
     name: Coverage Combine & Gate
     runs-on: ${{ fromJSON(needs.effective-runner.outputs.runner) }}
-    needs: [effective-runner, test-e2e]
+    needs: [effective-runner, test-e2e, test-parity]
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5

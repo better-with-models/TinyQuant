@@ -114,7 +114,7 @@ pub use handle::{
 /// Version string baked into the generated C header `TINYQUANT_H_VERSION`
 /// macro. Must equal `env!("CARGO_PKG_VERSION")`; see the `const` block
 /// below for the compile-time assertion.
-pub const TINYQUANT_H_VERSION: &str = "1.0.0";
+pub const TINYQUANT_H_VERSION: &str = "1.1.0";
 
 #[allow(clippy::indexing_slicing)]
 const _: () = {
