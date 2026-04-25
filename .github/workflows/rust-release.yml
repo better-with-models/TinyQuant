@@ -128,7 +128,13 @@ jobs:
         run: cargo vet --locked
         continue-on-error: true  # vet requires a supply-chain/audits.toml bootstrap on first run
       - name: cargo audit
-        run: cargo audit --deny warnings
+        # `--deny warnings` would fail on unmaintained-crate notices
+        # (number_prefix, paste, etc.) which are not vulnerabilities and
+        # which we cannot fix unilaterally — they are pulled transitively
+        # by indicatif, pyo3-macros-backend, napi-derive, etc. Keep the
+        # gate strict on actual RUSTSEC vulns (the default behaviour),
+        # and document each ignored vuln in `rust/audit.toml`.
+        run: cargo audit
       - name: Emit supply-chain report
         run: |
           {
