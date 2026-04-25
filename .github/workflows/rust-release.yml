@@ -268,7 +268,10 @@ jobs:
           fi
 
       - name: Build tinyquant-py wheel
-        if: matrix.target != 'x86_64-unknown-freebsd'
+        # Skip for FreeBSD (no PyO3 wheel target) and i686 Windows
+        # (requires the PyO3 `generate-import-lib` feature or a 32-bit
+        # Python interpreter on the runner; we ship 64-bit Windows only).
+        if: matrix.target != 'x86_64-unknown-freebsd' && matrix.target != 'i686-pc-windows-msvc'
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b  # v1.51.0
         with:
           target: ${{ matrix.target }}
