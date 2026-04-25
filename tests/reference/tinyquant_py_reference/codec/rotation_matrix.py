@@ -135,7 +135,12 @@ def _install_canonical_rotation() -> None:
     Call once at session start from the parity test conftest when the ``rs``
     fixture is live.
     """
-    import tinyquant_cpu._core as _core
+    # The CI Type Check job does not install the Rust extension wheel
+    # (it is a heavy build; the parity job installs it separately), so
+    # `tinyquant_cpu._core` is intentionally unresolved at type-check
+    # time. The runtime import error is handled by the parity conftest's
+    # autouse fixture (silent skip when the extension is absent).
+    import tinyquant_cpu._core as _core  # type: ignore[import-not-found]
 
     @staticmethod  # type: ignore[misc]
     @functools.lru_cache(maxsize=8)
