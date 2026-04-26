@@ -219,7 +219,13 @@ jobs:
           - { target: aarch64-unknown-linux-gnu,   os: ubuntu-22.04,     cross: true  }
           - { target: x86_64-unknown-linux-musl,   os: ubuntu-22.04,     cross: true  }
           - { target: aarch64-unknown-linux-musl,  os: ubuntu-22.04,     cross: true  }
-          - { target: x86_64-apple-darwin,         os: macos-13,         cross: false }
+          # x86_64-apple-darwin built on macos-14 (Apple Silicon) via
+          # native darwin→darwin cross-compile; macos-13 (Intel) runner
+          # pool has been throttled in late 2026 and jobs queue >1h
+          # waiting for an unavailable runner. cargo with
+          # `--target x86_64-apple-darwin` produces correct fat binaries
+          # from Apple Silicon hosts; no `cross` Docker driver needed.
+          - { target: x86_64-apple-darwin,         os: macos-14,         cross: false }
           - { target: aarch64-apple-darwin,        os: macos-14,         cross: false }
           - { target: x86_64-pc-windows-msvc,      os: windows-2022,     cross: false }
           - { target: i686-pc-windows-msvc,        os: windows-2022,     cross: false }
