@@ -153,11 +153,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu }
-          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu }
-          - { triple: x86_64-apple-darwin,        runner: macos-13,         key: darwin-x64 }
-          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64 }
-          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc }
+          - { triple: x86_64-unknown-linux-gnu,   runner: ubuntu-22.04,     key: linux-x64-gnu,    napi_cross_target: "" }
+          - { triple: aarch64-unknown-linux-gnu,  runner: ubuntu-22.04-arm, key: linux-arm64-gnu,  napi_cross_target: "" }
+          # macos-13 (Intel) runner pool throttled in late 2026 — switch
+          # to macos-14 (Apple Silicon) and cross-compile via napi-rs's
+          # NAPI_CROSS_TARGET (mirrors js-ci.yml).
+          - { triple: x86_64-apple-darwin,        runner: macos-14,         key: darwin-x64,       napi_cross_target: x86_64-apple-darwin }
+          - { triple: aarch64-apple-darwin,       runner: macos-14,         key: darwin-arm64,     napi_cross_target: "" }
+          - { triple: x86_64-pc-windows-msvc,     runner: windows-2022,     key: win32-x64-msvc,   napi_cross_target: "" }
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -176,6 +179,7 @@ jobs:
         shell: bash
         env:
           RUSTFLAGS: "-C strip=symbols"
+          NAPI_CROSS_TARGET: ${{ matrix.napi_cross_target }}
         run: npm run build
       - uses: actions/upload-artifact@v4
         with:
