@@ -445,8 +445,11 @@ jobs:
           sde=$(git log -1 --format=%ct "${{ inputs.ref || github.sha }}")
           echo "sde=$sde" >> "$GITHUB_OUTPUT"
       - name: Guard against placeholder digests
+        # Scope to ARG lines only so doc-comment references to the
+        # sentinel string (in the Dockerfile's reproducibility notes)
+        # don't trip the guard.
         run: |
-          if grep -n 'REPLACE_WITH_PINNED_DIGEST' rust/Dockerfile; then
+          if grep -nE '^ARG .*REPLACE_WITH_PINNED_DIGEST' rust/Dockerfile; then
             echo "::error::Dockerfile still contains placeholder digests. Pin base images before releasing."
             exit 1
           fi
