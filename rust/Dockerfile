@@ -56,8 +56,14 @@
 # docs/plans/rust/phase-22-pyo3-cabi-release.md §CLI feature flag matrix.
 
 # --- Stage 1: builder -------------------------------------------------------
-ARG RUST_BUILDER_DIGEST=sha256:REPLACE_WITH_PINNED_DIGEST_RUST_1_81_BOOKWORM
-ARG RUNTIME_DIGEST=sha256:REPLACE_WITH_PINNED_DIGEST_DISTROLESS_CC_DEBIAN12_NONROOT
+# Pinned 2026-04-25 against Docker Hub (rust) and gcr.io (distroless).
+# Resolved via: `curl <registry>/v2/.../manifests/<tag>` reading the
+# Docker-Content-Digest response header. Bump alongside any tag change
+# (e.g. when MSRV moves off 1.81); the workflow's "Guard against
+# placeholder digests" step rejects any release commit that reverts
+# either ARG to the REPLACE_WITH_PINNED_DIGEST_* sentinel.
+ARG RUST_BUILDER_DIGEST=sha256:7b7f7ae5e49819e708369d49925360bde2af4f1962842e75a14af17342f08262
+ARG RUNTIME_DIGEST=sha256:e2d29aec8061843706b7e484c444f78fafb05bfe47745505252b1769a05d14f1
 
 FROM rust:1.81-bookworm@${RUST_BUILDER_DIGEST} AS builder
 
