@@ -22,6 +22,7 @@ category: ci-cd
 1. [[CD-plan/release-workflow|Release Workflow]] — tag-triggered release pipeline
 2. [[CD-plan/artifact-management|Artifact Management]] — build once, promote the immutable artifact
 3. [[CD-plan/versioning-and-changelog|Versioning and Changelog]] — semantic versioning, release notes
+4. [[CD-plan/v1.1.0-release-postmortem|v1.1.0 Release Postmortem]] — every failure class encountered in the first end-to-end exercise of the publish pipeline, plus a pre-release checklist
 
 ## Delivery model
 
