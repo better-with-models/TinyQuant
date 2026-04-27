@@ -62,9 +62,14 @@ _DETERMINISTIC_MTIME: tuple[int, int, int, int, int, int] = (
     2026, 4, 13, 0, 0, 0,
 )
 
+# Platform tag may be a single tag (`win_amd64`) or a compound of
+# `.`-joined alternates per PEP 425 (e.g.
+# `manylinux_2_17_x86_64.manylinux2014_x86_64`). Capture the whole compound
+# and split on the first `.` later — the first segment is the canonical
+# tag and is what we match against PLATFORM_KEY_BY_TAG.
 WHEEL_NAME_RE = re.compile(
     r"^tinyquant_rs-(?P<ver>[^-]+)-"
-    r"cp\d+-abi3-(?P<plat>[^.]+)\.whl$"
+    r"cp\d+-abi3-(?P<plat>[^-]+?)\.whl$"
 )
 
 # Platform tag on the input wheel filename -> _lib/<key>/ directory name.
@@ -147,10 +152,16 @@ def discover_inputs(
             )
             print(msg)
             raise SystemExit(_EXIT_VERSION_MISMATCH)
-        tag = m.group("plat")
+        # Compound platform tags (PEP 425) join alternates with `.`; the
+        # first segment is the canonical tag we match against.
+        compound = m.group("plat")
+        tag = compound.split(".", 1)[0]
         key = PLATFORM_KEY_BY_TAG.get(tag)
         if key is None:
-            raise SystemExit(f"unknown platform tag {tag!r} in {whl.name}")
+            raise SystemExit(
+                f"unknown platform tag {tag!r} in {whl.name} "
+                f"(compound={compound!r})"
+            )
         blob = whl.read_bytes()
         out.append(SourceWheel(
             path=whl,
