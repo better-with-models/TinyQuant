@@ -72,20 +72,24 @@ WHEEL_NAME_RE = re.compile(
 # others are required.
 PLATFORM_KEY_BY_TAG: dict[str, str] = {
     "manylinux_2_17_x86_64":  "linux_x86_64_gnu",
+    "manylinux_2_17_aarch64": "linux_aarch64_gnu",
     "manylinux_2_28_aarch64": "linux_aarch64_gnu",
     "musllinux_1_2_x86_64":   "linux_x86_64_musl",
+    "musllinux_1_2_aarch64":  "linux_aarch64_musl",
+    "macosx_10_12_x86_64":    "macos_x86_64",
     "macosx_10_14_x86_64":    "macos_x86_64",
     "macosx_11_0_arm64":      "macos_arm64",
     "win_amd64":              "win_amd64",
 }
 
 EXT_BY_KEY: dict[str, str] = {
-    "linux_x86_64_gnu":  "_core.abi3.so",
-    "linux_x86_64_musl": "_core.abi3.so",
-    "linux_aarch64_gnu": "_core.abi3.so",
-    "macos_x86_64":      "_core.abi3.so",
-    "macos_arm64":       "_core.abi3.so",
-    "win_amd64":         "_core.pyd",
+    "linux_x86_64_gnu":   "_core.abi3.so",
+    "linux_x86_64_musl":  "_core.abi3.so",
+    "linux_aarch64_gnu":  "_core.abi3.so",
+    "linux_aarch64_musl": "_core.abi3.so",
+    "macos_x86_64":       "_core.abi3.so",
+    "macos_arm64":        "_core.abi3.so",
+    "win_amd64":          "_core.pyd",
 }
 
 REQUIRED_PLATFORM_KEYS: frozenset[str] = frozenset({
