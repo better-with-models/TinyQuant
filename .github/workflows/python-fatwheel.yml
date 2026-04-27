@@ -317,8 +317,14 @@ jobs:
           else
             source .venv/bin/activate
           fi
-          pip install --upgrade pip
-          pip install dist/tinyquant_cpu-*-py3-none-any.whl numpy pytest hypothesis
+          # `pip install --upgrade pip` fails on Windows with:
+          #   ERROR: To modify pip, please run the following command:
+          #   <python> -m pip install --upgrade pip
+          # because pip.exe can't replace itself in-place on the same
+          # filesystem. Always go through `python -m pip` for the
+          # self-upgrade — works on both POSIX and Windows.
+          python -m pip install --upgrade pip
+          python -m pip install dist/tinyquant_cpu-*-py3-none-any.whl numpy pytest hypothesis
       - name: Smoke import + key detection
         shell: bash
         run: |
