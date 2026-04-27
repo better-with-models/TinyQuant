@@ -263,8 +263,13 @@ jobs:
           # The musllinux aarch64 wheel is dropped from input upstream
           # (fetch-inputs step) because the selector raises
           # UnsupportedPlatformError for it.
-          count=$(python -m zipfile -l dist/tinyquant_cpu-*.whl \
-                  | grep -cE '_core\.(abi3\.so|pyd)$')
+          #
+          # Count via the zipfile API directly. Earlier `python -m zipfile -l`
+          # piped to grep was structurally broken: the listing format is
+          # `<name>  <date>  <size>`, so anchoring on $ matches the size
+          # column not the name. Always returned 0.
+          whl=$(ls dist/tinyquant_cpu-*.whl)
+          count=$(python -c 'import re, sys, zipfile; pat=re.compile(r"_core\.(abi3\.so|pyd)$"); z=zipfile.ZipFile(sys.argv[1]); print(sum(1 for n in z.namelist() if pat.search(n)))' "$whl")
           echo "bundled binaries: $count"
           test "$count" -eq 6 || { echo "expected 6 binaries, got $count"; exit 1; }
       - name: twine check
