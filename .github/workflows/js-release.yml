@@ -247,6 +247,8 @@ jobs:
         run: |
           set -euo pipefail
           unset NODE_AUTH_TOKEN
+          npm install -g npm@latest
+          npm --version
           npm publish --provenance --access public
       - name: npm pack for GitHub Release
         working-directory: javascript/@tinyquant/core
