@@ -661,6 +661,14 @@ jobs:
           pattern: sys-*
           merge-multiple: true
           path: sys/
+      # Wheels also attach to the GH release so python-fatwheel.yml can
+      # `gh release download "rust-v<version>" --pattern 'tinyquant_rs-*.whl'`
+      # — workflow artifacts only live ~14 days and don't cross workflow runs.
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: wheels/
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4.3.0
         with:
           name: supply-chain-report
@@ -684,5 +692,6 @@ jobs:
             sys/libtinyquant.*
             sys/tinyquant.dll
             sys/tinyquant.h
+            wheels/*.whl
             supply-chain-report.json
           body_path: RELEASE_NOTES.md
