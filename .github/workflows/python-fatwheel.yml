@@ -247,14 +247,26 @@ jobs:
           size=$(stat -c '%s' dist/tinyquant_cpu-*.whl)
           echo "fat wheel size: $size bytes"
           test "$size" -lt 52428800 || { echo "fat wheel exceeds 50 MB"; exit 1; }
-      - name: Binary-count gate (exactly 5)
+      - name: Binary-count gate (exactly 6)
         shell: bash
         run: |
           set -euo pipefail
+          # Six bundled `_core.*` binaries map to the six runtime targets
+          # the selector at `scripts/packaging/templates/_selector.py`
+          # can resolve to:
+          #   1. linux_x86_64_gnu   (manylinux_2_17_x86_64)
+          #   2. linux_x86_64_musl  (musllinux_1_2_x86_64)
+          #   3. linux_aarch64_gnu  (manylinux_2_17_aarch64)
+          #   4. macos_x86_64       (macosx_10_12_x86_64)
+          #   5. macos_arm64        (macosx_11_0_arm64)
+          #   6. win_amd64          (win_amd64)
+          # The musllinux aarch64 wheel is dropped from input upstream
+          # (fetch-inputs step) because the selector raises
+          # UnsupportedPlatformError for it.
           count=$(python -m zipfile -l dist/tinyquant_cpu-*.whl \
                   | grep -cE '_core\.(abi3\.so|pyd)$')
           echo "bundled binaries: $count"
-          test "$count" -eq 5 || { echo "expected 5 binaries, got $count"; exit 1; }
+          test "$count" -eq 6 || { echo "expected 6 binaries, got $count"; exit 1; }
       - name: twine check
         run: twine check dist/tinyquant_cpu-*.whl
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4.6.2
