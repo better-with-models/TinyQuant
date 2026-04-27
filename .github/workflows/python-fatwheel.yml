@@ -166,6 +166,15 @@ jobs:
               --repo "${{ github.repository }}" \
               --dir dist/input \
               --pattern 'tinyquant_rs-*.whl'
+          # Drop musllinux aarch64 — the runtime selector
+          # (`scripts/packaging/templates/_selector.py`) explicitly raises
+          # `UnsupportedPlatformError` for that combo, so shipping the
+          # binary is dead weight (~300 KB). The build matrix produces it
+          # so we can publish it as a standalone wheel to PyPI from
+          # rust-release.yml, but the fat wheel deliberately omits it.
+          rm -f dist/input/tinyquant_rs-*musllinux_*aarch64*.whl
+          echo "wheels remaining after musllinux-aarch64 drop:"
+          ls -la dist/input/
       - name: Fabricate dummy per-arch wheels (dry-run only)
         if: github.event_name != 'push'
         shell: bash
