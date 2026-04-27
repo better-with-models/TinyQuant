@@ -264,8 +264,18 @@ def build_fat_wheel(
                 ext_blob,
             )
 
-        # dist-info.
-        add(zf, f"{dist_info}/METADATA", metadata_src)
+        # dist-info. Substitute the `Version:` line in the METADATA
+        # template with the requested release version so the internal
+        # PKG-INFO matches the wheel filename. PyPI rejects on mismatch
+        # ("Version in filename should be 'X' not 'Y'.") otherwise.
+        metadata_blob = re.sub(
+            rb"^Version:\s*[^\r\n]+",
+            f"Version: {version}".encode("ascii"),
+            metadata_src,
+            count=1,
+            flags=re.MULTILINE,
+        )
+        add(zf, f"{dist_info}/METADATA", metadata_blob)
         add(zf, f"{dist_info}/WHEEL", wheel_src)
         add(zf, f"{dist_info}/LICENSE", license_src)
 
