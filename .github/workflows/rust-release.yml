@@ -501,6 +501,16 @@ jobs:
     runs-on: ubuntu-22.04
     environment:
       name: cargo
+    # Use 1.87 for publish (auditor-tools toolchain). `cargo publish` runs a
+    # local build to verify the packaged tarball; tinyquant-sys's bindgen
+    # chain (clang-sys / proc-macro2-edition-related crates) pulls a
+    # transitive dep that requires `edition2024` (stabilised in 1.85). MSRV
+    # for runtime consumers stays 1.81; this only affects the publish-time
+    # verify build. The shipped sources are unchanged. Also skip-existing
+    # logic via cargo's own dedup so re-runs after a partial-failure don't
+    # double-publish.
+    env:
+      RUSTUP_TOOLCHAIN: "1.87.0"
     if: >-
       needs.release-gate.outputs.should_publish == 'true'
       && inputs.dry_run != true
@@ -512,7 +522,7 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
       - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8  # stable
         with:
-          toolchain: 1.81.0
+          toolchain: 1.87.0
       - name: Obtain crates.io token (trusted publishing)
         uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe  # v1.0.4
         id: auth
@@ -520,13 +530,28 @@ jobs:
         working-directory: rust
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.auth.outputs.token }}
+        # `|| true` against "already uploaded" lets a re-run after a
+        # partial-failure proceed past crates that succeeded last time.
+        # cargo publish's own duplicate detection emits a clear error; we
+        # only swallow that specific case.
         run: |
-          cargo publish -p tinyquant-core
-          cargo publish -p tinyquant-io
-          cargo publish -p tinyquant-bruteforce
-          cargo publish -p tinyquant-pgvector
-          cargo publish -p tinyquant-sys
-          cargo publish -p tinyquant-cli
+          publish_one() {
+            local crate=$1
+            if cargo publish -p "$crate" 2>&1 | tee /tmp/publish.log; then
+              return 0
+            fi
+            if grep -q "crate version .* is already uploaded" /tmp/publish.log; then
+              echo "::notice::$crate already at this version on crates.io; skipping"
+              return 0
+            fi
+            return 1
+          }
+          publish_one tinyquant-core
+          publish_one tinyquant-io
+          publish_one tinyquant-bruteforce
+          publish_one tinyquant-pgvector
+          publish_one tinyquant-sys
+          publish_one tinyquant-cli
 
   # --- Stage 5: publish Python wheels to PyPI ----------------------------
   publish-pypi:
