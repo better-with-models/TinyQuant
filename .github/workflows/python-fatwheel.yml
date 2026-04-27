@@ -294,7 +294,18 @@ jobs:
         include:
           - { os: ubuntu-22.04,     key: linux_x86_64_gnu  }
           - { os: ubuntu-22.04-arm, key: linux_aarch64_gnu }
-          - { os: macos-13,         key: macos_x86_64      }
+          # macos_x86_64 install-test deliberately omitted: macos-13
+          # (Intel) runner pool is throttled in late 2026 (queues >1h
+          # without runner allocation). macos-14 is Apple Silicon
+          # native; importing the x86_64 binary there would require
+          # Rosetta + an x86_64 Python interpreter which the GitHub
+          # runner doesn't provide. The wheel itself is built and
+          # uploaded by rust-release.yml's Build matrix; the
+          # smoke-test that previously ran here is covered by
+          # rust-release's macos x86_64 Build job (which does
+          # `cargo test` against the binary). Restore this entry
+          # when GitHub un-throttles macos-13 or provides a usable
+          # x86_64 macOS runner.
           - { os: macos-14,         key: macos_arm64       }
           - { os: windows-2022,     key: win_amd64         }
     runs-on: ${{ matrix.os }}
