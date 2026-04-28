@@ -102,7 +102,7 @@ pure-Python fallback.
 | Python (Rust-backed, current)                  | `pip install tinyquant-cpu`                        |
 | Python + PostgreSQL/pgvector support            | `pip install "tinyquant-cpu[pgvector]"`            |
 | Rust native crate                               | `cargo add tinyquant-core`                         |
-| TypeScript / Node / Bun                         | `npm install @tinyquant/core`                      |
+| TypeScript / Node / Bun                         | `npm install tinyquant`                      |
 | Work on this repository                         | see the [Development](#development) section below  |
 
 > [!TIP]
@@ -124,7 +124,7 @@ languages, versioned in lockstep via `rust/Cargo.toml`
 | :---------- | :------------------------------------------------------ | :------------------------------- | :---- |
 | Python      | [`tinyquant-cpu`](https://pypi.org/project/tinyquant-cpu/) ([![PyPI](https://img.shields.io/pypi/v/tinyquant-cpu.svg)](https://pypi.org/project/tinyquant-cpu/)) | `pip install tinyquant-cpu`      | Phase 24 |
 | Rust        | [`tinyquant-core`](https://crates.io/crates/tinyquant-core) ([![crates.io](https://img.shields.io/crates/v/tinyquant-core.svg)](https://crates.io/crates/tinyquant-core)) | `cargo add tinyquant-core`       | Phase 22 |
-| TypeScript  | [`tinyquant`](https://www.npmjs.com/package/tinyquant) ([![npm](https://img.shields.io/npm/v/tinyquant.svg)](https://www.npmjs.com/package/tinyquant)) | `npm install @tinyquant/core`    | Phase 25 |
+| TypeScript  | [`tinyquant`](https://www.npmjs.com/package/tinyquant) ([![npm](https://img.shields.io/npm/v/tinyquant.svg)](https://www.npmjs.com/package/tinyquant)) | `npm install tinyquant`    | Phase 25 |
 
 All three packages guarantee byte-identical output on `config_hash`,
 `Codebook::to_bytes`, and `CompressedVector::to_bytes`. See
@@ -383,7 +383,7 @@ Available `BackendPreference` variants: `Auto`, `Vulkan`, `Metal`, `Dx12`,
 - **Deterministic** — same inputs produce byte-identical output across all language bindings and CPU architectures
 - **Rust-native core** — `tinyquant-core`; CPU SIMD dispatch (AVX2+FMA / NEON) via `is_x86_feature_detected!` / ARMv8 base-ISA guarantee; Rayon parallel batch with determinism contract
 - **Optional GPU acceleration** — `tinyquant-gpu-wgpu`; WGSL rotate/quantize/dequantize/residual and cosine-topk kernels; lazy `CachedPipelines`; `BackendPreference` adapter selection; auto-routes at ≥ 512 vectors
-- **Multi-language** — Python fat wheel (`tinyquant-cpu`), TypeScript/Node (`@tinyquant/core`), Rust native (`tinyquant-core`), C ABI (`tinyquant-sys`)
+- **Multi-language** — Python fat wheel (`tinyquant-cpu`), TypeScript/Node (`tinyquant`), Rust native (`tinyquant-core`), C ABI (`tinyquant-sys`)
 - **Pluggable backends** — `BruteForceBackend` for in-process exact search; `PgvectorAdapter` for PostgreSQL + pgvector; `WgpuBackend` for GPU corpus search
 - **Three compression policies** — COMPRESS, PASSTHROUGH, FP16, mixable within a corpus
 - **TQCV serialization** — versioned 70-byte header + LSB-first bit-pack + optional FP16 residual; mmap corpus files via `tinyquant-io`
@@ -420,7 +420,7 @@ implementation:
 | `rust/crates/tinyquant-py/`                   | pyo3 Python extension — the engine behind `tinyquant-cpu`                   |
 | `rust/crates/tinyquant-sys/`                  | C ABI via cbindgen                                                          |
 | `rust/crates/tinyquant-cli/`                  | Standalone CLI binary                                                       |
-| `rust/crates/tinyquant-js/`                   | napi-rs TypeScript/Node bindings (`@tinyquant/core`)                        |
+| `rust/crates/tinyquant-js/`                   | napi-rs TypeScript/Node bindings (`tinyquant`)                        |
 | `rust/crates/tinyquant-bruteforce/`           | `BruteForceBackend` reference implementation                                |
 | `rust/crates/tinyquant-pgvector/`             | PostgreSQL + pgvector ACL adapter                                           |
 | `rust/crates/tinyquant-bench/`                | Criterion benchmarks + calibration quality gates                            |
