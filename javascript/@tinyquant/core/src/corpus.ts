@@ -370,7 +370,7 @@ function parseMetadataJson(raw: string | null): Record<string, unknown> | null {
     // genuine bug that's worth surfacing. Escalate to a typed error.
     throw new TinyQuantError(
       "MetadataParseError",
-      `@better-with-models/tinyquant-core: failed to parse metadata JSON from the native side: ${
+      `tinyquant: failed to parse metadata JSON from the native side: ${
         err instanceof Error ? err.message : String(err)
       }`,
       err,
@@ -387,7 +387,7 @@ function parseEventJson(raw: string): CorpusEvent {
     // legitimate (but very stale) event. Escalate instead.
     throw new TinyQuantError(
       "CorpusEventSchemaError",
-      `@better-with-models/tinyquant-core: corpus event is missing a numeric timestampMillis field: ${JSON.stringify(parsed["type"])}`,
+      `tinyquant: corpus event is missing a numeric timestampMillis field: ${JSON.stringify(parsed["type"])}`,
     );
   }
   const timestamp = new Date(millis);
@@ -427,7 +427,7 @@ function parseEventJson(raw: string): CorpusEvent {
       // only fires on a schema drift between Rust and TS.
       throw new TinyQuantError(
         "CorpusEventSchemaError",
-        `@better-with-models/tinyquant-core: unknown CorpusEvent type ${JSON.stringify(parsed["type"])}`,
+        `tinyquant: unknown CorpusEvent type ${JSON.stringify(parsed["type"])}`,
       );
   }
 }

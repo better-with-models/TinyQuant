@@ -54,7 +54,7 @@ function loadScenarios(): BackendScenario[] {
 
 const SCORE_TOL = 1e-6;
 
-describe("@better-with-models/tinyquant-core — BruteForceBackend parity", () => {
+describe("tinyquant — BruteForceBackend parity", () => {
   const scenarios = loadScenarios();
 
   for (const scenario of scenarios) {

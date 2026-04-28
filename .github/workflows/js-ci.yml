@@ -335,7 +335,7 @@ jobs:
           tgz=$(ls ../tarball/*.tgz | head -1)
           npm install "$tgz"
           node -e "
-            const mod = require('@better-with-models/tinyquant-core');
+            const mod = require('tinyquant');
             console.log('version:', mod.version());
             if (typeof mod.version() !== 'string') {
               throw new Error('version() did not return a string');
@@ -351,7 +351,7 @@ jobs:
           tgz=$(ls ../tarball/*.tgz | head -1)
           bun add "$tgz"
           bun -e "
-            import('@better-with-models/tinyquant-core').then(m => {
+            import('tinyquant').then(m => {
               console.log('version:', m.version());
               if (typeof m.version() !== 'string') {
                 throw new Error('version() did not return a string');
@@ -418,6 +418,6 @@ jobs:
           tgz=$(ls ../tarball/*.tgz | head -1)
           pnpm add "$tgz"
           node -e "
-            const { version } = require('@better-with-models/tinyquant-core');
+            const { version } = require('tinyquant');
             console.log('version:', version());
           "

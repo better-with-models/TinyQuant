@@ -104,7 +104,7 @@ function seededVector(dim: number, seed: number): Float32Array {
   return out;
 }
 
-describe("@better-with-models/tinyquant-core — corpus scenarios from Python oracle", () => {
+describe("tinyquant — corpus scenarios from Python oracle", () => {
   const scenarios = loadScenarios();
 
   for (const scenario of scenarios) {
@@ -216,7 +216,7 @@ describe("@better-with-models/tinyquant-core — corpus scenarios from Python or
 // The test below verifies the config-hash mechanism that underpins the check
 // (distinct seeds → distinct hashes; VectorEntry hash matches corpus hash).
 // ---------------------------------------------------------------------------
-describe("@better-with-models/tinyquant-core — corpus policy invariants (GAP-JS-004)", () => {
+describe("tinyquant — corpus policy invariants (GAP-JS-004)", () => {
   const DIM = 64;
   const NTRAIN = 256;
 

@@ -13,7 +13,7 @@ category: requirements
 
 # JavaScript / TypeScript Binding Requirements
 
-Functional requirements for the `@better-with-models/tinyquant-core` npm
+Functional requirements for the `tinyquant` npm
 package — the N-API binding that exposes TinyQuant to Node.js (≥ 20.10)
 and Bun (≥ 1.1). Requirements in this file govern cross-language parity,
 API surface stability, packaging invariants, and platform coverage.
@@ -268,7 +268,7 @@ Gist:       The package works for both CommonJS (require) and ESM
             bundler configuration.
 Type:       Constraint
 Actor:      Library consumer (CJS or ESM project)
-Function:   A Node.js process using require("@better-with-models/tinyquant-core")
+Function:   A Node.js process using require("tinyquant")
             shall load the package and expose the same top-level symbol
             set as the ESM import path. Both entry points shall resolve
             via the `exports` map; no module.exports fallback or

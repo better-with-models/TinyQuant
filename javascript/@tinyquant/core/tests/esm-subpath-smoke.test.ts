@@ -3,7 +3,7 @@
 // GAP-JS-007: verify that each sub-path export resolves and exposes
 // the expected constructor.
 //
-// Why relative imports instead of "@better-with-models/tinyquant-core/codec"?
+// Why relative imports instead of "tinyquant/codec"?
 // The test suite runs from source (npm test = build + tsc + node --test)
 // before the package is published to a registry. The package is not
 // self-installed in node_modules, so bare sub-path specifiers would cause
@@ -28,7 +28,7 @@ import { Corpus } from "../dist/corpus.js";
 // Sub-path: ./backend → dist/backend.js
 import { BruteForceBackend } from "../dist/backend.js";
 
-describe("@better-with-models/tinyquant-core — sub-path exports (GAP-JS-007)", () => {
+describe("tinyquant — sub-path exports (GAP-JS-007)", () => {
   it("dist/codec.js exports CodecConfig as a constructor", () => {
     assert.equal(
       typeof CodecConfig,

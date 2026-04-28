@@ -206,7 +206,7 @@ jobs:
       && inputs.dry_run != true
     environment:
       name: npm
-      url: https://www.npmjs.com/package/@better-with-models/tinyquant-core
+      url: https://www.npmjs.com/package/tinyquant
     permissions:
       id-token: write
       contents: write
@@ -282,8 +282,8 @@ jobs:
             gh release upload "$RELEASE_TAG" "${tarballs[@]}" --clobber
           else
             gh release create "$RELEASE_TAG" "${tarballs[@]}" \
-              --title "@better-with-models/tinyquant-core $RELEASE_TAG" \
-              --notes "npm tarball for @better-with-models/tinyquant-core $RELEASE_TAG. See CHANGELOG.md for details."
+              --title "tinyquant $RELEASE_TAG" \
+              --notes "npm tarball for tinyquant $RELEASE_TAG. See CHANGELOG.md for details."
           fi
 
   # -------------------------------------------------------------------

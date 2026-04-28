@@ -1,6 +1,6 @@
 // src/index.ts
 //
-// Public entry point for `@better-with-models/tinyquant-core`. Each sub-module adds
+// Public entry point for `tinyquant`. Each sub-module adds
 // hand-written JSDoc on top of the native binding and keeps the
 // import surface organised by architectural layer:
 //

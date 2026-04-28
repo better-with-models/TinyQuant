@@ -1,6 +1,6 @@
 // tests/types.test.ts
 //
-// Smoke test the public TypeScript surface of `@better-with-models/tinyquant-core`.
+// Smoke test the public TypeScript surface of `tinyquant`.
 // The goal is not to exercise runtime behaviour (the other test
 // files do that) but to catch surface drift: if a type export
 // disappears, is renamed, or changes kind (class vs interface),
@@ -39,7 +39,7 @@ import {
   type CompressionPolicyViolationDetectedEvent,
 } from "../dist/index.js";
 
-describe("@better-with-models/tinyquant-core — public surface smoke tests", () => {
+describe("tinyquant — public surface smoke tests", () => {
   it("class handles are present and are constructors", () => {
     assert.equal(typeof CodecConfig, "function");
     assert.equal(typeof Codebook, "function");

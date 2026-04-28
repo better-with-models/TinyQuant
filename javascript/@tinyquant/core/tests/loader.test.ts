@@ -20,7 +20,7 @@ import assert from "node:assert/strict";
 
 import { binaryKey } from "../dist/_loader.js";
 
-describe("@better-with-models/tinyquant-core — loader binary key (FR-JS-006)", () => {
+describe("tinyquant — loader binary key (FR-JS-006)", () => {
   // -------------------------------------------------------------------
   // glibc platforms
   // -------------------------------------------------------------------

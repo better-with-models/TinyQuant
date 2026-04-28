@@ -1,4 +1,4 @@
-# Changelog — @better-with-models/tinyquant-core
+# Changelog — tinyquant
 
 All notable changes to this package will be documented here.
 

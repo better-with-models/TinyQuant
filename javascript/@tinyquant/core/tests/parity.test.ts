@@ -65,7 +65,7 @@ function loadFixtures(): ParityCase[] {
   return JSON.parse(raw) as ParityCase[];
 }
 
-describe("@better-with-models/tinyquant-core — parity: config_hash", () => {
+describe("tinyquant — parity: config_hash", () => {
   const cases = loadFixtures();
 
   it("loaded at least 20 fixture cases", () => {
