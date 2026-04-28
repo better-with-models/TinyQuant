@@ -124,7 +124,7 @@ languages, versioned in lockstep via `rust/Cargo.toml`
 | :---------- | :------------------------------------------------------ | :------------------------------- | :---- |
 | Python      | [`tinyquant-cpu`](https://pypi.org/project/tinyquant-cpu/) ([![PyPI](https://img.shields.io/pypi/v/tinyquant-cpu.svg)](https://pypi.org/project/tinyquant-cpu/)) | `pip install tinyquant-cpu`      | Phase 24 |
 | Rust        | [`tinyquant-core`](https://crates.io/crates/tinyquant-core) ([![crates.io](https://img.shields.io/crates/v/tinyquant-core.svg)](https://crates.io/crates/tinyquant-core)) | `cargo add tinyquant-core`       | Phase 22 |
-| TypeScript  | [`@tinyquant/core`](https://www.npmjs.com/package/@tinyquant/core) ([![npm](https://img.shields.io/npm/v/@tinyquant/core.svg)](https://www.npmjs.com/package/@tinyquant/core)) | `npm install @tinyquant/core`    | Phase 25 |
+| TypeScript  | [`tinyquant`](https://www.npmjs.com/package/tinyquant) ([![npm](https://img.shields.io/npm/v/tinyquant.svg)](https://www.npmjs.com/package/tinyquant)) | `npm install @tinyquant/core`    | Phase 25 |
 
 All three packages guarantee byte-identical output on `config_hash`,
 `Codebook::to_bytes`, and `CompressedVector::to_bytes`. See
